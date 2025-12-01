@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 
 interface LatinTextProps {
@@ -109,4 +111,3 @@ export const LatinText: React.FC<LatinTextProps> = ({
     </Tag>
   );
 };
-
