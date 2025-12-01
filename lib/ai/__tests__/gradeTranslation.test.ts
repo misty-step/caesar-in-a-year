@@ -56,7 +56,7 @@ describe('gradeTranslation', () => {
 
     expect(result).toEqual(mockResponse);
     expect(mockGetGenerativeModel).toHaveBeenCalledWith(expect.objectContaining({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
     }));
   });
 
