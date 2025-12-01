@@ -1,5 +1,4 @@
 import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
@@ -59,10 +58,11 @@ function mapContentToSummary(content: ContentSeed) {
 }
 
 export default async function DashboardPage() {
-  const { userId } = auth();
+  const { userId } = await auth();
 
+  // Middleware guarantees auth; this is defensive
   if (!userId) {
-    redirect('/sign-in');
+    throw new Error('Unauthorized');
   }
 
   const { progress, summary } = await getDashboardData(userId);

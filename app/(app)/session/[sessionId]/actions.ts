@@ -23,7 +23,7 @@ export type SubmitReviewResult = {
  * Server action entrypoint: infers user from Clerk auth, then delegates.
  */
 export async function submitReview(input: SubmitReviewInput): Promise<SubmitReviewResult> {
-  const { userId } = auth();
+  const { userId } = await auth();
 
   if (!userId) {
     throw new Error('Unauthorized');
