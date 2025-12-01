@@ -65,6 +65,9 @@ export default async function DashboardPage() {
     redirect('/sign-in');
   }
 
+  // Temporary visibility check while stabilizing Clerk auth in dev.
+  console.log('[dashboard] auth userId', userId);
+
   const { progress, summary } = await getDashboardData(userId);
 
   return (
