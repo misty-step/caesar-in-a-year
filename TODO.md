@@ -67,7 +67,7 @@ Critical Path: ~7h (Tasks 1 → 3 → 4 → 7 → 8 → 9)
   Tests: unit with mocked SDK; edge case for timeout.
   Estimate: 1h.
   depends: Task 1.
-- [ ] 7) API routes / server actions for grading and session advance  
+- [x] 7) API routes / server actions for grading and session advance  
   Files: `app/(app)/session/[sessionId]/actions.ts`, `app/api/grade/route.ts` (Node runtime), `app/api/session/advance/route.ts`  
   Goal: Wire UI to data adapter + grading service; auth enforced.  
   Approach: server actions call `data.getSession`, `gradeTranslation`, `recordAttempt`, `advanceSession`; return next index/result.  
@@ -76,7 +76,7 @@ Critical Path: ~7h (Tasks 1 → 3 → 4 → 7 → 8 → 9)
   Estimate: 1.25h.  
   depends: Tasks 3,4,5,6.
 
-- [ ] 8) Dashboard page (server component)  
+- [x] 8) Dashboard page (server component)  
   Files: `app/(app)/dashboard/page.tsx`, `components/dashboard/Hero.tsx`, `components/dashboard/Stats.tsx`  
   Goal: Render progress and CTA using server-fetched data.  
   Approach: fetch via `data.getUserProgress` and `getContent` (summary only); reuse roman/pompeii styling; CTA links/creates session.  
@@ -85,7 +85,7 @@ Critical Path: ~7h (Tasks 1 → 3 → 4 → 7 → 8 → 9)
   Estimate: 45m.  
   depends: Tasks 3,4,5.
 
-- [ ] 9) Session + Summary pages with UI components  
+- [x] 9) Session + Summary pages with UI components  
   Files: `app/(app)/session/[sessionId]/page.tsx`, `app/(app)/summary/[sessionId]/page.tsx`, `components/session/ReviewStep.tsx`, `components/session/ReadingStep.tsx`, `components/ui/Button.tsx`, `components/ui/LatinText.tsx`, `components/ui/ProgressBar.tsx`, `components/session/SummaryCard.tsx`  
   Goal: Port existing UX to Next, hook to server actions, preserve bilingual interactions.  
   Approach: convert components to client where needed; connect actions for grading/advance; handle loading/error states; add lang attributes/accessibility.  

@@ -1,0 +1,96 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+
+import { createDataAdapter } from '@/lib/data/adapter';
+import type { ContentSeed } from '@/lib/data/types';
+import type { UserProgress as DataUserProgress } from '@/lib/data/types';
+import type { UserProgress } from '@/types';
+
+import { Hero } from '@/components/dashboard/Hero';
+import { Stats } from '@/components/dashboard/Stats';
+import { Button } from '@/components/ui/Button';
+
+async function getDashboardData(userId: string): Promise<{
+  progress: UserProgress;
+  summary: {
+    reviewCount: number;
+    readingTitle: string;
+  };
+}> {
+  const data = createDataAdapter();
+
+  const [rawProgress, content] = await Promise.all([
+    data.getUserProgress(userId),
+    data.getContent(),
+  ]);
+
+  const progress = mapProgress(rawProgress);
+  const summary = mapContentToSummary(content);
+
+  return { progress, summary };
+}
+
+function mapProgress(progress: DataUserProgress | null): UserProgress {
+  if (!progress) {
+    return {
+      currentDay: 1,
+      streak: 0,
+      totalXp: 0,
+      unlockedPhase: 1,
+    };
+  }
+
+  return {
+    currentDay: progress.day,
+    streak: progress.streak,
+    totalXp: progress.totalXp,
+    unlockedPhase: progress.unlockedPhase,
+  };
+}
+
+function mapContentToSummary(content: ContentSeed) {
+  return {
+    reviewCount: content.review.length,
+    readingTitle: content.reading.title,
+  };
+}
+
+export default async function DashboardPage() {
+  const { userId } = auth();
+
+  if (!userId) {
+    redirect('/sign-in');
+  }
+
+  const { progress, summary } = await getDashboardData(userId);
+
+  return (
+    <main className="min-h-screen bg-roman-50 text-roman-900">
+      <div className="mx-auto max-w-5xl px-6 py-10 space-y-10">
+        <Hero />
+
+        <Stats progress={progress} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} />
+
+        <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+              Session
+            </p>
+            <h2 className="text-xl font-serif font-semibold text-roman-900">
+              Ready for today&apos;s guided reading?
+            </h2>
+            <p className="text-sm text-roman-700">
+              You&apos;ll review key sentences, then tackle a short passage with glossary support.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Link href="/session/new">
+              <Button className="w-full sm:w-auto text-base px-8 py-3" labelLatin="Incipe Sessionem" labelEnglish="Start Session" />
+            </Link>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
