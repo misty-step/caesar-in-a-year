@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
@@ -9,18 +9,20 @@ import { Button } from '@/components/UI/Button';
 export const dynamic = 'force-dynamic';
 
 interface SummaryPageProps {
-  params: { sessionId: string };
+  params: Promise<{ sessionId: string }>;
 }
 
-export default async function SummaryPage({ params }: SummaryPageProps) {
-  const { userId } = auth();
+export default async function SummaryPage(props: SummaryPageProps) {
+  const { userId } = await auth();
 
+  // Middleware guarantees auth; this is defensive
   if (!userId) {
-    redirect('/sign-in');
+    throw new Error('Unauthorized');
   }
 
+  const { sessionId } = await props.params;
   const data = createDataAdapter();
-  const session = await data.getSession(params.sessionId, userId);
+  const session = await data.getSession(sessionId, userId);
 
   if (!session) {
     notFound();

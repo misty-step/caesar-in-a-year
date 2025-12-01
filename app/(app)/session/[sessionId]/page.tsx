@@ -1,24 +1,26 @@
 import { auth } from '@clerk/nextjs/server';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import { createDataAdapter } from '@/lib/data/adapter';
-import { SessionClient } from '@/components/session/SessionClient';
+import { SessionClient } from '@/components/Session/SessionClient';
 
 export const dynamic = 'force-dynamic';
 
 interface SessionPageProps {
-  params: { sessionId: string };
+  params: Promise<{ sessionId: string }>;
 }
 
-export default async function SessionPage({ params }: SessionPageProps) {
-  const { userId } = auth();
+export default async function SessionPage(props: SessionPageProps) {
+  const { userId } = await auth();
 
+  // Middleware guarantees auth; this is defensive
   if (!userId) {
-    redirect('/sign-in');
+    throw new Error('Unauthorized');
   }
 
+  const { sessionId } = await props.params;
   const data = createDataAdapter();
-  const session = await data.getSession(params.sessionId, userId);
+  const session = await data.getSession(sessionId, userId);
 
   if (!session) {
     notFound();
