@@ -4,30 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Caesar in a Year is a Latin learning app designed to help users read Caesar's *De Bello Gallico* in one year. Built with React 19, TypeScript, Vite, and Gemini AI for translation grading.
+Caesar in a Year is a Latin learning app designed to help users read Caesar's *De Bello Gallico* in one year. Built with Next.js 16, React 19, TypeScript, Clerk auth, and Gemini AI for translation grading.
 
 ## Commands
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start dev server on http://localhost:3000
-npm run build        # Production build
-npm run preview      # Preview production build
+pnpm install         # Install dependencies
+pnpm dev             # Start dev server on http://localhost:3000
+pnpm build           # Production build
+pnpm start           # Run production server
 ```
 
 ## Environment
 
-Set `GEMINI_API_KEY` in `.env.local` for AI-powered translation grading.
+Set in `.env.local`:
+- `GEMINI_API_KEY` — AI-powered translation grading
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Authentication
 
 ## Architecture
 
 ### Session Flow
-`App.tsx` manages a simple state machine with three views:
-1. **DASHBOARD** → User stats, "Continue Journey" button
-2. **SESSION** → Queue of `SessionItem[]` (reviews + new reading)
-3. **SUMMARY** → Completion screen
-
-Sessions build a queue mixing review sentences with new readings, processed sequentially.
+App Router manages views via route segments:
+1. `/dashboard` → User stats, "Start Session" button
+2. `/session/[id]` → Queue of `SessionItem[]` (reviews + new reading)
+3. `/summary/[id]` → Completion screen
 
 ### Core Types (`types.ts`)
 - `Sentence` — Latin text with reference translation for review drills
@@ -35,17 +35,17 @@ Sessions build a queue mixing review sentences with new readings, processed sequ
 - `SessionItem` — Polymorphic union (REVIEW or NEW_READING)
 - `GradingResult` — AI response with status (CORRECT/PARTIAL/INCORRECT) + feedback
 
-### AI Integration (`services/geminiService.ts`)
-Single function `gradeTranslation()` calls Gemini 2.5 Flash with structured JSON output. Uses `@google/genai` SDK with schema-constrained responses.
+### AI Integration (`lib/ai/gradeTranslation.ts`)
+Deep module: `gradeTranslation()` calls Gemini 2.5 Flash with structured JSON output. Uses `@google/genai` SDK. Handles circuit breaking, retry with backoff, timeouts, and graceful fallback internally.
 
 ### Component Patterns
-- `LatinText` — Dual-language display component (shows Latin with English hover/fallback)
-- `Button` — Accepts `labelLatin`/`labelEnglish` props for bilingual UI
-- `ReviewStep` — Translation input → AI grading → feedback display
-- `ReadingStep` — Interactive glossary (click words) → comprehension question
+- `LatinText` — Dual-language display (Latin with English hover/fallback)
+- `Button` — Bilingual UI with `labelLatin`/`labelEnglish` props
+- `ReviewStep` — Translation input → AI grading → feedback
+- `ReadingStep` — Interactive glossary → comprehension question
 
 ### Data Layer
-Currently uses static mock data in `constants.ts`. Future: CMS/database integration.
+In-memory adapter (`lib/data/adapter.ts`) with Convex-ready interface. Future: real persistence.
 
 ### Styling
 Tailwind CSS with custom colors (`roman-*`, `pompeii-*`). Animations: `animate-fade-in`, `animate-bounce-in`.
