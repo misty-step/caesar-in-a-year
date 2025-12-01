@@ -1,23 +1,24 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { GradeStatus, GradingResult } from "@/types";
 
 const MODEL_NAME = "gemini-2.5-flash";
+const TIMEOUT_MS = 5000;
+const RETRY_BACKOFF_MS = 500;
+const MAX_ATTEMPTS = 2;
 
-const schema = {
-  type: SchemaType.OBJECT,
+// Structured output schema for Gemini
+const gradingSchema = {
+  type: Type.OBJECT,
   properties: {
     status: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       enum: [GradeStatus.CORRECT, GradeStatus.PARTIAL, GradeStatus.INCORRECT],
-      nullable: false,
     },
     feedback: {
-      type: SchemaType.STRING,
-      nullable: false,
+      type: Type.STRING,
     },
     correction: {
-      type: SchemaType.STRING,
-      nullable: true,
+      type: Type.STRING,
     },
   },
   required: ["status", "feedback"],
@@ -32,8 +33,7 @@ let lastFailureTime = 0;
 function isCircuitOpen(): boolean {
   if (consecutiveFailures >= FAILURE_THRESHOLD) {
     if (Date.now() - lastFailureTime > OPEN_CIRCUIT_RESET_MS) {
-      // Half-open: try again
-      return false;
+      return false; // Half-open: try again
     }
     return true;
   }
@@ -49,28 +49,34 @@ function recordFailure() {
   lastFailureTime = Date.now();
 }
 
+/**
+ * Grade a user's Latin translation using Gemini AI.
+ *
+ * Deep module: handles all complexity internally (circuit breaker, retry,
+ * timeout, fallback). Caller just provides input and gets a result.
+ */
 export async function gradeTranslation(input: {
   latin: string;
   userTranslation: string;
   reference: string;
   context?: string;
 }): Promise<GradingResult> {
-  // 1. Guard inputs
-  if (!input.userTranslation || !input.userTranslation.trim()) {
+  // Input validation
+  if (!input.userTranslation?.trim()) {
     return {
       status: GradeStatus.INCORRECT,
       feedback: "Please provide a translation.",
     };
   }
-  
+
   if (input.userTranslation.length > 1000) {
-      return {
-          status: GradeStatus.INCORRECT,
-          feedback: "Translation is too long."
-      }
+    return {
+      status: GradeStatus.INCORRECT,
+      feedback: "Translation is too long.",
+    };
   }
 
-  // 2. Circuit Breaker Check
+  // Circuit breaker check
   if (isCircuitOpen()) {
     console.warn("Circuit breaker open - skipping AI call");
     return getFallbackResult(input.reference);
@@ -83,48 +89,43 @@ export async function gradeTranslation(input: {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        temperature: 0.3,
-      },
-    });
-
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = constructPrompt(input);
 
-    // Retry logic (1 retry)
-    let result: GradingResult | null = null;
-    
-    // Try up to 2 times (1 initial + 1 retry)
-    for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-            const resultPromise = model.generateContent(prompt);
-            
-            // Simple timeout wrapper (5s)
-            // We cast the race result because Promise.race types are tricky with timeouts
-            const response = await Promise.race([
-                resultPromise,
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
-            ]) as any; // Using any here to bypass the specific GenerateContentResult vs never mismatch cleanly
-            
-            const text = response.response.text();
-            result = JSON.parse(text) as GradingResult;
-            break; // Success, exit loop
-        } catch (e) {
-            if (attempt === 1) throw e; // Rethrow on last attempt
-            // Backoff before retry
-            await new Promise(r => setTimeout(r, 500)); 
-        }
+    // Retry loop with backoff
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const responsePromise = ai.models.generateContent({
+          model: MODEL_NAME,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: gradingSchema,
+            temperature: 0.3,
+          },
+        });
+
+        // Timeout wrapper
+        const response = await Promise.race([
+          responsePromise,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), TIMEOUT_MS)
+          ),
+        ]);
+
+        const text = response.text;
+        if (!text) throw new Error("Empty response from AI");
+
+        const result = JSON.parse(text) as GradingResult;
+        recordSuccess();
+        return result;
+      } catch (e) {
+        if (attempt === MAX_ATTEMPTS - 1) throw e;
+        await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
+      }
     }
 
-    if (!result) throw new Error("Failed to generate result");
-
-    recordSuccess();
-    return result;
-
+    throw new Error("Failed after retries");
   } catch (error) {
     console.error("Grading failed:", error);
     recordFailure();
@@ -135,12 +136,18 @@ export async function gradeTranslation(input: {
 function getFallbackResult(reference: string): GradingResult {
   return {
     status: GradeStatus.PARTIAL,
-    feedback: "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.",
+    feedback:
+      "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.",
     correction: reference,
   };
 }
 
-function constructPrompt(input: { latin: string; userTranslation: string; reference: string; context?: string }): string {
+function constructPrompt(input: {
+  latin: string;
+  userTranslation: string;
+  reference: string;
+  context?: string;
+}): string {
   return `
 You are a supportive but rigorous Latin tutor.
 Analyze the student's translation of a Latin sentence.

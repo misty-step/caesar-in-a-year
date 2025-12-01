@@ -1,4 +1,4 @@
-import { GradeStatus, GradingResult } from '@/types';
+import { GradeStatus, type GradingResult } from '@/types';
 
 export interface Sentence {
   id: string;
@@ -54,7 +54,7 @@ export interface ContentSeed {
   reading: ReadingPassage;
 }
 
-export { GradeStatus, GradingResult };
+export { GradeStatus, type GradingResult };
 
 export interface DataAdapter {
   getUserProgress(userId: string): Promise<UserProgress | null>;
