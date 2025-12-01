@@ -1,5 +1,5 @@
 import React from 'react';
-import { LatinText } from './ui/LatinText';
+import { LatinText } from './UI/LatinText';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (

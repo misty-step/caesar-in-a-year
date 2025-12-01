@@ -1,4 +1,4 @@
-import { LatinText } from '@/components/ui/LatinText';
+import { LatinText } from '@/components/UI/LatinText';
 import type { Session } from '@/lib/data/types';
 
 interface SummaryCardProps {
@@ -35,4 +35,3 @@ export function SummaryCard({ session }: SummaryCardProps) {
     </section>
   );
 }
-

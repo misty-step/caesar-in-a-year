@@ -1,5 +1,5 @@
 import type { UserProgress } from '@/types';
-import { LatinText } from '@/components/ui/LatinText';
+import { LatinText } from '@/components/UI/LatinText';
 
 interface StatsProps {
   progress: UserProgress;

@@ -1,4 +1,4 @@
-import { LatinText } from '@/components/ui/LatinText';
+import { LatinText } from '@/components/UI/LatinText';
 
 export function Hero() {
   return (

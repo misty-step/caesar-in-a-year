@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button } from './ui/Button';
+import { Button } from './UI/Button';
 import { UserProgress } from '../types';
-import { LatinText } from './ui/LatinText';
+import { LatinText } from './UI/LatinText';
 
 interface DashboardProps {
   progress: UserProgress;

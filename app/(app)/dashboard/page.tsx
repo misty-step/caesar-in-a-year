@@ -9,7 +9,7 @@ import type { UserProgress } from '@/types';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats } from '@/components/dashboard/Stats';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/UI/Button';
 
 async function getDashboardData(userId: string): Promise<{
   progress: UserProgress;

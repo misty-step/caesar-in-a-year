@@ -3,8 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
-import { SummaryCard } from '@/components/session/SummaryCard';
-import { Button } from '@/components/ui/Button';
+import { SummaryCard } from '@/components/Session/SummaryCard';
+import { Button } from '@/components/UI/Button';
 
 interface SummaryPageProps {
   params: { sessionId: string };
@@ -41,4 +41,3 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
     </main>
   );
 }
-
