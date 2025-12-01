@@ -59,15 +59,14 @@ Critical Path: ~7h (Tasks 1 → 3 → 4 → 7 → 8 → 9)
   Estimate: 45m.  
   depends: Task 4.
 
-- [ ] 6) Gemini grading service (server-only)  
-  Files: `lib/ai/gradeTranslation.ts`, `lib/ai/__tests__/gradeTranslation.test.ts` (mock SDK)  
-  Goal: Server util calling `models/gemini-2.5-flash` with JSON Schema; retries + timeout + fallback.  
-  Approach: input guards, circuit breaker placeholder, schema definition, parse JSON; dependency-inject API key via env.  
-  Success: Unit tests pass (mocked); handles failure returning PARTIAL.  
-  Tests: unit with mocked SDK; edge case for timeout.  
-  Estimate: 1h.  
+- [x] 6) Gemini grading service (server-only)
+  Files: `lib/ai/gradeTranslation.ts`, `lib/ai/__tests__/gradeTranslation.test.ts` (mock SDK)
+  Goal: Server util calling `models/gemini-2.5-flash` with JSON Schema; retries + timeout + fallback.
+  Approach: input guards, circuit breaker placeholder, schema definition, parse JSON; dependency-inject API key via env.
+  Success: Unit tests pass (mocked); handles failure returning PARTIAL.
+  Tests: unit with mocked SDK; edge case for timeout.
+  Estimate: 1h.
   depends: Task 1.
-
 - [ ] 7) API routes / server actions for grading and session advance  
   Files: `app/(app)/session/[sessionId]/actions.ts`, `app/api/grade/route.ts` (Node runtime), `app/api/session/advance/route.ts`  
   Goal: Wire UI to data adapter + grading service; auth enforced.  
