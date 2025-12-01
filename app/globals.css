@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --roman-50: #f9f7f5;
+  --roman-100: #efebe6;
+  --roman-200: #e0d8cf;
+  --roman-300: #cabbad;
+  --roman-500: #8c735a;
+  --roman-700: #5e4b3a;
+  --roman-900: #3a2d24;
+  --pompeii-500: #b84232;
+  --pompeii-600: #963426;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--roman-50);
+  color: var(--roman-900);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
