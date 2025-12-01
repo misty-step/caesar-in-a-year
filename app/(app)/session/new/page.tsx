@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { createDataAdapter } from '@/lib/data/adapter';
 import { buildSessionItems } from '@/lib/session/builder';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewSessionPage() {
   const { userId } = auth();
 
@@ -18,4 +20,3 @@ export default async function NewSessionPage() {
 
   redirect(`/session/${session.id}`);
 }
-

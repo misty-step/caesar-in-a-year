@@ -4,6 +4,8 @@ import { notFound, redirect } from 'next/navigation';
 import { createDataAdapter } from '@/lib/data/adapter';
 import { SessionClient } from '@/components/session/SessionClient';
 
+export const dynamic = 'force-dynamic';
+
 interface SessionPageProps {
   params: { sessionId: string };
 }
@@ -35,4 +37,3 @@ export default async function SessionPage({ params }: SessionPageProps) {
     </main>
   );
 }
-

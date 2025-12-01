@@ -6,6 +6,8 @@ import { createDataAdapter } from '@/lib/data/adapter';
 import { SummaryCard } from '@/components/Session/SummaryCard';
 import { Button } from '@/components/UI/Button';
 
+export const dynamic = 'force-dynamic';
+
 interface SummaryPageProps {
   params: { sessionId: string };
 }

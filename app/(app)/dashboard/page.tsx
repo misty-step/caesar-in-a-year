@@ -11,6 +11,8 @@ import { Hero } from '@/components/dashboard/Hero';
 import { Stats } from '@/components/dashboard/Stats';
 import { Button } from '@/components/UI/Button';
 
+export const dynamic = 'force-dynamic';
+
 async function getDashboardData(userId: string): Promise<{
   progress: UserProgress;
   summary: {
