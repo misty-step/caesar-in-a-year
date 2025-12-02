@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(
@@ -214,71 +215,509 @@ def fetch_sources(book: int, chapter: int, force: bool = False) -> RawSources:
 # =============================================================================
 
 def parse_latin(xml: str) -> list[Section]:
-    """Parse Perseus TEI XML into sections."""
-    raise NotImplementedError("parse_latin not yet implemented")
+    """
+    Parse Perseus TEI XML into sections.
+
+    The XML structure uses milestone markers followed by div1/p elements:
+        <milestone n="1" unit="section"/>
+        <div1 type="Book" n="1" ...>
+            <p>Latin text here</p>
+        </div1>
+
+    Args:
+        xml: Raw XML string from Perseus CTS API
+
+    Returns:
+        List of Section objects with number and latin_text
+
+    Raises:
+        ParseError: If XML is malformed or no sections found
+    """
+    try:
+        soup = BeautifulSoup(xml, 'lxml-xml')
+    except Exception as e:
+        raise ParseError(f"Failed to parse XML: {e}")
+
+    sections = []
+
+    # Find all milestone markers with unit="section"
+    milestones = soup.find_all('milestone', {'unit': 'section'})
+
+    if not milestones:
+        raise ParseError("No section milestones found in XML")
+
+    for milestone in milestones:
+        section_num = milestone.get('n')
+        if not section_num:
+            continue
+
+        try:
+            section_num = int(section_num)
+        except ValueError:
+            log.warning(f"Invalid section number: {milestone.get('n')}")
+            continue
+
+        # The div1 with text follows the milestone
+        div1 = milestone.find_next_sibling('div1')
+        if not div1:
+            log.warning(f"No div1 found after milestone {section_num}")
+            continue
+
+        # Extract text from p elements within div1
+        paragraphs = div1.find_all('p')
+        latin_text = ' '.join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+
+        if not latin_text:
+            log.warning(f"Empty text for section {section_num}")
+            continue
+
+        sections.append(Section(number=section_num, latin_text=latin_text))
+
+    if not sections:
+        raise ParseError("No valid sections extracted from XML")
+
+    # Sort by section number
+    sections.sort(key=lambda s: s.number)
+
+    log.debug(f"Parsed {len(sections)} sections from Latin XML")
+    return sections
 
 
 def parse_english(html: str, section_count: int) -> list[str]:
-    """Parse MIT Classics HTML into section texts."""
-    raise NotImplementedError("parse_english not yet implemented")
+    """
+    Parse MIT Classics HTML and distribute text across sections.
+
+    MIT Classics has continuous prose without section markers.
+    We extract chapter text and split into roughly equal portions.
+
+    Args:
+        html: Raw HTML from MIT Classics
+        section_count: Number of sections to distribute text into
+
+    Returns:
+        List of English text strings, one per section
+
+    Raises:
+        ParseError: If HTML is malformed or chapter text not found
+    """
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+    except Exception as e:
+        raise ParseError(f"Failed to parse HTML: {e}")
+
+    # Find the chapter content - text between "Chapter 1" and "Chapter 2" headers
+    body = soup.get_text()
+
+    # Extract chapter text using markers
+    chapter_start = body.find('Chapter 1')
+    chapter_end = body.find('Chapter 2')
+
+    if chapter_start == -1:
+        raise ParseError("Chapter 1 marker not found in HTML")
+
+    # Skip past the "Chapter 1" header itself
+    chapter_start = body.find('\n', chapter_start)
+    if chapter_start == -1:
+        chapter_start = body.find('Chapter 1') + len('Chapter 1')
+
+    if chapter_end == -1:
+        # Single chapter page, take rest of text
+        chapter_text = body[chapter_start:]
+    else:
+        chapter_text = body[chapter_start:chapter_end]
+
+    # Clean up whitespace
+    chapter_text = ' '.join(chapter_text.split())
+
+    if not chapter_text.strip():
+        raise ParseError("No chapter text extracted from HTML")
+
+    # Distribute text across sections
+    return _distribute_text(chapter_text, section_count)
+
+
+def _distribute_text(text: str, section_count: int) -> list[str]:
+    """
+    Distribute continuous text across N sections.
+
+    Splits on sentence boundaries (.!?) and distributes roughly equally.
+    """
+    if section_count <= 0:
+        return []
+
+    if section_count == 1:
+        return [text.strip()]
+
+    # Split into sentences (rough split on period/question/exclamation followed by space+capital)
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
+    sentences = sentence_pattern.split(text)
+
+    if len(sentences) <= section_count:
+        # Fewer sentences than sections - distribute what we have
+        result = sentences + [''] * (section_count - len(sentences))
+        return result
+
+    # Calculate target sentences per section
+    per_section = len(sentences) / section_count
+    sections = []
+    current_idx = 0.0
+
+    for i in range(section_count):
+        start_idx = int(current_idx)
+        current_idx += per_section
+        end_idx = int(current_idx) if i < section_count - 1 else len(sentences)
+
+        section_sentences = sentences[start_idx:end_idx]
+        sections.append(' '.join(section_sentences).strip())
+
+    return sections
 
 
 # =============================================================================
-# Sentence Segmentation (TODO: Implement in next task)
+# Sentence Segmentation
 # =============================================================================
 
-def segment_latin(sections: list[Section], book: int, chapter: int) -> list[SegmentedSentence]:
-    """Segment Latin text into individual sentences."""
-    raise NotImplementedError("segment_latin not yet implemented")
+# Latin abbreviations that shouldn't end a sentence
+LATIN_ABBREVS = {
+    'cf', 'etc', 'i.e', 'e.g', 'viz', 'sc', 'vs', 'cap', 'lib',
+    'c', 'a', 'm', 'l', 'p', 'q', 't', 'd', 's', 'n',  # Single-letter abbrevs (names)
+}
 
 
 def segment_regex(text: str) -> list[str]:
-    """Fallback: split on sentence-ending punctuation."""
-    raise NotImplementedError("segment_regex not yet implemented")
+    """
+    Split Latin text into sentences using regex.
+
+    Handles:
+    - Standard sentence endings (.!?)
+    - Latin abbreviations (doesn't split on these)
+    - Parenthetical text and brackets
+
+    Args:
+        text: Latin prose to segment
+
+    Returns:
+        List of individual sentences
+    """
+    if not text or not text.strip():
+        return []
+
+    # Normalize whitespace
+    text = ' '.join(text.split())
+
+    # Protect abbreviations by replacing periods with placeholder
+    protected = text
+    for abbrev in LATIN_ABBREVS:
+        # Match abbreviation followed by period (case insensitive)
+        pattern = rf'\b({re.escape(abbrev)})\.'
+        protected = re.sub(pattern, r'\1<PERIOD>', protected, flags=re.IGNORECASE)
+
+    # Split on sentence-ending punctuation followed by space
+    # Include: . ! ? and also ; when followed by capital (common in Latin)
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z\[])')
+    raw_sentences = sentence_pattern.split(protected)
+
+    # Restore protected periods and clean up
+    sentences = []
+    for sent in raw_sentences:
+        sent = sent.replace('<PERIOD>', '.')
+        sent = sent.strip()
+        if sent:
+            sentences.append(sent)
+
+    return sentences
+
+
+def segment_latin(sections: list[Section], book: int, chapter: int) -> list[SegmentedSentence]:
+    """
+    Segment Latin sections into individual sentences with IDs.
+
+    Args:
+        sections: List of Section objects with latin_text
+        book: Book number for ID generation
+        chapter: Chapter number for ID generation
+
+    Returns:
+        List of SegmentedSentence with unique IDs like "bg.1.1.1"
+    """
+    all_sentences = []
+    sentence_counter = 1
+
+    for section in sections:
+        sentences = segment_regex(section.latin_text)
+
+        for position, latin in enumerate(sentences, start=1):
+            sentence_id = f"bg.{book}.{chapter}.{sentence_counter}"
+
+            all_sentences.append(SegmentedSentence(
+                id=sentence_id,
+                latin=latin,
+                english="",  # Will be filled by alignment
+                section=section.number,
+                position=position,
+                alignment_confidence=0.0
+            ))
+            sentence_counter += 1
+
+    return all_sentences
 
 
 # =============================================================================
-# Translation Alignment (TODO: Implement in next task)
+# Translation Alignment
 # =============================================================================
+
+def _split_english_sentences(text: str) -> list[str]:
+    """Split English text into sentences."""
+    if not text or not text.strip():
+        return []
+    text = ' '.join(text.split())
+    pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
+    sentences = [s.strip() for s in pattern.split(text) if s.strip()]
+    return sentences
+
 
 def align_translations(
     latin_sentences: list[SegmentedSentence],
     english_sections: list[str]
 ) -> list[SegmentedSentence]:
-    """Align Latin sentences with English translations by position."""
-    raise NotImplementedError("align_translations not yet implemented")
+    """
+    Align Latin sentences with English translations by section and position.
+
+    Strategy:
+    1. Group Latin sentences by section
+    2. Split English section text into sentences
+    3. Match by position within section
+    4. Compute confidence based on count match
+
+    Args:
+        latin_sentences: Segmented Latin sentences with section info
+        english_sections: List of English text per section
+
+    Returns:
+        Latin sentences with english and alignment_confidence filled in
+    """
+    # Build section -> sentences map
+    sections_map: dict[int, list[SegmentedSentence]] = {}
+    for sent in latin_sentences:
+        if sent.section not in sections_map:
+            sections_map[sent.section] = []
+        sections_map[sent.section].append(sent)
+
+    # Process each section
+    for section_num, latin_sents in sections_map.items():
+        # Get corresponding English (section numbers are 1-indexed)
+        section_idx = section_num - 1
+        if section_idx >= len(english_sections):
+            # Missing English section
+            for sent in latin_sents:
+                sent.english = "[MISSING SECTION]"
+                sent.alignment_confidence = 0.0
+            continue
+
+        english_text = english_sections[section_idx]
+        english_sents = _split_english_sentences(english_text)
+
+        latin_count = len(latin_sents)
+        english_count = len(english_sents)
+
+        if english_count == 0:
+            # No English sentences
+            for sent in latin_sents:
+                sent.english = "[MISSING TRANSLATION]"
+                sent.alignment_confidence = 0.0
+            continue
+
+        # Calculate base confidence from count match
+        if latin_count == english_count:
+            base_confidence = 1.0
+        else:
+            # Penalize mismatches
+            ratio = min(latin_count, english_count) / max(latin_count, english_count)
+            base_confidence = ratio * 0.8  # Max 0.8 for mismatched counts
+
+        # Distribute English sentences across Latin sentences
+        if english_count >= latin_count:
+            # More or equal English - each Latin gets ceil(english/latin) sentences
+            per_latin = english_count / latin_count
+            idx = 0.0
+            for sent in latin_sents:
+                start = int(idx)
+                idx += per_latin
+                end = int(idx)
+                sent.english = ' '.join(english_sents[start:end])
+                sent.alignment_confidence = base_confidence
+        else:
+            # Fewer English than Latin - some Latin sentences share
+            per_english = latin_count / english_count
+            for i, sent in enumerate(latin_sents):
+                eng_idx = min(int(i / per_english), english_count - 1)
+                sent.english = english_sents[eng_idx]
+                sent.alignment_confidence = base_confidence * 0.9  # Extra penalty for sharing
+
+    return latin_sentences
 
 
 # =============================================================================
-# Lemmatization & Scoring (TODO: Implement in next task)
+# Lemmatization & Scoring
 # =============================================================================
 
-def lemmatize_and_score(sentences: list[SegmentedSentence]) -> list[Sentence]:
-    """Compute difficulty scores based on word frequency."""
-    raise NotImplementedError("lemmatize_and_score not yet implemented")
-
-
-def rank_to_difficulty(avg_rank: float) -> int:
-    """Convert average word frequency rank to 1-100 difficulty score."""
-    raise NotImplementedError("rank_to_difficulty not yet implemented")
+# Fallback frequency table with top Latin words from DCC Core
+# Rank 1 = most common, higher = rarer
+FALLBACK_FREQUENCY: dict[str, int] = {
+    # Top 50 most common
+    'sum': 1, 'et': 2, 'in': 3, 'is': 4, 'qui': 5,
+    'non': 6, 'hic': 7, 'ego': 8, 'ut': 9, 'cum': 10,
+    'de': 11, 'si': 12, 'omnis': 13, 'ab': 14, 'ille': 15,
+    'sed': 16, 'neque': 17, 'ex': 18, 'atque': 19, 'ad': 20,
+    'ipse': 21, 'per': 22, 'quis': 23, 'possum': 24, 'facio': 25,
+    'dico': 26, 'video': 27, 'habeo': 28, 'do': 29, 'res': 30,
+    'tu': 31, 'magnus': 32, 'pars': 33, 'quam': 34, 'suus': 35,
+    'alius': 36, 'iam': 37, 'bonus': 38, 'vir': 39, 'primus': 40,
+    'meus': 41, 'unus': 42, 'noster': 43, 'venio': 44, 'tantus': 45,
+    'enim': 46, 'multus': 47, 'causa': 48, 'genus': 49, 'aut': 50,
+    # 51-100
+    'tamen': 51, 'idem': 52, 'annus': 53, 'dies': 54, 'bellum': 55,
+    'nunc': 56, 'manus': 57, 'ubi': 58, 'nihil': 59, 'pater': 60,
+    'inter': 61, 'populus': 62, 'capio': 63, 'locus': 64, 'animus': 65,
+    'alter': 66, 'fero': 67, 'terra': 68, 'urbs': 69, 'homo': 70,
+    'publicus': 71, 'consul': 72, 'rex': 73, 'corpus': 74, 'ager': 75,
+    'mitto': 76, 'hostis': 77, 'castra': 78, 'voco': 79, 'tempus': 80,
+    'ante': 81, 'civis': 82, 'peto': 83, 'miles': 84, 'deus': 85,
+    'nomen': 86, 'post': 87, 'civitas': 88, 'exercitus': 89, 'iter': 90,
+    'finis': 91, 'novus': 92, 'mos': 93, 'virtus': 94, 'potestas': 95,
+    'natura': 96, 'aqua': 97, 'imperium': 98, 'verbum': 99, 'pax': 100,
+    # Common Caesar vocabulary
+    'gallia': 101, 'divido': 102, 'tres': 103, 'incolo': 110,
+    'belgae': 115, 'aquitani': 120, 'lingua': 125, 'celtae': 130,
+    'galli': 135, 'appellor': 140, 'lex': 145, 'institutum': 150,
+    'differo': 155, 'flumen': 160, 'garumna': 165, 'matrona': 170,
+    'sequana': 175, 'fortis': 180, 'propterea': 185, 'cultus': 190,
+    'humanitas': 195, 'provincia': 200, 'mercator': 205, 'commeor': 210,
+    'effemino': 215, 'germani': 220, 'rhenus': 225, 'continenter': 230,
+    'gero': 235, 'helvetii': 240, 'reliquus': 245, 'praecedo': 250,
+    'cotidianus': 255, 'proelium': 260, 'contendo': 265, 'prohibeo': 270,
+    'obtendo': 275, 'initium': 280, 'rhodanus': 285, 'oceanus': 290,
+    'attingo': 295, 'vergo': 300, 'septentriones': 305, 'orior': 310,
+    'inferior': 315, 'specto': 320, 'oriens': 325, 'sol': 330,
+    'pyrenaei': 335, 'mons': 340, 'hispania': 345, 'occasus': 350,
+}
 
 
 def load_frequency_table() -> dict[str, int]:
-    """Load Latin word frequency rankings."""
-    raise NotImplementedError("load_frequency_table not yet implemented")
+    """
+    Load Latin word frequency rankings.
+
+    First tries content/latin_frequency.json, falls back to built-in table.
+
+    Returns:
+        Dict mapping lowercase word/lemma to frequency rank
+    """
+    freq_path = Path("content/latin_frequency.json")
+
+    if freq_path.exists():
+        try:
+            with open(freq_path, encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            log.warning(f"Failed to load frequency table: {e}, using fallback")
+
+    return FALLBACK_FREQUENCY
+
+
+def rank_to_difficulty(avg_rank: float) -> int:
+    """
+    Convert average word frequency rank to 1-100 difficulty score.
+
+    Mapping:
+    - Rank 1-50 (very common) → difficulty 1-20
+    - Rank 50-200 (common) → difficulty 20-50
+    - Rank 200-500 (less common) → difficulty 50-80
+    - Rank 500+ (rare) → difficulty 80-100
+
+    Args:
+        avg_rank: Average frequency rank of words in sentence
+
+    Returns:
+        Difficulty score 1-100
+    """
+    if avg_rank <= 50:
+        # Linear 1-20 for ranks 1-50
+        return max(1, int(avg_rank * 0.4))
+    elif avg_rank <= 200:
+        # Linear 20-50 for ranks 50-200
+        return int(20 + (avg_rank - 50) * 0.2)
+    elif avg_rank <= 500:
+        # Linear 50-80 for ranks 200-500
+        return int(50 + (avg_rank - 200) * 0.1)
+    else:
+        # Cap at 100 for very rare words
+        return min(100, int(80 + (avg_rank - 500) * 0.04))
+
+
+def _tokenize_latin(text: str) -> list[str]:
+    """Extract Latin words from text, lowercased."""
+    # Remove punctuation and split
+    text = re.sub(r'[^\w\s]', ' ', text)
+    words = text.lower().split()
+    # Filter very short words and numbers
+    return [w for w in words if len(w) > 1 and not w.isdigit()]
+
+
+def lemmatize_and_score(sentences: list[SegmentedSentence]) -> list[Sentence]:
+    """
+    Compute difficulty scores based on word frequency.
+
+    Uses simple tokenization with frequency table lookup.
+    CLTK lemmatization could be added later for better accuracy.
+
+    Args:
+        sentences: Aligned sentences with Latin text
+
+    Returns:
+        Final Sentence objects with difficulty scores
+    """
+    freq_table = load_frequency_table()
+    default_rank = 400  # Assume unknown words are moderately rare
+
+    result = []
+    for order, sent in enumerate(sentences, start=1):
+        words = _tokenize_latin(sent.latin)
+
+        if not words:
+            avg_rank = default_rank
+        else:
+            ranks = [freq_table.get(w, default_rank) for w in words]
+            avg_rank = sum(ranks) / len(ranks)
+
+        difficulty = rank_to_difficulty(avg_rank)
+
+        result.append(Sentence(
+            id=sent.id,
+            latin=sent.latin,
+            referenceTranslation=sent.english,
+            difficulty=difficulty,
+            order=order,
+            alignmentConfidence=sent.alignment_confidence
+        ))
+
+    return result
 
 
 # =============================================================================
-# Export & Validation (TODO: Implement in next task)
+# Export & Validation
 # =============================================================================
 
 def validate_sentence(sent: Sentence) -> None:
-    """Validate a sentence against the schema."""
-    if not sent.id or not re.match(r'^bg\.\d+\.\d+\.\d+', sent.id):
+    """
+    Validate a sentence against the schema.
+
+    Raises ValidationError if any field is invalid.
+    """
+    if not sent.id or not re.match(r'^bg\.\d+\.\d+\.\d+$', sent.id):
         raise ValidationError(f"Invalid sentence ID: {sent.id}")
-    if not sent.latin:
+    if not sent.latin or not sent.latin.strip():
         raise ValidationError(f"Empty Latin text for {sent.id}")
-    if not sent.referenceTranslation:
+    if not sent.referenceTranslation or not sent.referenceTranslation.strip():
         raise ValidationError(f"Empty translation for {sent.id}")
     if not 1 <= sent.difficulty <= 100:
         raise ValidationError(f"Difficulty out of range for {sent.id}: {sent.difficulty}")
@@ -287,13 +726,104 @@ def validate_sentence(sent: Sentence) -> None:
 
 
 def export_corpus(sentences: list[Sentence], output_path: str) -> None:
-    """Write validated corpus.json."""
-    raise NotImplementedError("export_corpus not yet implemented")
+    """
+    Write validated corpus.json with atomic write.
+
+    Validates all sentences before writing. Uses atomic write
+    (write to temp file, then rename) to prevent partial writes.
+
+    Args:
+        sentences: List of Sentence objects to export
+        output_path: Path to output JSON file
+
+    Raises:
+        ValidationError: If any sentence fails validation
+    """
+    # Validate all sentences first
+    for sent in sentences:
+        validate_sentence(sent)
+
+    # Convert to dict format
+    corpus_data = {
+        "sentences": [asdict(s) for s in sentences],
+        "metadata": {
+            "version": "1.0",
+            "generated_at": datetime.now().isoformat(),
+            "sentence_count": len(sentences),
+        }
+    }
+
+    # Atomic write: write to temp file, then rename
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    temp_path = output.with_suffix('.json.tmp')
+    try:
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            json.dump(corpus_data, f, indent=2, ensure_ascii=False)
+
+        # Atomic rename
+        temp_path.rename(output)
+    except Exception as e:
+        # Clean up temp file on error
+        if temp_path.exists():
+            temp_path.unlink()
+        raise ValidationError(f"Failed to write corpus: {e}")
+
+    log.info(f"Wrote {len(sentences)} sentences to {output_path}")
 
 
 def validate_corpus_file(path: str) -> bool:
-    """Validate an existing corpus.json file."""
-    raise NotImplementedError("validate_corpus_file not yet implemented")
+    """
+    Validate an existing corpus.json file.
+
+    Args:
+        path: Path to corpus.json file
+
+    Returns:
+        True if valid
+
+    Raises:
+        ValidationError: If validation fails
+        FileNotFoundError: If file doesn't exist
+    """
+    corpus_path = Path(path)
+    if not corpus_path.exists():
+        raise FileNotFoundError(f"Corpus file not found: {path}")
+
+    try:
+        with open(corpus_path, encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON: {e}")
+
+    if 'sentences' not in data:
+        raise ValidationError("Missing 'sentences' key in corpus")
+
+    sentences = data['sentences']
+    if not isinstance(sentences, list):
+        raise ValidationError("'sentences' must be a list")
+
+    if len(sentences) == 0:
+        raise ValidationError("Corpus is empty")
+
+    # Validate each sentence
+    for i, sent_dict in enumerate(sentences):
+        try:
+            sent = Sentence(
+                id=sent_dict.get('id', ''),
+                latin=sent_dict.get('latin', ''),
+                referenceTranslation=sent_dict.get('referenceTranslation', ''),
+                difficulty=sent_dict.get('difficulty', 0),
+                order=sent_dict.get('order', 0),
+                alignmentConfidence=sent_dict.get('alignmentConfidence')
+            )
+            validate_sentence(sent)
+        except (KeyError, TypeError) as e:
+            raise ValidationError(f"Invalid sentence at index {i}: {e}")
+
+    log.info(f"Validated {len(sentences)} sentences in {path}")
+    return True
 
 
 # =============================================================================
