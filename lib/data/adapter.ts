@@ -3,12 +3,15 @@ import type {
   Attempt,
   ContentSeed,
   DataAdapter,
+  Sentence,
   Session,
   SessionStatus,
   UserProgress,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
 import { advanceSession } from '@/lib/session/advance';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 // Exported type to avoid circular imports
 export type { DataAdapter } from './types';
@@ -18,10 +21,68 @@ export function createDataAdapter(): DataAdapter {
   return memoryAdapter;
 }
 
-const memoryContent: ContentSeed = {
+// Static fallback content
+const staticContent: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
 };
+
+// Corpus file path (relative to project root)
+const CORPUS_PATH = path.join(process.cwd(), 'content', 'corpus.json');
+
+/**
+ * Load sentences from corpus.json if available.
+ * Falls back to static content on error.
+ */
+async function loadCorpusSentences(): Promise<Sentence[]> {
+  try {
+    const raw = await fs.readFile(CORPUS_PATH, 'utf-8');
+    const data = JSON.parse(raw);
+
+    if (!data.sentences || !Array.isArray(data.sentences)) {
+      return [];
+    }
+
+    // Transform corpus format to Sentence type
+    return data.sentences.map(
+      (s: {
+        id: string;
+        latin: string;
+        referenceTranslation: string;
+        difficulty?: number;
+      }) => ({
+        id: s.id,
+        latin: s.latin,
+        referenceTranslation: s.referenceTranslation,
+        context: `Difficulty: ${s.difficulty ?? 'unknown'}`,
+      })
+    );
+  } catch {
+    // File not found or parse error - fall back to static
+    return [];
+  }
+}
+
+// Cached content (loaded once per process)
+let cachedContent: ContentSeed | null = null;
+
+async function getMemoryContent(): Promise<ContentSeed> {
+  if (cachedContent) return cachedContent;
+
+  const corpusSentences = await loadCorpusSentences();
+
+  if (corpusSentences.length > 0) {
+    // Use corpus sentences for review, keep static reading passage
+    cachedContent = {
+      review: corpusSentences.slice(0, 3), // First 3 sentences for review
+      reading: DAILY_READING,
+    };
+  } else {
+    cachedContent = staticContent;
+  }
+
+  return cachedContent;
+}
 
 // In-memory stores for local development. This keeps the API surface compatible
 // with a future Convex/Neon implementation while allowing the app to function.
@@ -49,14 +110,15 @@ const memoryAdapter: DataAdapter = {
   },
 
   async getContent(): Promise<ContentSeed> {
-    return memoryContent;
+    return getMemoryContent();
   },
 
   async createSession(userId: string, items: Session['items']): Promise<Session> {
     const now = new Date().toISOString();
     const id = `sess_${now}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const seededItems = items.length ? items : buildSessionItems(memoryContent);
+    const content = await getMemoryContent();
+    const seededItems = items.length ? items : buildSessionItems(content);
 
     const session: Session = {
       id,
