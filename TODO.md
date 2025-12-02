@@ -20,7 +20,7 @@
   Time: 15min
   ```
 
-- [ ] Implement source fetching with caching
+- [x] Implement source fetching with caching
   ```
   Files: scripts/process-corpus.py (fetch_sources function)
   Architecture: Cache raw sources in content/raw/, retry 3x with backoff

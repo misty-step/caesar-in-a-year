@@ -17,10 +17,13 @@ import logging
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -106,12 +109,104 @@ class ValidationError(Exception):
 
 
 # =============================================================================
-# Source Fetching (TODO: Implement in next task)
+# Source Fetching
 # =============================================================================
 
+# Cache directory for raw sources
+CACHE_DIR = Path("content/raw")
+
+# Perseus Hopper CTS API for Latin text
+# URN format: urn:cts:latinLit:phi0448.phi001.perseus-lat1:{book}.{chapter}
+# Note: Citations are book.chapter (1.1 = Book 1, Chapter 1)
+PERSEUS_CTS_URL = "http://www.perseus.tufts.edu/hopper/CTS"
+
+# MIT Classics for English translation
+MIT_BASE_URL = "https://classics.mit.edu/Caesar/gallic"
+
+
+def _http_get_with_retry(url: str, max_retries: int = 3, timeout: int = 30) -> str:
+    """Fetch URL with exponential backoff retry."""
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
+            return response.text
+        except requests.RequestException as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                log.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}")
+                log.info(f"Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+
+    raise FetchError(f"Failed after {max_retries} attempts: {last_error}")
+
+
 def fetch_sources(book: int, chapter: int, force: bool = False) -> RawSources:
-    """Fetch Latin XML and English HTML, with local caching."""
-    raise NotImplementedError("fetch_sources not yet implemented")
+    """
+    Fetch Latin XML and English HTML, with local caching.
+
+    Args:
+        book: DBG book number (1-8)
+        chapter: Chapter number within book
+        force: If True, bypass cache and re-download
+
+    Returns:
+        RawSources with latin_xml and english_html content
+
+    Raises:
+        FetchError: If download fails after retries
+    """
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    latin_path = CACHE_DIR / f"bg.{book}.{chapter}.latin.xml"
+    english_path = CACHE_DIR / f"bg.{book}.{chapter}.english.html"
+
+    # Return cached data if available and not forced
+    if not force and latin_path.exists() and english_path.exists():
+        log.info("Using cached sources")
+        return RawSources(
+            latin_xml=latin_path.read_text(encoding='utf-8'),
+            english_html=english_path.read_text(encoding='utf-8'),
+            book=book,
+            chapter=chapter,
+            fetched_at=datetime.fromtimestamp(latin_path.stat().st_mtime).isoformat()
+        )
+
+    # Fetch Latin from Perseus CTS API
+    latin_urn = f"urn:cts:latinLit:phi0448.phi001.perseus-lat1:{book}.{chapter}"
+    latin_url = f"{PERSEUS_CTS_URL}?request=GetPassage&urn={latin_urn}"
+    log.info(f"Fetching Latin from Perseus: {latin_url}")
+
+    try:
+        latin_xml = _http_get_with_retry(latin_url)
+    except FetchError as e:
+        raise FetchError(f"Failed to fetch Latin from Perseus: {e}")
+
+    # Fetch English from MIT Classics
+    # URL format: https://classics.mit.edu/Caesar/gallic.1.1.html
+    english_url = f"{MIT_BASE_URL}.{book}.{chapter}.html"
+    log.info(f"Fetching English from MIT: {english_url}")
+
+    try:
+        english_html = _http_get_with_retry(english_url)
+    except FetchError as e:
+        raise FetchError(f"Failed to fetch English from MIT: {e}")
+
+    # Cache for reproducibility
+    latin_path.write_text(latin_xml, encoding='utf-8')
+    english_path.write_text(english_html, encoding='utf-8')
+    log.info(f"Cached sources to {CACHE_DIR}/")
+
+    return RawSources(
+        latin_xml=latin_xml,
+        english_html=english_html,
+        book=book,
+        chapter=chapter,
+        fetched_at=datetime.now().isoformat()
+    )
 
 
 # =============================================================================
