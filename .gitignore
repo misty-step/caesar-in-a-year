@@ -30,3 +30,18 @@ dist-ssr
 .env*
 !.env.example
 /.next/
+
+# Corpus processing cache (reproducible from sources)
+content/raw/*.xml
+content/raw/*.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+lefthook.yml
+tsconfig.tsbuildinfo

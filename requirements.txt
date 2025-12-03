@@ -1,0 +1,18 @@
+# Corpus Processing Pipeline Dependencies
+# Install: pip install -r requirements.txt
+
+# HTTP requests with retry support
+requests>=2.31.0
+
+# HTML/XML parsing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# NLP for Latin (optional - falls back to regex if unavailable)
+cltk>=1.3.0
+
+# English sentence tokenization
+nltk>=3.8.0
+
+# Testing
+pytest>=8.0.0
