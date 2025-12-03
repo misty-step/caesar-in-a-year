@@ -137,6 +137,7 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
           referenceTranslation: s.referenceTranslation,
           difficulty: s.difficulty,
           order: s.order,
+          alignmentConfidence: s.alignmentConfidence ?? null,
         })),
       }
     );

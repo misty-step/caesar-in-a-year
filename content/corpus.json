@@ -14,39 +14,39 @@
       "referenceTranslation": "All these differ from each other in language, customs and laws.",
       "difficulty": 62,
       "order": 2,
-      "alignmentConfidence": 0.36000000000000004
+      "alignmentConfidence": 1.0
     },
     {
       "id": "bg.1.1.3",
       "latin": "Gallos ab Aquitanis Garumna flumen, a Belgis Matrona et Sequana dividit.",
-      "referenceTranslation": "All these differ from each other in language, customs and laws.",
+      "referenceTranslation": "The river Garonne separates the Gauls from the Aquitani; the Marne and the Seine separate them from the Belgae.",
       "difficulty": 52,
       "order": 3,
-      "alignmentConfidence": 0.36000000000000004
+      "alignmentConfidence": 1.0
     },
     {
       "id": "bg.1.1.4",
       "latin": "Horum omnium fortissimi sunt Belgae, propterea quod a cultu atque humanitate provinciae longissime absunt, minimeque ad eos mercatores saepe commeant atque ea quae ad effeminandos animos pertinent important,",
-      "referenceTranslation": "The river Garonne separates the Gauls from the Aquitani; the Marne and the Seine separate them from the Belgae.",
+      "referenceTranslation": "[SHARED 3x] Of all these, the Belgae are the bravest, because they are furthest from the civilization and refinement of [our] Province, and merchants least frequently resort to them, and import those things which tend to effeminate the mind; and they are the nearest to the Germans, who dwell beyond the Rhine, with whom they are continually waging war; for which reason the Helvetii also surpass the rest of the Gauls in valor, as they contend with the Germans in almost daily battles, when they either repel them from their own territories, or themselves wage war on their frontiers.",
       "difficulty": 62,
       "order": 4,
-      "alignmentConfidence": 1.0
+      "alignmentConfidence": 0.5
     },
     {
       "id": "bg.1.1.5",
       "latin": "proximique sunt Germanis, qui trans Rhenum incolunt, quibuscum continenter bellum gerunt.",
-      "referenceTranslation": "Of all these, the Belgae are the bravest, because they are furthest from the civilization and refinement of [our] Province, and merchants least frequently resort to them, and import those things which tend to effeminate the mind; and they are the nearest to the Germans, who dwell beyond the Rhine, with whom they are continually waging war; for which reason the Helvetii also surpass the rest of the Gauls in valor, as they contend with the Germans in almost daily battles, when they either repel them from their own territories, or themselves wage war on their frontiers.",
+      "referenceTranslation": "[SHARED 3x] Of all these, the Belgae are the bravest, because they are furthest from the civilization and refinement of [our] Province, and merchants least frequently resort to them, and import those things which tend to effeminate the mind; and they are the nearest to the Germans, who dwell beyond the Rhine, with whom they are continually waging war; for which reason the Helvetii also surpass the rest of the Gauls in valor, as they contend with the Germans in almost daily battles, when they either repel them from their own territories, or themselves wage war on their frontiers.",
       "difficulty": 61,
       "order": 5,
-      "alignmentConfidence": 0.36000000000000004
+      "alignmentConfidence": 0.5
     },
     {
       "id": "bg.1.1.6",
       "latin": "Qua de causa Helvetii quoque reliquos Gallos virtute praecedunt, quod fere cotidianis proeliis cum Germanis contendunt, cum aut suis finibus eos prohibent aut ipsi in eorum finibus bellum gerunt.",
-      "referenceTranslation": "Of all these, the Belgae are the bravest, because they are furthest from the civilization and refinement of [our] Province, and merchants least frequently resort to them, and import those things which tend to effeminate the mind; and they are the nearest to the Germans, who dwell beyond the Rhine, with whom they are continually waging war; for which reason the Helvetii also surpass the rest of the Gauls in valor, as they contend with the Germans in almost daily battles, when they either repel them from their own territories, or themselves wage war on their frontiers.",
+      "referenceTranslation": "[SHARED 3x] Of all these, the Belgae are the bravest, because they are furthest from the civilization and refinement of [our] Province, and merchants least frequently resort to them, and import those things which tend to effeminate the mind; and they are the nearest to the Germans, who dwell beyond the Rhine, with whom they are continually waging war; for which reason the Helvetii also surpass the rest of the Gauls in valor, as they contend with the Germans in almost daily battles, when they either repel them from their own territories, or themselves wage war on their frontiers.",
       "difficulty": 59,
       "order": 6,
-      "alignmentConfidence": 0.36000000000000004
+      "alignmentConfidence": 0.5
     },
     {
       "id": "bg.1.1.7",
@@ -75,7 +75,7 @@
   ],
   "metadata": {
     "version": "1.0",
-    "generated_at": "2025-12-03T08:20:35.570028",
+    "generated_at": "2025-12-03T12:48:52.613775",
     "sentence_count": 9
   }
 }

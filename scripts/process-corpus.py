@@ -132,65 +132,65 @@ def align_translations(
     english_sections: list[str]
 ) -> list[SegmentedSentence]:
     """
-    Align Latin sentences with English translations by section and position.
+    Align Latin sentences with English translations globally.
 
-    Strategy:
-    1. Group Latin sentences by section
-    2. Split English section text into sentences
-    3. Match by position within section
-    4. Compute confidence based on count match
+    Strategy: Use global positional alignment (ignore section boundaries)
+    because English translations don't always match Latin section divisions.
     """
-    # Build section -> sentences map
-    sections_map: dict[int, list[SegmentedSentence]] = {}
-    for sent in latin_sentences:
-        if sent.section not in sections_map:
-            sections_map[sent.section] = []
-        sections_map[sent.section].append(sent)
+    # Combine all English sections into one and split into sentences
+    all_english = ' '.join(english_sections)
+    english_sents = split_english_sentences(all_english)
 
-    # Process each section
-    for section_num, latin_sents in sections_map.items():
-        section_idx = section_num - 1
-        if section_idx >= len(english_sections):
-            for sent in latin_sents:
-                sent.english = "[MISSING SECTION]"
-                sent.alignment_confidence = 0.0
-            continue
+    latin_count = len(latin_sentences)
+    english_count = len(english_sents)
 
-        english_text = english_sections[section_idx]
-        english_sents = split_english_sentences(english_text)
+    if english_count == 0:
+        for sent in latin_sentences:
+            sent.english = "[MISSING TRANSLATION]"
+            sent.alignment_confidence = 0.0
+        return latin_sentences
 
-        latin_count = len(latin_sents)
-        english_count = len(english_sents)
+    # Calculate base confidence from count match
+    if latin_count == english_count:
+        base_confidence = 1.0
+    else:
+        ratio = min(latin_count, english_count) / max(latin_count, english_count)
+        base_confidence = ratio * 0.9  # Higher base since global alignment is more reliable
 
-        if english_count == 0:
-            for sent in latin_sents:
-                sent.english = "[MISSING TRANSLATION]"
-                sent.alignment_confidence = 0.0
-            continue
+    # Distribute English sentences across Latin sentences
+    if english_count >= latin_count:
+        # More English than Latin: combine multiple English per Latin
+        per_latin = english_count / latin_count
+        idx = 0.0
+        for sent in latin_sentences:
+            start = int(idx)
+            idx += per_latin
+            end = int(idx)
+            sent.english = ' '.join(english_sents[start:end])
+            sent.alignment_confidence = base_confidence
+    else:
+        # Fewer English than Latin: distribute proportionally
+        # Note: Positional alignment is imperfect when sentence boundaries differ.
+        # Low confidence scores flag entries needing manual review.
+        per_english = latin_count / english_count
+        used_english: dict[int, int] = {}
 
-        # Calculate base confidence from count match
-        if latin_count == english_count:
-            base_confidence = 1.0
-        else:
-            ratio = min(latin_count, english_count) / max(latin_count, english_count)
-            base_confidence = ratio * 0.8
+        # First pass: count how many Latin sentences will use each English
+        for i in range(latin_count):
+            eng_idx = min(int(i / per_english), english_count - 1)
+            used_english[eng_idx] = used_english.get(eng_idx, 0) + 1
 
-        # Distribute English sentences across Latin sentences
-        if english_count >= latin_count:
-            per_latin = english_count / latin_count
-            idx = 0.0
-            for sent in latin_sents:
-                start = int(idx)
-                idx += per_latin
-                end = int(idx)
-                sent.english = ' '.join(english_sents[start:end])
-                sent.alignment_confidence = base_confidence
-        else:
-            per_english = latin_count / english_count
-            for i, sent in enumerate(latin_sents):
-                eng_idx = min(int(i / per_english), english_count - 1)
+        # Second pass: assign with markers for shared translations
+        for i, sent in enumerate(latin_sentences):
+            eng_idx = min(int(i / per_english), english_count - 1)
+            is_shared = used_english[eng_idx] > 1
+
+            if is_shared:
+                sent.english = f"[SHARED {used_english[eng_idx]}x] {english_sents[eng_idx]}"
+                sent.alignment_confidence = 0.5
+            else:
                 sent.english = english_sents[eng_idx]
-                sent.alignment_confidence = base_confidence * 0.9
+                sent.alignment_confidence = base_confidence
 
     return latin_sentences
 
@@ -253,7 +253,7 @@ def process_chapter(book: int, chapter: int, force_fetch: bool, output_path: str
         )
 
         # Merge English into sections
-        for section, english in zip(sections, english_texts):
+        for section, english in zip(sections, english_texts, strict=True):
             section.english_text = english
 
         # Step 3: Segment Latin sentences

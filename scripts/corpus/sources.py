@@ -88,7 +88,7 @@ class PerseusSource:
                 cache_path.write_text(xml, encoding='utf-8')
                 log.info(f"Cached to {cache_path}")
             except FetchError as e:
-                raise FetchError(f"Failed to fetch Latin from Perseus: {e}")
+                raise FetchError(f"Failed to fetch Latin from Perseus: {e}") from e
 
         return self._parse_xml(xml)
 
@@ -97,7 +97,7 @@ class PerseusSource:
         try:
             soup = BeautifulSoup(xml, 'lxml-xml')
         except Exception as e:
-            raise ParseError(f"Failed to parse XML: {e}")
+            raise ParseError(f"Failed to parse XML: {e}") from e
 
         sections = []
 
@@ -190,7 +190,7 @@ class MITClassicsSource:
                 cache_path.write_text(html, encoding='utf-8')
                 log.info(f"Cached to {cache_path}")
             except FetchError as e:
-                raise FetchError(f"Failed to fetch English from MIT: {e}")
+                raise FetchError(f"Failed to fetch English from MIT: {e}") from e
 
         return self._extract_chapter(html, chapter)
 
@@ -203,7 +203,7 @@ class MITClassicsSource:
         try:
             soup = BeautifulSoup(html, 'html.parser')
         except Exception as e:
-            raise ParseError(f"Failed to parse HTML: {e}")
+            raise ParseError(f"Failed to parse HTML: {e}") from e
 
         body = soup.get_text()
 

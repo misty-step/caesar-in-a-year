@@ -213,6 +213,46 @@ Current UI is desktop-first. Need:
 
 ---
 
+## 6. CORPUS PIPELINE IMPROVEMENTS
+
+Deferred items from PR #1 code review (Dec 2025).
+
+### 6.1 Cross-Platform Python Paths
+**Priority: Low | Effort: Low**
+
+The corpus pipeline uses Unix-specific paths (`.venv/bin/python`) in `package.json` and `README.md`. Windows users need `.venv\Scripts\python`.
+
+**Options:**
+- Document both paths in README
+- Use `python -m pip` after venv activation (cross-platform)
+- Add `cross-env` wrapper
+
+**From:** coderabbitai PR #1 review
+
+### 6.2 NLP Library Setup Documentation
+**Priority: Low | Effort: Low**
+
+The `nltk` and `cltk` libraries may require downloading additional data files on first run, which can surprise users.
+
+**Action:** Add note to README about first-run data downloads:
+- `nltk`: punkt tokenizer download prompt
+- `cltk`: ~200MB Latin models (optional, falls back to regex)
+
+**From:** coderabbitai PR #1 review
+
+### 6.3 Python Docstring Coverage
+**Priority: Low | Effort: Low**
+
+Docstring coverage is 77.78%, below 80% threshold.
+
+**Action:** Add docstrings to undocumented functions in:
+- `scripts/corpus/models.py`
+- `scripts/corpus/sources.py`
+
+**From:** coderabbitai pre-merge checks
+
+---
+
 ## Next Actions
 
 1. **Now:** Fix params bug (TODO.md)

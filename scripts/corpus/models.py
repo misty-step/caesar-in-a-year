@@ -197,7 +197,7 @@ def validate_corpus_file(path: str) -> bool:
         with open(corpus_path, encoding='utf-8') as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON: {e}")
+        raise ValidationError(f"Invalid JSON: {e}") from e
 
     if 'sentences' not in data:
         raise ValidationError("Missing 'sentences' key in corpus")
@@ -221,7 +221,7 @@ def validate_corpus_file(path: str) -> bool:
             )
             validate_sentence(sent)
         except (KeyError, TypeError) as e:
-            raise ValidationError(f"Invalid sentence at index {i}: {e}")
+            raise ValidationError(f"Invalid sentence at index {i}: {e}") from e
 
     return True
 
@@ -259,4 +259,4 @@ def export_corpus(sentences: list[Sentence], output_path: str) -> None:
     except Exception as e:
         if temp_path.exists():
             temp_path.unlink()
-        raise ValidationError(f"Failed to write corpus: {e}")
+        raise ValidationError(f"Failed to write corpus: {e}") from e
