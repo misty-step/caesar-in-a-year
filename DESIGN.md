@@ -2,27 +2,31 @@
 
 ## Architecture Overview
 
-**Selected Approach**: Single Deep Module (Monolithic Script)
+**Selected Approach**: Modular Deep Modules (Ousterhout-style)
 
-**Rationale**: MVP requires ~50 sentences from one chapter. A single `process-corpus.py` script with well-defined internal functions minimizes complexity while remaining extractable to modules later. Matches PRD's "One Python script" mandate.
+**Rationale**: Sources hide URL patterns, caching strategy, and parsing details behind simple interfaces. Pipeline orchestrates without knowing internals.
 
-**Core Modules**:
-- `process-corpus.py` — Fetches, parses, segments, aligns, lemmatizes, scores, exports
-- `corpus-sync.ts` — Idempotent Convex upsert with validation
+**Package Structure**:
+```
+scripts/
+  process-corpus.py          # CLI + pipeline orchestration
+  corpus/
+    __init__.py
+    models.py                # Dataclasses, scoring, validation
+    sources.py               # PerseusSource, MITClassicsSource
+  corpus-sync.ts             # Convex upsert
+```
 
 **Data Flow**:
 ```
 CLI args (--book 1 --chapter 1)
     ↓
-[Fetch] Perseus CTS API + MIT Classics HTML
-    ↓ (cached in content/raw/)
-[Parse] Extract sections from XML/HTML
+[PerseusSource.fetch] → Latin sections (cached per chapter)
+[MITClassicsSource.fetch] → English text (cached per BOOK)
     ↓
-[Segment] Split Latin into sentences (CLTK/regex fallback)
+[Segment] Split Latin into sentences (regex)
     ↓
 [Align] Match Latin↔English by position, compute confidence
-    ↓
-[Lemmatize] Extract dictionary forms, compute word frequencies
     ↓
 [Score] Difficulty = f(avg word frequency)
     ↓
@@ -32,10 +36,15 @@ pnpm corpus:sync → Convex sentences table
 ```
 
 **Key Design Decisions**:
-1. **Cache raw sources locally** — Reproducibility; don't hit Perseus on every run
-2. **Regex fallback for segmentation** — CLTK may fail on edge cases; graceful degradation
-3. **Position-based alignment** — Simple heuristic; confidence scoring flags mismatches
-4. **Discard lemmas after scoring** — Corpus stores only 5 fields, not 9
+1. **Sources as deep modules** — Hide URL patterns, DOM parsing, caching internally
+2. **MIT cached at book level** — One page per book; chapter extraction dynamic
+3. **Regex-only segmentation** — CLTK overhead not justified for this use case
+4. **Position-based alignment** — Simple heuristic; confidence scoring flags mismatches
+5. **Discard lemmas after scoring** — Corpus stores only 5 fields, not 9
+
+**Source URL Patterns (hidden internally)**:
+- Perseus: `http://www.perseus.tufts.edu/hopper/CTS?request=GetPassage&urn=urn:cts:latinLit:phi0448.phi001.perseus-lat1:{book}.{chapter}`
+- MIT: `https://classics.mit.edu/Caesar/gallic.{book}.{book}.html` (one page per book)
 
 ---
 

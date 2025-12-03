@@ -52,3 +52,36 @@ Under the hood:
 - `pnpm vitest` – run unit tests (lib + selected app routes).
 
 Run lint and tests before pushing. The in-memory adapter is for local development only; swap in a real Convex/DB adapter before production.
+
+## Corpus Pipeline
+
+Process Caesar's *De Bello Gallico* into structured sentences for the app.
+
+**Prerequisites**: Python 3.10+ with venv at `.venv/`
+
+```bash
+# Set up Python environment (one-time)
+python3 -m venv .venv
+.venv/bin/pip install requests beautifulsoup4 lxml
+
+# Process a single chapter
+pnpm corpus:process                           # Book 1, Chapter 1
+pnpm corpus:process -- --book 1 --chapter 5   # Specific chapter
+pnpm corpus:process -- --book 7 --chapter 1   # Different book
+
+# Process all of Book 1
+for ch in {1..52}; do
+  .venv/bin/python scripts/process-corpus.py --book 1 --chapter $ch --output "content/bg-1-$ch.json"
+done
+
+# Validate output
+.venv/bin/python scripts/process-corpus.py --validate-only content/corpus.json
+
+# Sync to Convex (needs CONVEX_URL)
+pnpm corpus:sync -- --dry-run    # Validate first
+pnpm corpus:sync                 # Actually sync
+```
+
+**Sources**: Latin from [Perseus](http://www.perseus.tufts.edu), English from [MIT Classics](https://classics.mit.edu).
+
+See `DESIGN.md` for architecture details.
