@@ -270,7 +270,7 @@ function updateReviewState(
 
 ## Implementation Phases
 
-[~] ### Phase 1: Corpus Processing (Foundation)
+[x] ### Phase 1: Corpus Processing (Foundation)
 **Priority: CRITICAL | Effort: High**
 
 Parse De Bello Gallico into structured, annotated corpus.
@@ -297,7 +297,7 @@ content/
 
 ---
 
-### Phase 2: Persistence (Convex)
+[~] ### Phase 2: Persistence (Convex)
 **Priority: CRITICAL | Effort: Medium**
 
 Store user state with real database.
