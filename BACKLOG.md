@@ -297,7 +297,7 @@ content/
 
 ---
 
-[~] ### Phase 2: Persistence (Convex)
+[x] ### Phase 2: Persistence (Convex)
 **Priority: CRITICAL | Effort: Medium**
 
 Store user state with real database.
@@ -324,7 +324,7 @@ lib/data/
 
 ---
 
-### Phase 3: FSRS Implementation
+[~] ### Phase 3: FSRS Implementation
 **Priority: HIGH | Effort: Low**
 
 Proper spaced repetition scheduling.
