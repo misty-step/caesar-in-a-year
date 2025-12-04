@@ -25,7 +25,7 @@ export const replaceAll = mutation({
     // Check for admin role (via Clerk public metadata or custom claim)
     // For now, restrict to specific email domain as admin check
     // TODO: Replace with proper role-based check when Clerk roles are configured
-    const isAdmin = identity.email?.endsWith("@mistystep.com") ?? false;
+    const isAdmin = identity.email?.endsWith("@mistystep.io") ?? false;
     if (!isAdmin) {
       throw new ConvexError("Admin access required");
     }
