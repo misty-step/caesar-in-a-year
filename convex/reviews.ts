@@ -13,6 +13,22 @@ function assertAuthenticated(identity: { subject: string } | null, userId: strin
   }
 }
 
+export const getOne = query({
+  args: {
+    userId: v.string(),
+    sentenceId: v.string(),
+  },
+  handler: async (ctx, { userId, sentenceId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    assertAuthenticated(identity, userId);
+
+    return ctx.db
+      .query("sentenceReviews")
+      .withIndex("by_user_sentence", (q) => q.eq("userId", userId).eq("sentenceId", sentenceId))
+      .unique();
+  },
+});
+
 export const getDue = query({
   args: {
     userId: v.string(),

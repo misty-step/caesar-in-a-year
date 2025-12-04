@@ -110,7 +110,7 @@
   Time: 20min
   ```
 
-- [ ] Implement ConvexAdapter bridging DataAdapter to Convex
+- [x] Implement ConvexAdapter bridging DataAdapter to Convex
   ```
   Files: lib/data/convexAdapter.ts (new)
   Approach: Class implementing DataAdapter per DESIGN.md pseudocode
@@ -126,7 +126,7 @@
   Time: 60min
   ```
 
-- [ ] Update adapter factory to use ConvexAdapter
+- [x] Update adapter factory to use ConvexAdapter
   ```
   Files: lib/data/adapter.ts (modify)
   Approach: Pass client as parameter (avoid global state per Grug review)
