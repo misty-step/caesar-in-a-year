@@ -81,7 +81,7 @@
   Time: 45min
   ```
 
-- [ ] Implement GDPR deletion endpoint
+- [x] Implement GDPR deletion endpoint
   ```
   Files: convex/users.ts (new)
   Approach: Per DESIGN.md - deleteAllData mutation
