@@ -7,6 +7,8 @@ import type {
   Session,
   SessionStatus,
   UserProgress,
+  ReviewSentence,
+  ReviewStats,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
 import { advanceSession } from '@/lib/session/advance';
@@ -98,10 +100,10 @@ const memoryAdapter: DataAdapter = {
     // Default starter progress; persisted in-memory once updated.
     return {
       userId,
-      day: 1,
       streak: 0,
       totalXp: 0,
-      unlockedPhase: 1,
+      maxDifficulty: 1,
+      lastSessionAt: 0,
     };
   },
 
@@ -175,5 +177,17 @@ const memoryAdapter: DataAdapter = {
     const existing = attemptStore.get(attempt.sessionId) ?? [];
     existing.push(attempt);
     attemptStore.set(attempt.sessionId, existing);
+  },
+
+  async getDueReviews(): Promise<ReviewSentence[]> {
+    return [];
+  },
+
+  async getReviewStats(): Promise<ReviewStats> {
+    return { dueCount: 0, totalReviewed: 0, masteredCount: 0 };
+  },
+
+  async recordReview(): Promise<void> {
+    return;
   },
 };

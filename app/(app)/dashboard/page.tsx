@@ -43,10 +43,10 @@ function mapProgress(progress: DataUserProgress | null): UserProgress {
   }
 
   return {
-    currentDay: progress.day,
+    currentDay: Math.max(1, progress.maxDifficulty),
     streak: progress.streak,
     totalXp: progress.totalXp,
-    unlockedPhase: progress.unlockedPhase,
+    unlockedPhase: progress.maxDifficulty,
   };
 }
 

@@ -94,7 +94,7 @@
 
 ## Phase 3: TypeScript Layer (sequential after Convex)
 
-- [ ] Extend DataAdapter types with SRS methods
+- [x] Extend DataAdapter types with SRS methods
   ```
   Files: lib/data/types.ts (modify)
   Approach: Add ReviewSentence, ReviewStats, extend DataAdapter interface
