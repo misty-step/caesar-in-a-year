@@ -5,7 +5,7 @@ import { advanceSessionForUser } from '@/app/(app)/session/[sessionId]/actions';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const result = await advanceSessionForUser({ userId, sessionId });
+    const token = await getToken({ template: 'convex' });
+    const result = await advanceSessionForUser({ userId, sessionId, token: token ?? undefined });
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

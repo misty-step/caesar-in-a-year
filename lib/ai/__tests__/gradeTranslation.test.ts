@@ -3,18 +3,18 @@ import { gradeTranslation } from '../gradeTranslation';
 import { GradeStatus } from '@/types';
 
 // Use vi.hoisted to ensure mocks are initialized before vi.mock factory runs
-const { mockGenerateContent, mockGetGenerativeModel } = vi.hoisted(() => {
+const { mockGenerateContent, mockModels } = vi.hoisted(() => {
   const generate = vi.fn();
-  const getModel = vi.fn(() => ({ generateContent: generate }));
-  return { mockGenerateContent: generate, mockGetGenerativeModel: getModel };
+  const models = { generateContent: generate };
+  return { mockGenerateContent: generate, mockModels: models };
 });
 
-vi.mock('@google/generative-ai', () => {
+vi.mock('@google/genai', () => {
   return {
-    GoogleGenerativeAI: class {
-      getGenerativeModel = mockGetGenerativeModel;
+    GoogleGenAI: class {
+      models = mockModels;
     },
-    SchemaType: {
+    Type: {
       OBJECT: 'OBJECT',
       STRING: 'STRING',
       NUMBER: 'NUMBER',
@@ -41,11 +41,9 @@ describe('gradeTranslation', () => {
       status: GradeStatus.CORRECT,
       feedback: 'Good job!',
     };
-    
+
     mockGenerateContent.mockResolvedValueOnce({
-      response: {
-        text: () => JSON.stringify(mockResponse),
-      },
+      text: JSON.stringify(mockResponse),
     });
 
     const result = await gradeTranslation({
@@ -55,7 +53,7 @@ describe('gradeTranslation', () => {
     });
 
     expect(result).toEqual(mockResponse);
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
       model: 'gemini-2.5-flash',
     }));
   });
@@ -64,9 +62,9 @@ describe('gradeTranslation', () => {
     // First attempt: Timeout
     mockGenerateContent.mockImplementationOnce(async () => {
       await new Promise(resolve => setTimeout(resolve, 6000));
-      return { response: { text: () => '{}' } };
+      return { text: '{}' };
     });
-    
+
     // Second attempt: Error
     mockGenerateContent.mockRejectedValueOnce(new Error("API Error"));
 
@@ -82,7 +80,7 @@ describe('gradeTranslation', () => {
 
   it('returns fallback if API key is missing', async () => {
     process.env.GEMINI_API_KEY = '';
-    
+
     const result = await gradeTranslation({
       latin: 'Salve',
       userTranslation: 'Hello',
@@ -92,14 +90,14 @@ describe('gradeTranslation', () => {
     expect(result.status).toBe(GradeStatus.PARTIAL);
     // The class constructor is not called if API key is missing
   });
-  
+
   it('guards against empty input', async () => {
       const result = await gradeTranslation({
           latin: 'Salve',
           userTranslation: '',
           reference: 'Hello'
       });
-      
+
       expect(result.status).toBe(GradeStatus.INCORRECT);
       expect(result.feedback).toContain("provide a translation");
   });

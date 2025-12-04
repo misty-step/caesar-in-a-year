@@ -23,22 +23,23 @@ export type SubmitReviewResult = {
  * Server action entrypoint: infers user from Clerk auth, then delegates.
  */
 export async function submitReview(input: SubmitReviewInput): Promise<SubmitReviewResult> {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
 
   if (!userId) {
     throw new Error('Unauthorized');
   }
 
-  return submitReviewForUser({ ...input, userId });
+  const token = await getToken({ template: 'convex' });
+  return submitReviewForUser({ ...input, userId, token: token ?? undefined });
 }
 
 /**
  * Core grading + session-advance flow, shared by server actions and API routes.
  */
-export async function submitReviewForUser(params: SubmitReviewInput & { userId: string }): Promise<SubmitReviewResult> {
-  const { userId, sessionId, itemIndex, userInput } = params;
+export async function submitReviewForUser(params: SubmitReviewInput & { userId: string; token?: string }): Promise<SubmitReviewResult> {
+  const { userId, sessionId, itemIndex, userInput, token } = params;
 
-  const data = createDataAdapter();
+  const data = createDataAdapter(token);
   const session = await data.getSession(sessionId, userId);
 
   if (!session) {
@@ -100,10 +101,11 @@ export type AdvanceSessionResult = {
 export async function advanceSessionForUser(params: {
   userId: string;
   sessionId: string;
+  token?: string;
 }): Promise<AdvanceSessionResult> {
-  const { userId, sessionId } = params;
+  const { userId, sessionId, token } = params;
 
-  const data = createDataAdapter();
+  const data = createDataAdapter(token);
   const session = await data.getSession(sessionId, userId);
 
   if (!session) {

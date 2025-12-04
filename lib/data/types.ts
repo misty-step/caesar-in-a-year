@@ -34,10 +34,10 @@ export interface Session {
 
 export interface UserProgress {
   userId: string;
-  day: number;
   streak: number;
   totalXp: number;
-  unlockedPhase: number;
+  maxDifficulty: number;
+  lastSessionAt: number;
 }
 
 export interface Attempt {
@@ -52,6 +52,16 @@ export interface Attempt {
 export interface ContentSeed {
   review: Sentence[];
   reading: ReadingPassage;
+}
+
+export interface ReviewSentence extends Sentence {
+  reviewCount: number;
+}
+
+export interface ReviewStats {
+  dueCount: number;
+  totalReviewed: number;
+  masteredCount: number;
 }
 
 export { GradeStatus, type GradingResult };
@@ -69,4 +79,7 @@ export interface DataAdapter {
     status: SessionStatus;
   }): Promise<Session>;
   recordAttempt(attempt: Attempt): Promise<void>;
+  getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]>;
+  getReviewStats(userId: string): Promise<ReviewStats>;
+  recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
 }

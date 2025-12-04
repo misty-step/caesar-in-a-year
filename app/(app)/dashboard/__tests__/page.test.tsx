@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToString } from 'react-dom/server';
 
-// Mock Clerk auth to always return a user
+// Mock Clerk auth to always return a user with getToken
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: () => ({ userId: 'user-1' }),
+  auth: () => ({
+    userId: 'user-1',
+    getToken: () => Promise.resolve('mock-token'),
+  }),
 }));
 
 const getUserProgress = vi.fn();

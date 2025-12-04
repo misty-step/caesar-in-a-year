@@ -12,14 +12,14 @@ import { Button } from '@/components/UI/Button';
 
 export const dynamic = 'force-dynamic';
 
-async function getDashboardData(userId: string): Promise<{
+async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgress;
   summary: {
     reviewCount: number;
     readingTitle: string;
   };
 }> {
-  const data = createDataAdapter();
+  const data = createDataAdapter(token ?? undefined);
 
   const [rawProgress, content] = await Promise.all([
     data.getUserProgress(userId),
@@ -43,10 +43,10 @@ function mapProgress(progress: DataUserProgress | null): UserProgress {
   }
 
   return {
-    currentDay: progress.day,
+    currentDay: Math.max(1, progress.maxDifficulty),
     streak: progress.streak,
     totalXp: progress.totalXp,
-    unlockedPhase: progress.unlockedPhase,
+    unlockedPhase: progress.maxDifficulty,
   };
 }
 
@@ -58,14 +58,15 @@ function mapContentToSummary(content: ContentSeed) {
 }
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
 
   // Middleware guarantees auth; this is defensive
   if (!userId) {
     throw new Error('Unauthorized');
   }
 
-  const { progress, summary } = await getDashboardData(userId);
+  const token = await getToken({ template: 'convex' });
+  const { progress, summary } = await getDashboardData(userId, token);
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">

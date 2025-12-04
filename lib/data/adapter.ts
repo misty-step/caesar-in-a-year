@@ -7,17 +7,25 @@ import type {
   Session,
   SessionStatus,
   UserProgress,
+  ReviewSentence,
+  ReviewStats,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
-import { advanceSession } from '@/lib/session/advance';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { ConvexAdapter } from './convexAdapter';
 
 // Exported type to avoid circular imports
 export type { DataAdapter } from './types';
 
-// Factory to select adapter; currently Convex primary.
-export function createDataAdapter(): DataAdapter {
+/**
+ * Factory to create the appropriate DataAdapter.
+ *
+ * @param token - Auth token for Convex (from Clerk). If provided, uses ConvexAdapter.
+ *                If not provided, falls back to in-memory adapter.
+ */
+export function createDataAdapter(token?: string): DataAdapter {
+  if (token) return new ConvexAdapter(token);
   return memoryAdapter;
 }
 
@@ -98,10 +106,10 @@ const memoryAdapter: DataAdapter = {
     // Default starter progress; persisted in-memory once updated.
     return {
       userId,
-      day: 1,
       streak: 0,
       totalXp: 0,
-      unlockedPhase: 1,
+      maxDifficulty: 1,
+      lastSessionAt: 0,
     };
   },
 
@@ -175,5 +183,17 @@ const memoryAdapter: DataAdapter = {
     const existing = attemptStore.get(attempt.sessionId) ?? [];
     existing.push(attempt);
     attemptStore.set(attempt.sessionId, existing);
+  },
+
+  async getDueReviews(): Promise<ReviewSentence[]> {
+    return [];
+  },
+
+  async getReviewStats(): Promise<ReviewStats> {
+    return { dueCount: 0, totalReviewed: 0, masteredCount: 0 };
+  },
+
+  async recordReview(): Promise<void> {
+    return;
   },
 };
