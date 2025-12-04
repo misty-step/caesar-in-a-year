@@ -67,7 +67,7 @@
   Time: 30min
   ```
 
-- [ ] Implement reviews Convex functions
+- [x] Implement reviews Convex functions
   ```
   Files: convex/reviews.ts (new)
   Approach: Per DESIGN.md - getDue, getStats, record
