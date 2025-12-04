@@ -44,13 +44,28 @@ export const getDue = query({
       .withIndex("by_user_due", (q) => q.eq("userId", userId).lte("nextReviewAt", now))
       .take(limit ?? DEFAULT_LIMIT);
 
-    const results = [];
-
-    for (const review of dueReviews) {
-      const sentence = await ctx.db
+    // Batch fetch all sentences in parallel
+    const sentencePromises = dueReviews.map((review) =>
+      ctx.db
         .query("sentences")
         .withIndex("by_sentence_id", (q) => q.eq("sentenceId", review.sentenceId))
-        .first();
+        .first()
+    );
+
+    const sentences = await Promise.all(sentencePromises);
+
+    // Build map for efficient lookup
+    const sentenceMap = new Map();
+    for (const sentence of sentences) {
+      if (sentence) {
+        sentenceMap.set(sentence.sentenceId, sentence);
+      }
+    }
+
+    // Build results using the map
+    const results = [];
+    for (const review of dueReviews) {
+      const sentence = sentenceMap.get(review.sentenceId);
 
       if (!sentence) {
         throw new ConvexError(`Sentence not found: ${review.sentenceId}`);
@@ -76,14 +91,23 @@ export const getStats = query({
 
     const now = Date.now();
 
-    const reviews = await ctx.db
+    // Use by_user_due index to efficiently fetch only due reviews
+    const dueReviews = await ctx.db
+      .query("sentenceReviews")
+      .withIndex("by_user_due", (q) => q.eq("userId", userId).lte("nextReviewAt", now))
+      .collect();
+
+    const dueCount = dueReviews.length;
+
+    // For total and mastered counts, we still need all reviews
+    // Use by_user_sentence index which starts with userId
+    const allReviews = await ctx.db
       .query("sentenceReviews")
       .withIndex("by_user_sentence", (q) => q.eq("userId", userId))
       .collect();
 
-    const totalReviewed = reviews.length;
-    const dueCount = reviews.filter((r) => r.nextReviewAt <= now).length;
-    const masteredCount = reviews.filter((r) => r.bucket >= MASTERED_BUCKET).length;
+    const totalReviewed = allReviews.length;
+    const masteredCount = allReviews.filter((r) => r.bucket >= MASTERED_BUCKET).length;
 
     return { dueCount, totalReviewed, masteredCount };
   },

@@ -18,9 +18,7 @@ export const deleteAllData = mutation({
       .withIndex("by_user_sentence", (q) => q.eq("userId", userId))
       .collect();
 
-    for (const review of reviews) {
-      await ctx.db.delete(review._id);
-    }
+    await Promise.all(reviews.map((review) => ctx.db.delete(review._id)));
 
     // Delete userProgress (if exists)
     const progress = await ctx.db

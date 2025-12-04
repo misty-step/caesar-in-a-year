@@ -4,6 +4,15 @@ import { v, ConvexError } from "convex/values";
 export const get = query({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    if (identity.subject !== userId) {
+      throw new ConvexError("Cannot access another user's progress");
+    }
+
     return ctx.db
       .query("userProgress")
       .withIndex("by_user", (q) => q.eq("userId", userId))

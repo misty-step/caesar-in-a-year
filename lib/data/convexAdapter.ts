@@ -43,6 +43,10 @@ const DEFAULT_PROGRESS: Omit<UserProgress, 'userId'> = {
   lastSessionAt: 0,
 };
 
+// Module-scoped session store shared across all adapter instances
+// Keeps sessions ephemeral but reusable across requests in same process
+const sessionStore = new Map<string, Session>();
+
 /**
  * Convex-backed DataAdapter for server-side persistence.
  *
@@ -52,8 +56,6 @@ const DEFAULT_PROGRESS: Omit<UserProgress, 'userId'> = {
  * Requires auth token for authenticated Convex functions.
  */
 export class ConvexAdapter implements DataAdapter {
-  private sessionStore = new Map<string, Session>();
-
   constructor(private token?: string) {}
 
   private get options() {
@@ -111,12 +113,12 @@ export class ConvexAdapter implements DataAdapter {
       startedAt: now,
     };
 
-    this.sessionStore.set(id, session);
+    sessionStore.set(id, session);
     return session;
   }
 
   async getSession(sessionId: string, userId: string): Promise<Session | null> {
-    const session = this.sessionStore.get(sessionId);
+    const session = sessionStore.get(sessionId);
     if (!session || session.userId !== userId) return null;
     return session;
   }
@@ -127,7 +129,7 @@ export class ConvexAdapter implements DataAdapter {
     nextIndex: number;
     status: SessionStatus;
   }): Promise<Session> {
-    const session = this.sessionStore.get(params.sessionId);
+    const session = sessionStore.get(params.sessionId);
     if (!session || session.userId !== params.userId) {
       throw new Error('Session not found');
     }
@@ -147,7 +149,7 @@ export class ConvexAdapter implements DataAdapter {
           }
         : base;
 
-    this.sessionStore.set(finalized.id, finalized);
+    sessionStore.set(finalized.id, finalized);
     return finalized;
   }
 
