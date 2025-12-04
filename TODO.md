@@ -142,7 +142,7 @@
 
 ## Phase 4: Provider Wiring (last)
 
-- [ ] Wire ConvexProviderWithClerk in app layout
+- [x] Wire ConvexProviderWithClerk in app layout
   ```
   Files: app/layout.tsx (modify)
   Approach: Wrap children with ConvexProviderWithClerk per DESIGN.md
