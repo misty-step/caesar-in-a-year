@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToString } from 'react-dom/server';
 
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: () => ({ userId: 'user-1' }),
+  auth: () => ({
+    userId: 'user-1',
+    getToken: () => Promise.resolve('mock-token'),
+  }),
 }));
 
 const getSession = vi.fn();

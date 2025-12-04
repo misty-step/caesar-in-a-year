@@ -1,5 +1,4 @@
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
-import { ConvexReactClient } from 'convex/react';
 import type {
   Attempt,
   ContentSeed,
@@ -19,9 +18,14 @@ import { ConvexAdapter } from './convexAdapter';
 // Exported type to avoid circular imports
 export type { DataAdapter } from './types';
 
-// Factory to select adapter; currently Convex primary.
-export function createDataAdapter(client?: ConvexReactClient): DataAdapter {
-  if (client) return new ConvexAdapter(client);
+/**
+ * Factory to create the appropriate DataAdapter.
+ *
+ * @param token - Auth token for Convex (from Clerk). If provided, uses ConvexAdapter.
+ *                If not provided, falls back to in-memory adapter.
+ */
+export function createDataAdapter(token?: string): DataAdapter {
+  if (token) return new ConvexAdapter(token);
   return memoryAdapter;
 }
 

@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/grade/route';
 
-// Mock Clerk auth to provide a userId
+// Mock Clerk auth to provide a userId with getToken
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: () => ({ userId: 'user-1' }),
+  auth: () => ({
+    userId: 'user-1',
+    getToken: () => Promise.resolve('mock-token'),
+  }),
 }));
 
-// Mock the shared submitReviewForUser flow
-const submitReviewForUser = vi.fn();
+// Use vi.hoisted to declare mock before hoisting
+const { submitReviewForUser } = vi.hoisted(() => ({
+  submitReviewForUser: vi.fn(),
+}));
+
 vi.mock('@/app/(app)/session/[sessionId]/actions', () => ({
   submitReviewForUser,
 }));
@@ -55,6 +61,7 @@ describe('POST /api/grade', () => {
       sessionId: 'sess-1',
       itemIndex: 0,
       userInput: 'hello',
+      token: 'mock-token',
     });
 
     expect(json).toEqual({

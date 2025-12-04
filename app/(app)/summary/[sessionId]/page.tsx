@@ -13,7 +13,7 @@ interface SummaryPageProps {
 }
 
 export default async function SummaryPage(props: SummaryPageProps) {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
 
   // Middleware guarantees auth; this is defensive
   if (!userId) {
@@ -21,7 +21,8 @@ export default async function SummaryPage(props: SummaryPageProps) {
   }
 
   const { sessionId } = await props.params;
-  const data = createDataAdapter();
+  const token = await getToken({ template: 'convex' });
+  const data = createDataAdapter(token ?? undefined);
   const session = await data.getSession(sessionId, userId);
 
   if (!session) {

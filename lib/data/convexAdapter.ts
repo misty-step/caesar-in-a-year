@@ -1,4 +1,5 @@
-import { ConvexReactClient } from 'convex/react';
+import { fetchQuery, fetchMutation } from 'convex/nextjs';
+import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import {
   Attempt,
@@ -21,7 +22,12 @@ const FALLBACK_CONTENT: ContentSeed = {
   reading: DAILY_READING,
 };
 
-function mapSentence(doc: any): Sentence {
+function mapSentence(doc: {
+  sentenceId: string;
+  latin: string;
+  referenceTranslation: string;
+  difficulty?: number;
+}): Sentence {
   return {
     id: doc.sentenceId,
     latin: doc.latin,
@@ -37,13 +43,25 @@ const DEFAULT_PROGRESS: Omit<UserProgress, 'userId'> = {
   lastSessionAt: 0,
 };
 
+/**
+ * Convex-backed DataAdapter for server-side persistence.
+ *
+ * Uses fetchQuery/fetchMutation from convex/nextjs for imperative calls.
+ * Sessions remain ephemeral (in-memory) per DESIGN.md.
+ *
+ * Requires auth token for authenticated Convex functions.
+ */
 export class ConvexAdapter implements DataAdapter {
   private sessionStore = new Map<string, Session>();
 
-  constructor(private client: ConvexReactClient) {}
+  constructor(private token?: string) {}
+
+  private get options() {
+    return this.token ? { token: this.token } : undefined;
+  }
 
   async getUserProgress(userId: string): Promise<UserProgress | null> {
-    const progress = await this.client.query('userProgress:get', { userId });
+    const progress = await fetchQuery(api.userProgress.get, { userId }, this.options);
     if (!progress) {
       return { userId, ...DEFAULT_PROGRESS };
     }
@@ -57,12 +75,12 @@ export class ConvexAdapter implements DataAdapter {
   }
 
   async upsertUserProgress(progress: UserProgress): Promise<void> {
-    await this.client.mutation('userProgress:upsert', progress);
+    await fetchMutation(api.userProgress.upsert, progress, this.options);
   }
 
   async getContent(): Promise<ContentSeed> {
     try {
-      const sentences = await this.client.query('sentences:getAll', {});
+      const sentences = await fetchQuery(api.sentences.getAll, {}, this.options);
       if (!sentences || sentences.length === 0) {
         return FALLBACK_CONTENT;
       }
@@ -139,20 +157,17 @@ export class ConvexAdapter implements DataAdapter {
   }
 
   async getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]> {
-    const results = await this.client.query('reviews:getDue', {
-      userId,
-      limit,
-    });
+    const results = await fetchQuery(api.reviews.getDue, { userId, limit }, this.options);
     return results as ReviewSentence[];
   }
 
   async getReviewStats(userId: string): Promise<ReviewStats> {
-    return this.client.query('reviews:getStats', { userId }) as Promise<ReviewStats>;
+    return fetchQuery(api.reviews.getStats, { userId }, this.options) as Promise<ReviewStats>;
   }
 
   async recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void> {
     const now = Date.now();
-    const existing = await this.client.query('reviews:getOne', { userId, sentenceId });
+    const existing = await fetchQuery(api.reviews.getOne, { userId, sentenceId }, this.options);
 
     const currentBucket = existing?.bucket ?? 0;
     const currentCorrect = existing?.timesCorrect ?? 0;
@@ -160,7 +175,7 @@ export class ConvexAdapter implements DataAdapter {
 
     const update = calculateNextReview(currentBucket, currentCorrect, currentIncorrect, result.status, now);
 
-    await this.client.mutation('reviews:record', {
+    await fetchMutation(api.reviews.record, {
       userId,
       sentenceId,
       bucket: update.bucket,
@@ -168,6 +183,6 @@ export class ConvexAdapter implements DataAdapter {
       lastReviewedAt: now,
       timesCorrect: update.timesCorrect,
       timesIncorrect: update.timesIncorrect,
-    });
+    }, this.options);
   }
 }

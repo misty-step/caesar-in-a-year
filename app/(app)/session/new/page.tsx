@@ -7,14 +7,15 @@ import { buildSessionItems } from '@/lib/session/builder';
 export const dynamic = 'force-dynamic';
 
 export default async function NewSessionPage() {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
 
   // Middleware guarantees auth; this is defensive
   if (!userId) {
     throw new Error('Unauthorized');
   }
 
-  const data = createDataAdapter();
+  const token = await getToken({ template: 'convex' });
+  const data = createDataAdapter(token ?? undefined);
   const content = await data.getContent();
   const items = buildSessionItems(content);
   const session = await data.createSession(userId, items);

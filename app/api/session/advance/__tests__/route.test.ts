@@ -2,10 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/session/advance/route';
 
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: () => ({ userId: 'user-1' }),
+  auth: () => ({
+    userId: 'user-1',
+    getToken: () => Promise.resolve('mock-token'),
+  }),
 }));
 
-const advanceSessionForUser = vi.fn();
+// Use vi.hoisted to declare mock before hoisting
+const { advanceSessionForUser } = vi.hoisted(() => ({
+  advanceSessionForUser: vi.fn(),
+}));
+
 vi.mock('@/app/(app)/session/[sessionId]/actions', () => ({
   advanceSessionForUser,
 }));
@@ -46,6 +53,7 @@ describe('POST /api/session/advance', () => {
     expect(advanceSessionForUser).toHaveBeenCalledWith({
       userId: 'user-1',
       sessionId: 'sess-1',
+      token: 'mock-token',
     });
 
     expect(json).toEqual({
