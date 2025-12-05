@@ -1,205 +1,106 @@
-# TODO: Convex Persistence Layer
+# TODO: FSRS Integration
 
 ## Context
-- **Architecture**: Hybrid Adapter (DESIGN.md) - Convex for persistence, memory for ephemeral sessions
-- **Key Files**: `convex/`, `lib/data/`, `app/layout.tsx`
-- **Test Pattern**: Vitest with `describe`/`it`, co-located in `__tests__/` folders
-- **Build/Lint**: `pnpm build`, `pnpm lint`
+- Architecture: Thin wrapper over ts-fsrs (see DESIGN.md)
+- Key Files: `lib/srs/fsrs.ts`, `convex/schema.ts`, `convex/reviews.ts`, `lib/data/convexAdapter.ts`
+- Patterns: Follow existing Convex mutation/query patterns in `convex/reviews.ts`
 
-## Phase 1: Foundation (parallel-ready)
+## Implementation Tasks
 
-- [x] Create Convex auth config for Clerk JWT validation
+- [x] Add ts-fsrs dependency
   ```
-  Files: convex/auth.config.js (new)
-  Approach: See DESIGN.md Module: convex/auth.config.js
-  Success: `npx convex dev` accepts Clerk JWTs
-  Test: Manual - authenticate via Clerk, Convex mutation succeeds
-  Env: Set CLERK_JWT_ISSUER_DOMAIN via `npx convex env set`
-  Time: 15min
-  ```
-
-- [x] Extend Convex schema with userProgress and sentenceReviews tables
-  ```
-  Files: convex/schema.ts (modify)
-  Approach: Add two defineTable() calls per DESIGN.md schema spec
-  Success: `npx convex dev` syncs without errors, tables visible in dashboard
-  Test: Manual - verify tables in Convex dashboard
-  Dependencies: None
-  Time: 15min
-  ```
-
-- [x] Implement pure SRS bucket algorithm
-  ```
-  Files: lib/data/srs.ts (new), lib/data/__tests__/srs.test.ts (new)
-  Approach: Pure functions, no I/O - see DESIGN.md Module: lib/data/srs.ts
-  Interface:
-    - calculateNextReview(bucket, correct, incorrect, status, now?) → SRSUpdate
-    - isDue(nextReviewAt, now?) → boolean
-    - BUCKET_INTERVALS = [1, 3, 7, 14, 30]
-  Success: All edge cases pass - bucket clamping, interval calculation
-  Test: Unit tests covering CORRECT/PARTIAL/INCORRECT, floor/ceiling, timestamp math
-  Dependencies: None (pure module)
-  Time: 30min
-  ```
-
-- [x] Fix admin domain check in sentences.ts
-  ```
-  Files: convex/sentences.ts:29
-  Approach: Change "@mistystep.com" to "@mistystep.io"
-  Success: Admin check uses correct domain
-  Test: Manual - verify via code review
-  Dependencies: None
+  Files: package.json
+  Command: pnpm add ts-fsrs
+  Success: ts-fsrs in dependencies, types available
+  Test: import { fsrs, Rating } from 'ts-fsrs' compiles
+  Dependencies: None (first task)
   Time: 5min
   ```
 
-## Phase 2: Convex Functions (sequential after schema)
-
-- [x] Implement userProgress Convex functions
+- [x] Create lib/srs/fsrs.ts with mapGradeToRating and scheduleReview
   ```
-  Files: convex/userProgress.ts (new)
-  Approach: query `get` + mutation `upsert` per DESIGN.md pseudocode
-  Interface:
-    - get({ userId }) → UserProgressDoc | null
-    - upsert({ userId, streak, totalXp, maxDifficulty, lastSessionAt }) → void
-  Success: Auth required, userId validation, upsert pattern works
-  Test: Manual via Convex dashboard - insert, update, query
-  Dependencies: schema.ts complete
+  Files: lib/srs/fsrs.ts (new)
+  Architecture: See DESIGN.md Module Design - lib/srs/fsrs.ts
+  Pseudocode:
+    - mapGradeToRating: INCORRECT→Again, PARTIAL→Hard, CORRECT→Good
+    - scheduleReview: null→createEmptyCard, then f.repeat(card, now)[rating].card
+  Success: Both functions exported, types match DESIGN.md interface
+  Test: Unit tests in next task
+  Dependencies: ts-fsrs installed
+  Time: 20min
+  ```
+
+- [x] Create lib/srs/__tests__/fsrs.test.ts with unit tests
+  ```
+  Files: lib/srs/__tests__/fsrs.test.ts (new)
+  Architecture: See DESIGN.md Testing Strategy
+  Tests:
+    - mapGradeToRating: all 3 mappings
+    - scheduleReview: new card, stability increase, relearning on fail, reps/lapses counters
+  Success: pnpm test passes, 100% coverage on fsrs.ts
+  Dependencies: lib/srs/fsrs.ts exists
   Time: 30min
   ```
 
-- [x] Implement reviews Convex functions
+- [x] Update convex/schema.ts with FSRS fields
   ```
-  Files: convex/reviews.ts (new)
-  Approach: Per DESIGN.md - getDue, getStats, record
-  Interface:
-    - getDue({ userId, limit? }) → ReviewWithSentence[]
-    - getStats({ userId }) → { dueCount, totalReviewed, masteredCount }
-    - record({ userId, sentenceId, bucket, nextReviewAt, ... }) → void
-  Success: FK validation on sentenceId, upsert pattern, due filtering works
-  Test: Manual - create reviews, verify getDue returns past-due only
-  Dependencies: schema.ts complete
-  Time: 45min
-  ```
-
-- [x] Implement GDPR deletion endpoint
-  ```
-  Files: convex/users.ts (new)
-  Approach: Per DESIGN.md - deleteAllData mutation
-  Interface: deleteAllData({ userId }) → { deleted: { reviews: number, progress: boolean } }
-  Success: Deletes all user data, returns counts
-  Test: Manual - create data, delete, verify empty
-  Dependencies: schema.ts, userProgress.ts, reviews.ts complete
-  Time: 20min
-  ```
-
-## Phase 3: TypeScript Layer (sequential after Convex)
-
-- [x] Extend DataAdapter types with SRS methods
-  ```
-  Files: lib/data/types.ts (modify)
-  Approach: Add ReviewSentence, ReviewStats, extend DataAdapter interface
+  Files: convex/schema.ts:27-37
+  Architecture: See DESIGN.md Module Design - convex/schema.ts
   Changes:
-    - Add ReviewSentence interface (extends Sentence + reviewCount)
-    - Add ReviewStats interface
-    - Update UserProgress (day→maxDifficulty, add lastSessionAt)
-    - Add getDueReviews, getReviewStats, recordReview to DataAdapter
-  Pre-check (Grug warning): grep for `unlockedPhase` and `progress.day` usage first!
-  Success: Types compile, existing code unchanged
-  Test: `pnpm build` succeeds
-  Dependencies: None (types only)
-  Time: 20min
-  ```
-
-- [x] Implement ConvexAdapter bridging DataAdapter to Convex
-  ```
-  Files: lib/data/convexAdapter.ts (new)
-  Approach: Class implementing DataAdapter per DESIGN.md pseudocode
-  Implementation:
-    - getUserProgress/upsertUserProgress → Convex userProgress functions
-    - getDueReviews/getReviewStats/recordReview → Convex reviews functions
-    - createSession/getSession/advanceSession → delegate to memory adapter
-    - recordAttempt → no-op (Phase 1)
-    - getContent → Convex sentences + static reading
-  Success: All DataAdapter methods work, sessions stay ephemeral
-  Test: Unit test with mocked Convex client
-  Dependencies: types.ts, srs.ts, Convex functions complete
-  Time: 60min
-  ```
-
-- [x] Update adapter factory to use ConvexAdapter
-  ```
-  Files: lib/data/adapter.ts (modify)
-  Approach: Pass client as parameter (avoid global state per Grug review)
-  Changes:
-    - createDataAdapter(client?: ConvexReactClient) → DataAdapter
-    - Return ConvexAdapter when client provided, memory adapter otherwise
-    - NO global mutable state (setConvexClient anti-pattern)
-  Success: Factory returns correct adapter, no global state
-  Test: Import and verify behavior with/without client parameter
-  Dependencies: convexAdapter.ts complete
+    - Remove: bucket, timesCorrect, timesIncorrect
+    - Rename: lastReviewedAt → lastReview (optional)
+    - Add: state, stability, difficulty, elapsedDays, scheduledDays, learningSteps, reps, lapses
+  Success: npx convex dev succeeds, schema deployed
+  Test: Convex dashboard shows new fields
+  Dependencies: None (can parallel with fsrs.ts)
   Time: 15min
   ```
 
-## Phase 4: Provider Wiring (last)
-
-- [x] Wire ConvexProviderWithClerk in app layout
+- [x] Update convex/reviews.ts mutation and queries
   ```
-  Files: app/layout.tsx (modify)
-  Approach: Wrap children with ConvexProviderWithClerk per DESIGN.md
+  Files: convex/reviews.ts
+  Architecture: See DESIGN.md Module Design - convex/reviews.ts
   Changes:
-    - Import ConvexProviderWithClerk, ConvexReactClient, useAuth
-    - Create convex client with NEXT_PUBLIC_CONVEX_URL
-    - Nest inside ClerkProvider
-  Env: Add NEXT_PUBLIC_CONVEX_URL to .env.local
-  Success: App loads, Convex client available in components
-  Test: Manual - app renders, no console errors
-  Dependencies: All Convex functions complete
-  Time: 20min
+    - record mutation: new args (state, stability, difficulty, etc.)
+    - getStats query: masteredCount uses stability >= 21 instead of bucket >= 4
+    - Remove: MASTERED_BUCKET constant
+    - Add: MASTERED_STABILITY_THRESHOLD = 21
+  Success: Mutations accept new fields, queries return correct stats
+  Test: Manual test via Convex dashboard
+  Dependencies: convex/schema.ts updated
+  Time: 25min
   ```
 
-## Acceptance Verification
+- [x] Update lib/data/convexAdapter.ts to use FSRS
+  ```
+  Files: lib/data/convexAdapter.ts:18, 170-188
+  Architecture: See DESIGN.md Module Design - lib/data/convexAdapter.ts
+  Changes:
+    - Import from '@/lib/srs/fsrs' instead of './srs'
+    - Add reconstructCard helper function
+    - Add stateToString/parseState helpers
+    - Update recordReview to use scheduleReview and new mutation args
+  Success: recordReview calls scheduleReview, persists all FSRS fields
+  Test: Integration test (review sentence → check Convex dashboard for FSRS fields)
+  Dependencies: lib/srs/fsrs.ts, convex/reviews.ts updated
+  Time: 30min
+  ```
 
-After all tasks complete, verify DESIGN.md Phase 1 criteria:
-- [ ] `npx convex dev` runs without errors
-- [ ] User authenticates via Clerk → Convex mutations work
-- [ ] userProgress persists across browser refresh
-- [ ] sentenceReviews created after grading
-- [ ] getDueReviews returns sentences at correct times
-- [ ] No duplicate reviews per (userId, sentenceId)
-- [ ] GDPR deletion removes all user data
+- [x] Delete old bucket SRS code
+  ```
+  Files:
+    - lib/data/srs.ts (delete)
+    - lib/data/__tests__/srs.test.ts (delete)
+  Success: No references to calculateNextReview, isDue, BUCKET_INTERVALS
+  Test: pnpm build succeeds, no dead code
+  Dependencies: convexAdapter.ts no longer imports from ./srs
+  Time: 10min
+  ```
 
-## Total Time Estimate
+## Verification
 
-| Phase | Tasks | Time |
-|-------|-------|------|
-| Foundation | 4 | ~65min |
-| Convex Functions | 3 | ~95min |
-| TypeScript Layer | 3 | ~95min |
-| Provider Wiring | 1 | ~20min |
-| **Total** | **11** | **~4.5hr** |
-
-## Parallelization Notes
-
-**Can run in parallel:**
-- Phase 1 tasks (auth config, schema, SRS module, domain fix)
-
-**Must be sequential:**
-- Convex functions → after schema
-- TypeScript adapter → after Convex functions
-- Provider wiring → last
-
-## Not in Scope (deferred)
-
-- Attempts table (Phase 3 analytics)
-- FSRS algorithm upgrade (Phase 3)
-- Session persistence (intentionally ephemeral)
-- Dashboard UI changes (separate PR)
-
-## Grug Warnings
-
-From complexity review - watch for these anti-patterns:
-
-1. **ConvexAdapter must have real logic** - if just `return this.client.whatever()` everywhere, it's a shallow wrapper. Must have: defaults, type mapping, SRS calculation orchestration
-2. **Keep srs.ts pure forever** - no database, no network, only math
-3. **Watch DataAdapter growth** - currently 10 methods, if it hits 15+ split the interface
-4. **No global mutable state** - factory takes client as param, not via setter
+After all tasks complete:
+1. `pnpm test` — all tests pass
+2. `pnpm build` — no type errors
+3. Manual test: grade sentence → check Convex dashboard → verify FSRS fields populated
+4. Manual test: CORRECT → due in minutes (learning), INCORRECT → stability drops

@@ -15,12 +15,60 @@ import {
   UserProgress,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
-import { calculateNextReview } from './srs';
+import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
 
 const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
 };
+
+// State enum ↔ string helpers for Convex persistence
+type StateString = 'new' | 'learning' | 'review' | 'relearning';
+
+function stateToString(state: State): StateString {
+  switch (state) {
+    case State.New: return 'new';
+    case State.Learning: return 'learning';
+    case State.Review: return 'review';
+    case State.Relearning: return 'relearning';
+  }
+}
+
+function parseState(s: StateString): State {
+  switch (s) {
+    case 'new': return State.New;
+    case 'learning': return State.Learning;
+    case 'review': return State.Review;
+    case 'relearning': return State.Relearning;
+  }
+}
+
+// Reconstruct ts-fsrs Card from database fields
+function reconstructCard(doc: {
+  state: StateString;
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  learningSteps: number;
+  reps: number;
+  lapses: number;
+  lastReview?: number;
+  nextReviewAt: number;
+}): Card {
+  return {
+    state: parseState(doc.state),
+    stability: doc.stability,
+    difficulty: doc.difficulty,
+    elapsed_days: doc.elapsedDays,
+    scheduled_days: doc.scheduledDays,
+    learning_steps: doc.learningSteps,
+    reps: doc.reps,
+    lapses: doc.lapses,
+    last_review: doc.lastReview ? new Date(doc.lastReview) : undefined,
+    due: new Date(doc.nextReviewAt),
+  };
+}
 
 function mapSentence(doc: {
   sentenceId: string;
@@ -168,23 +216,28 @@ export class ConvexAdapter implements DataAdapter {
   }
 
   async recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void> {
-    const now = Date.now();
+    const now = new Date();
     const existing = await fetchQuery(api.reviews.getOne, { userId, sentenceId }, this.options);
 
-    const currentBucket = existing?.bucket ?? 0;
-    const currentCorrect = existing?.timesCorrect ?? 0;
-    const currentIncorrect = existing?.timesIncorrect ?? 0;
+    // Reconstruct card from database or pass null for new cards
+    const currentCard: Card | null = existing ? reconstructCard(existing) : null;
 
-    const update = calculateNextReview(currentBucket, currentCorrect, currentIncorrect, result.status, now);
+    // Schedule using FSRS
+    const newCard = scheduleReview(currentCard, result.status, now);
 
     await fetchMutation(api.reviews.record, {
       userId,
       sentenceId,
-      bucket: update.bucket,
-      nextReviewAt: update.nextReviewAt,
-      lastReviewedAt: now,
-      timesCorrect: update.timesCorrect,
-      timesIncorrect: update.timesIncorrect,
+      state: stateToString(newCard.state),
+      stability: newCard.stability,
+      difficulty: newCard.difficulty,
+      elapsedDays: newCard.elapsed_days,
+      scheduledDays: newCard.scheduled_days,
+      learningSteps: newCard.learning_steps,
+      reps: newCard.reps,
+      lapses: newCard.lapses,
+      lastReview: newCard.last_review?.getTime(),
+      nextReviewAt: newCard.due.getTime(),
     }, this.options);
   }
 }

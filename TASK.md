@@ -1,276 +1,167 @@
-# Convex Persistence Layer
+# FSRS Integration
 
 ## Executive Summary
 
-Replace in-memory data stores with Convex persistence so user learning progress survives server restarts. Focus on spaced repetition data (sentence reviews with simple bucket intervals) and gamification stats (streak, XP). Sessions remain ephemeral. Convex is primary content source.
+Replace the simple bucket-based SRS algorithm with ts-fsrs for scientifically-backed spaced repetition scheduling. The current system uses fixed intervals [1, 3, 7, 14, 30] days; FSRS dynamically calculates optimal intervals based on memory stability and retrievability models.
 
-**Success criteria:** User closes browser, returns next day, sees streak intact and correct sentences due for review.
+**User value**: Better retention with fewer reviews. FSRS adapts to individual learning patterns rather than fixed progressions.
 
-## User Context
+**Success criteria**: Review intervals grow with correct answers, shrink with incorrect.
 
-**Who:** Solo founder learning Latin via daily sessions.
-
-**Problems solved:**
-- Progress lost on every deploy/restart
-- No spaced repetition (can't track which sentences are due)
-- Gamification stats reset constantly
-
-**Measurable benefit:** Uninterrupted learning continuity.
+---
 
 ## Requirements
 
 ### Functional
-
-1. **User progress persists** - streak, XP survive restarts
-2. **Sentence review state persists** - per-sentence SRS data (bucket, nextReviewAt)
-3. **Due reviews queryable** - get sentences where nextReviewAt <= now
-4. **Content from Convex** - sentences table as primary source
+1. Replace bucket algorithm with FSRS scheduling
+2. Map grading outcomes to FSRS ratings: INCORRECT→Again, PARTIAL→Hard, CORRECT→Good
+3. Query due reviews by scheduled date
 
 ### Non-Functional
-
-- **Latency:** < 100ms (Convex default)
-- **Consistency:** User sees own writes immediately
-- **Integrity:** No orphaned records, no duplicates
-
-## Architecture Decision
-
-### Selected Approach: Minimal Persistence
-
-Persist **two tables only**: `userProgress` and `sentenceReviews`. No attempt history (defer to Phase 3 when analytics needed). Sessions stay ephemeral.
-
-**Rationale:**
-- Simplest path to core value (learning continuity)
-- Attempt history has no user-facing benefit yet
-- Matches Jobs principle: "What's the MINIMUM to make user trust the app remembers them?"
-
-### Schema Design (Simplified)
-
-```typescript
-// convex/schema.ts
-
-// Existing - keep as-is
-sentences: defineTable({
-  sentenceId: v.string(),
-  latin: v.string(),
-  referenceTranslation: v.string(),
-  difficulty: v.number(),
-  order: v.number(),
-})
-  .index("by_sentence_id", ["sentenceId"])
-  .index("by_difficulty", ["difficulty"]),
-
-// User-level stats
-userProgress: defineTable({
-  userId: v.string(),              // Clerk subject
-  streak: v.number(),              // Consecutive days
-  totalXp: v.number(),             // Gamification
-  maxDifficulty: v.number(),       // Content gating (replaces "unlockedPhase")
-  lastSessionAt: v.number(),       // Unix ms - for streak calculation
-})
-  .index("by_user", ["userId"]),
-
-// Per-sentence SRS state (simple buckets, not SM-2)
-sentenceReviews: defineTable({
-  userId: v.string(),
-  sentenceId: v.string(),
-  bucket: v.number(),              // 0-4: intervals [1, 3, 7, 14, 30] days
-  nextReviewAt: v.number(),        // Unix ms - when due
-  lastReviewedAt: v.number(),      // Unix ms
-  timesCorrect: v.number(),
-  timesIncorrect: v.number(),
-})
-  .index("by_user_due", ["userId", "nextReviewAt"])
-  .index("by_user_sentence", ["userId", "sentenceId"]),
-```
-
-### SRS Algorithm (Simple Buckets)
-
-```typescript
-const BUCKET_INTERVALS = [1, 3, 7, 14, 30]; // Days
-const MAX_BUCKET = BUCKET_INTERVALS.length - 1;
-
-function updateReview(review: SentenceReview, result: GradingResult): SentenceReview {
-  const correct = result.status === 'CORRECT';
-  const partial = result.status === 'PARTIAL';
-  
-  // CORRECT: advance bucket, PARTIAL: stay, INCORRECT: drop
-  const newBucket = correct
-    ? Math.min(review.bucket + 1, MAX_BUCKET)
-    : partial
-      ? review.bucket
-      : Math.max(review.bucket - 1, 0);
-  
-  const intervalDays = BUCKET_INTERVALS[newBucket];
-  const nextReviewAt = Date.now() + intervalDays * 24 * 60 * 60 * 1000;
-
-  return {
-    ...review,
-    bucket: newBucket,
-    nextReviewAt,
-    lastReviewedAt: Date.now(),
-    timesCorrect: review.timesCorrect + (correct ? 1 : 0),
-    timesIncorrect: review.timesIncorrect + (result.status === 'INCORRECT' ? 1 : 0),
-  };
-}
-```
-
-**Why buckets over SM-2:**
-- Ships in days, not weeks
-- User can't tell the difference
-- Backlog already plans FSRS upgrade (Phase 3)
-
-### DataAdapter Interface (Deep Module)
-
-```typescript
-// lib/data/types.ts
-
-export interface ReviewSentence extends Sentence {
-  reviewCount: number;  // timesCorrect + timesIncorrect
-}
-
-export interface ReviewStats {
-  dueCount: number;
-  totalReviewed: number;
-  masteredCount: number;  // bucket >= 4
-}
-
-export interface DataAdapter {
-  // Existing methods (unchanged)
-  getUserProgress(userId: string): Promise<UserProgress | null>;
-  upsertUserProgress(progress: UserProgress): Promise<void>;
-  getContent(): Promise<ContentSeed>;
-  createSession(userId: string, items: Session['items']): Promise<Session>;
-  getSession(sessionId: string, userId: string): Promise<Session | null>;
-  advanceSession(params: AdvanceSessionParams): Promise<Session>;
-  recordAttempt(attempt: Attempt): Promise<void>;  // Kept for session flow, but not persisted
-
-  // NEW: Spaced repetition
-  getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]>;
-  getReviewStats(userId: string): Promise<ReviewStats>;
-  recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
-}
-```
-
-**Key design decisions:**
-- `recordReview` takes `GradingResult`, not opaque quality number
-- `getDueReviews` returns `ReviewSentence` (hides bucket/interval internals)
-- `getReviewStats` for dashboard (avoid overfetching)
-- `recordAttempt` stays for session flow but ConvexAdapter can no-op it
-
-## Data Integrity Requirements
-
-### P0: Must Have Before Launch
-
-1. **Unique constraint enforcement** (userId + sentenceId)
-   ```typescript
-   // In recordReview mutation
-   const existing = await ctx.db
-     .query("sentenceReviews")
-     .withIndex("by_user_sentence", q => q.eq("userId", userId).eq("sentenceId", sentenceId))
-     .unique();
-   
-   if (existing) {
-     await ctx.db.patch(existing._id, updates);
-   } else {
-     await ctx.db.insert("sentenceReviews", newReview);
-   }
-   ```
-
-2. **Foreign key validation** (sentenceId exists)
-   ```typescript
-   const sentence = await ctx.db
-     .query("sentences")
-     .withIndex("by_sentence_id", q => q.eq("sentenceId", sentenceId))
-     .first();
-   
-   if (!sentence) {
-     throw new ConvexError(`Sentence ${sentenceId} not found`);
-   }
-   ```
-
-3. **GDPR deletion** - User data erasure on account deletion
-   ```typescript
-   // convex/users.ts
-   export const deleteUserData = mutation({
-     args: { userId: v.string() },
-     handler: async (ctx, { userId }) => {
-       // Delete sentenceReviews
-       const reviews = await ctx.db
-         .query("sentenceReviews")
-         .withIndex("by_user_sentence", q => q.eq("userId", userId))
-         .collect();
-       for (const r of reviews) await ctx.db.delete(r._id);
-       
-       // Delete userProgress
-       const progress = await ctx.db
-         .query("userProgress")
-         .withIndex("by_user", q => q.eq("userId", userId))
-         .first();
-       if (progress) await ctx.db.delete(progress._id);
-     }
-   });
-   ```
-
-4. **Timestamp consistency** - All timestamps as Unix ms (numbers), never ISO strings
-
-### P1: Should Have
-
-5. **Admin domain check** - `@mistystep.io` (not .com)
-6. **Bucket overflow cap** - Max 30 days, never exceeds
-
-## Implementation Phases
-
-### Phase 1: Core Persistence (MVP)
-
-1. Add Convex auth.config.js for Clerk
-2. Extend schema.ts with userProgress, sentenceReviews
-3. Implement Convex functions with integrity checks
-4. Create ConvexAdapter implementing DataAdapter
-5. Swap createDataAdapter() to return ConvexAdapter
-6. Add GDPR deletion endpoint
-
-**Acceptance:** User progress persists across deploys. No orphans, no duplicates.
-
-### Phase 2: Dashboard Integration
-
-1. Show due reviews count on dashboard
-2. Pull due reviews for session creation
-3. Call recordReview after grading
-4. Streak calculation (lastSessionAt comparison)
-
-**Acceptance:** Sentences resurface at correct intervals.
-
-### Phase 3: Analytics & FSRS (Future)
-
-1. Add attempts table for history
-2. Upgrade to FSRS algorithm (ts-fsrs)
-3. Analytics dashboard
+- No user-facing changes (grading UI unchanged)
+- Sub-100ms scheduling calculations (FSRS is O(1))
 
 ---
 
-## Files to Create/Modify
+## Architecture
+
+### Selected Approach: Thin Wrapper
+
+Minimal abstraction over ts-fsrs. The library is well-designed; we don't need to hide it.
 
 ```
-convex/
-  auth.config.js         # NEW: Clerk integration
-  schema.ts              # MODIFY: Add 2 tables
-  userProgress.ts        # NEW: get, upsert
-  reviews.ts             # NEW: getDue, record, stats
-  users.ts               # NEW: GDPR deletion
+gradeTranslation() → GradingResult
+                          ↓
+              mapGradeToRating(status)
+                          ↓
+                 fsrs.repeat(card, now)
+                          ↓
+              schedulingCards[rating].card
+                          ↓
+                 Convex mutation (persist)
+```
+
+### Rating Mapping
+
+```typescript
+function mapGradeToRating(status: GradeStatus): Rating {
+  switch (status) {
+    case GradeStatus.INCORRECT: return Rating.Again;  // Forgot → relearn
+    case GradeStatus.PARTIAL:   return Rating.Hard;   // Struggled → slow advance
+    case GradeStatus.CORRECT:   return Rating.Good;   // Recalled → normal advance
+  }
+}
+```
+
+We never use `Rating.Easy` — quiz-based grading has no "effortless recall" signal.
+
+---
+
+## Schema Migration
+
+### Current Schema
+```typescript
+sentenceReviews: {
+  userId, sentenceId,
+  bucket: number,           // 0-4
+  nextReviewAt: number,     // Unix ms
+  lastReviewedAt: number,
+  timesCorrect: number,
+  timesIncorrect: number,
+}
+```
+
+### New Schema
+```typescript
+sentenceReviews: {
+  userId, sentenceId,
+
+  // FSRS card state (stored directly, no conversion layer)
+  state: "new" | "learning" | "review" | "relearning",
+  stability: number,        // Memory stability (days)
+  difficulty: number,       // Card difficulty (0-1)
+  elapsedDays: number,      // Days since last review
+  scheduledDays: number,    // Days until next review
+  reps: number,             // Total review count
+  lapses: number,           // Times forgotten (Again count)
+  lastReview: number,       // Unix ms (optional for new cards)
+
+  // Indexed for due queries
+  nextReviewAt: number,     // Unix ms
+}
+```
+
+### Migration Strategy
+
+**True fresh start**: Reset all existing reviews to `state = "new"`. Users have few reviews currently; clean slate is simpler than approximating FSRS state from bucket history.
+
+---
+
+## Implementation
+
+### Files to Change
+
+```
+lib/srs/
+  fsrs.ts              # NEW: ts-fsrs wrapper (rating map only)
 
 lib/data/
-  types.ts               # MODIFY: Add ReviewSentence, ReviewStats, new methods
-  convexAdapter.ts       # NEW: DataAdapter implementation
-  adapter.ts             # MODIFY: Factory returns ConvexAdapter
+  srs.ts               # DELETE: old bucket algorithm
+  convexAdapter.ts     # UPDATE: use fsrs.ts
+
+convex/
+  schema.ts            # UPDATE: new sentenceReviews fields
+  reviews.ts           # UPDATE: mutations for new schema
 ```
 
-## Key Decisions
+### Core Module: `lib/srs/fsrs.ts`
 
-| Decision | Why |
-|----------|-----|
-| No attempts table (Phase 1) | No user benefit yet; adds complexity |
-| Buckets over SM-2 | Ships faster; FSRS planned for Phase 3 anyway |
-| `GradingResult` not `quality: number` | Type-safe; hides algorithm internals |
-| `ReviewSentence` not `SentenceReview` | Deep module; callers don't see bucket/interval |
-| Unix ms timestamps everywhere | Consistency; easy comparison |
-| GDPR deletion from Day 1 | Legal requirement; easy to add now |
+```typescript
+import { fsrs, createEmptyCard, Rating, type Card } from 'ts-fsrs';
+import { GradeStatus } from '@/types';
+
+// 90% retention target - FSRS default, tune after collecting user data
+const RETENTION_TARGET = 0.90;
+const f = fsrs({ requestRetention: RETENTION_TARGET });
+
+export { Rating, type Card, createEmptyCard };
+
+export function mapGradeToRating(status: GradeStatus): Rating {
+  switch (status) {
+    case GradeStatus.INCORRECT: return Rating.Again;
+    case GradeStatus.PARTIAL:   return Rating.Hard;
+    case GradeStatus.CORRECT:   return Rating.Good;
+  }
+}
+
+export function scheduleReview(card: Card | null, status: GradeStatus, now = new Date()): Card {
+  const currentCard = card ?? createEmptyCard(now);
+  const rating = mapGradeToRating(status);
+  const scheduling = f.repeat(currentCard, now);
+  return scheduling[rating].card;
+}
+```
+
+---
+
+## Test Scenarios
+
+### Unit Tests (`lib/srs/__tests__/fsrs.test.ts`)
+- [ ] CORRECT → Good rating, stability increases
+- [ ] PARTIAL → Hard rating, stability increases slowly
+- [ ] INCORRECT → Again rating, card enters relearning
+- [ ] New card starts in Learning state
+- [ ] Card graduates to Review after learning steps
+
+### Integration Tests
+- [ ] Full flow: grade → schedule → persist → query due
+- [ ] Stats: dueCount calculations still work
+
+---
+
+## Acceptance Criteria
+
+1. `pnpm test` passes with new FSRS tests
+2. Review intervals grow with correct answers
+3. Review intervals shrink/reset with incorrect answers
+4. Dashboard stats (due count) still work
