@@ -25,26 +25,30 @@ const FALLBACK_CONTENT: ContentSeed = {
 // State enum ↔ string helpers for Convex persistence
 type StateString = 'new' | 'learning' | 'review' | 'relearning';
 
+const stateToStringMap: Record<State, StateString> = {
+  [State.New]: 'new',
+  [State.Learning]: 'learning',
+  [State.Review]: 'review',
+  [State.Relearning]: 'relearning',
+};
+
 function stateToString(state: State): StateString {
-  switch (state) {
-    case State.New: return 'new';
-    case State.Learning: return 'learning';
-    case State.Review: return 'review';
-    case State.Relearning: return 'relearning';
-  }
+  return stateToStringMap[state];
 }
+
+const stringToStateMap: Record<StateString, State> = {
+  new: State.New,
+  learning: State.Learning,
+  review: State.Review,
+  relearning: State.Relearning,
+};
 
 function parseState(s: StateString): State {
-  switch (s) {
-    case 'new': return State.New;
-    case 'learning': return State.Learning;
-    case 'review': return State.Review;
-    case 'relearning': return State.Relearning;
-  }
+  return stringToStateMap[s];
 }
 
-// Reconstruct ts-fsrs Card from database fields
-function reconstructCard(doc: {
+// FSRS review document type from database
+type FsrsReviewDoc = {
   state: StateString;
   stability: number;
   difficulty: number;
@@ -55,7 +59,10 @@ function reconstructCard(doc: {
   lapses: number;
   lastReview?: number;
   nextReviewAt: number;
-}): Card {
+};
+
+// Reconstruct ts-fsrs Card from database fields
+function reconstructCard(doc: FsrsReviewDoc): Card {
   return {
     state: parseState(doc.state),
     stability: doc.stability,

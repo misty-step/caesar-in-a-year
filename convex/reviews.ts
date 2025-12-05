@@ -76,7 +76,7 @@ export const getDue = query({
         id: sentence.sentenceId,
         latin: sentence.latin,
         referenceTranslation: sentence.referenceTranslation,
-        reviewCount: review.reps,
+        reviewCount: review.reps ?? 0,
       });
     }
 
@@ -108,7 +108,9 @@ export const getStats = query({
       .collect();
 
     const totalReviewed = allReviews.length;
-    const masteredCount = allReviews.filter((r) => r.stability >= MASTERED_STABILITY_THRESHOLD).length;
+    const masteredCount = allReviews.filter((r) =>
+      r.state === "review" && r.stability >= MASTERED_STABILITY_THRESHOLD
+    ).length;
 
     return { dueCount, totalReviewed, masteredCount };
   },
