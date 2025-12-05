@@ -2,7 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 
 const DEFAULT_LIMIT = 10;
-const MASTERED_BUCKET = 4;
+// Stability threshold for "mastered" — ~21 days = ~3 weeks retention
+const MASTERED_STABILITY_THRESHOLD = 21;
 
 function assertAuthenticated(identity: { subject: string } | null, userId: string) {
   if (!identity) {
@@ -75,7 +76,7 @@ export const getDue = query({
         id: sentence.sentenceId,
         latin: sentence.latin,
         referenceTranslation: sentence.referenceTranslation,
-        reviewCount: review.timesCorrect + review.timesIncorrect,
+        reviewCount: review.reps ?? 0,
       });
     }
 
@@ -107,7 +108,9 @@ export const getStats = query({
       .collect();
 
     const totalReviewed = allReviews.length;
-    const masteredCount = allReviews.filter((r) => r.bucket >= MASTERED_BUCKET).length;
+    const masteredCount = allReviews.filter((r) =>
+      r.state === "review" && r.stability >= MASTERED_STABILITY_THRESHOLD
+    ).length;
 
     return { dueCount, totalReviewed, masteredCount };
   },
@@ -117,19 +120,26 @@ export const record = mutation({
   args: {
     userId: v.string(),
     sentenceId: v.string(),
-    bucket: v.number(),
+    // FSRS card state
+    state: v.union(
+      v.literal("new"),
+      v.literal("learning"),
+      v.literal("review"),
+      v.literal("relearning")
+    ),
+    stability: v.number(),
+    difficulty: v.number(),
+    elapsedDays: v.number(),
+    scheduledDays: v.number(),
+    learningSteps: v.number(),
+    reps: v.number(),
+    lapses: v.number(),
+    lastReview: v.optional(v.number()),
     nextReviewAt: v.number(),
-    lastReviewedAt: v.number(),
-    timesCorrect: v.number(),
-    timesIncorrect: v.number(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     assertAuthenticated(identity, args.userId);
-
-    if (args.bucket < 0 || args.bucket > MASTERED_BUCKET) {
-      throw new ConvexError("Bucket must be between 0 and 4");
-    }
 
     const sentence = await ctx.db
       .query("sentences")
@@ -147,25 +157,28 @@ export const record = mutation({
       )
       .unique();
 
+    const reviewData = {
+      state: args.state,
+      stability: args.stability,
+      difficulty: args.difficulty,
+      elapsedDays: args.elapsedDays,
+      scheduledDays: args.scheduledDays,
+      learningSteps: args.learningSteps,
+      reps: args.reps,
+      lapses: args.lapses,
+      lastReview: args.lastReview,
+      nextReviewAt: args.nextReviewAt,
+    };
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        bucket: args.bucket,
-        nextReviewAt: args.nextReviewAt,
-        lastReviewedAt: args.lastReviewedAt,
-        timesCorrect: args.timesCorrect,
-        timesIncorrect: args.timesIncorrect,
-      });
+      await ctx.db.patch(existing._id, reviewData);
       return;
     }
 
     await ctx.db.insert("sentenceReviews", {
       userId: args.userId,
       sentenceId: args.sentenceId,
-      bucket: args.bucket,
-      nextReviewAt: args.nextReviewAt,
-      lastReviewedAt: args.lastReviewedAt,
-      timesCorrect: args.timesCorrect,
-      timesIncorrect: args.timesIncorrect,
+      ...reviewData,
     });
   },
 });

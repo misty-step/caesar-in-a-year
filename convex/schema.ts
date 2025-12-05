@@ -23,15 +23,29 @@ export default defineSchema({
     lastSessionAt: v.number(), // Unix ms - for streak calculation
   }).index("by_user", ["userId"]),
 
-  // Per-sentence SRS state (simple bucket intervals)
+  // Per-sentence SRS state (FSRS algorithm)
   sentenceReviews: defineTable({
     userId: v.string(),
     sentenceId: v.string(),
-    bucket: v.number(), // 0-4 mapping to [1, 3, 7, 14, 30] day intervals
-    nextReviewAt: v.number(), // Unix ms - when due
-    lastReviewedAt: v.number(), // Unix ms
-    timesCorrect: v.number(),
-    timesIncorrect: v.number(),
+
+    // FSRS card state
+    state: v.union(
+      v.literal("new"),
+      v.literal("learning"),
+      v.literal("review"),
+      v.literal("relearning")
+    ),
+    stability: v.number(), // Days until 90% forgetting
+    difficulty: v.number(), // 1-10 scale
+    elapsedDays: v.number(), // Days since last review
+    scheduledDays: v.number(), // Days until next review
+    learningSteps: v.number(), // Current step in learning phase
+    reps: v.number(), // Total review count
+    lapses: v.number(), // Times forgotten (Again count)
+    lastReview: v.optional(v.number()), // Unix ms, optional for new cards
+
+    // Indexed for due queries
+    nextReviewAt: v.number(), // Unix ms (from card.due)
   })
     .index("by_user_due", ["userId", "nextReviewAt"])
     .index("by_user_sentence", ["userId", "sentenceId"]),

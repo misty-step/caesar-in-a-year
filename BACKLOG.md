@@ -566,3 +566,64 @@ Docstring coverage is 77.78%, below 80% threshold.
 - `scripts/corpus/sources.py`
 
 **From:** coderabbitai pre-merge checks
+
+## Code Quality & Optimization
+
+### Centralize MASTERED_STABILITY_THRESHOLD Config
+**Priority: Low | Effort: Small (15min)**
+
+Create shared config module for FSRS constants used across layers.
+
+**Problem:** `MASTERED_STABILITY_THRESHOLD = 21` is defined in `convex/reviews.ts` but conceptually belongs with FSRS logic. Could drift if values need adjustment.
+
+**Action:**
+- Create `lib/srs/config.ts` with FSRS configuration constants
+- Export `MASTERED_STABILITY_THRESHOLD`, `RETENTION_TARGET`, etc.
+- Import in both `convex/reviews.ts` and `lib/srs/fsrs.ts`
+
+**From:** CodeRabbit PR #3 review (convex/reviews.ts:5-6)
+
+### Optimize Stats Queries with Incremental Counters
+**Priority: Low | Effort: Medium (2-3hr)**
+
+Replace O(N) `.collect()` calls in `getStats` with incremental counters.
+
+**Problem:** Current `getStats` query fetches all user reviews with `.collect()` to count mastered cards. Scales linearly with review count.
+
+**Action:**
+- Add `masteredCount` field to `userProgress` table
+- Increment/decrement counter in `record` mutation when card transitions to/from "review" state with stability >= 21
+- Update `getStats` to read counter instead of filtering all reviews
+- Add migration to backfill counters for existing users
+
+**From:** CodeRabbit PR #3 review (convex/reviews.ts:111)
+
+### Add Explicit FsrsReviewState Type
+**Priority: Low | Effort: Small (20min)**
+
+Create shared type for FSRS review data to improve type safety.
+
+**Problem:** `reviewData` object in `convex/reviews.ts:158-169` is untyped, making it easy to miss fields during refactoring.
+
+**Action:**
+- Extract `FsrsReviewState` type in `lib/srs/fsrs.ts` or create in `lib/data/types.ts`
+- Derive from `Doc<"sentenceReviews">` or define independently
+- Annotate `reviewData` variable with explicit type
+- Ensures field completeness at compile time
+
+**From:** CodeRabbit PR #3 review (convex/reviews.ts:121-135)
+
+### Improve TypeScript Docstring Coverage
+**Priority: Low | Effort: Medium (1hr)**
+
+Add JSDoc comments to increase docstring coverage from 42% to 80%.
+
+**Problem:** New FSRS module and adapter lack comprehensive documentation.
+
+**Action:** Add JSDoc comments to:
+- `lib/srs/fsrs.ts`: `mapGradeToRating`, `scheduleReview`
+- `lib/data/convexAdapter.ts`: `stateToString`, `parseState`, `reconstructCard`, `recordReview`
+- Explain FSRS algorithm concepts (stability, difficulty, states)
+- Document edge cases and assumptions
+
+**From:** CodeRabbit PR #3 pre-merge checks
