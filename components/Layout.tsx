@@ -1,5 +1,6 @@
 import React from 'react';
 import { LatinText } from './UI/LatinText';
+import { Footer } from './UI/Footer';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -26,14 +27,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {children}
         </div>
       </main>
-      <footer className="bg-roman-100 border-t border-roman-200 py-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-roman-500 text-sm">
-          <p>
-            &copy; {new Date().getFullYear()} Caesar in a Year. {' '}
-            <LatinText latin="Omnia iura reservata." english="All rights reserved." />
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
