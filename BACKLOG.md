@@ -324,7 +324,7 @@ lib/data/
 
 ---
 
-[~] ### Phase 3: FSRS Implementation
+[x] ### Phase 3: FSRS Implementation
 **Priority: HIGH | Effort: Low**
 
 Proper spaced repetition scheduling.
@@ -349,7 +349,7 @@ lib/session/
 
 ---
 
-### Phase 4: Content Selection Algorithm
+[~] ### Phase 4: Content Selection Algorithm
 **Priority: HIGH | Effort: Medium**
 
 Select appropriate content based on user level.
