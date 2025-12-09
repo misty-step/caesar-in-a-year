@@ -8,6 +8,7 @@ a structured corpus.json for the learning app.
 Usage:
     python scripts/process-corpus.py --book 1 --chapter 1
     python scripts/process-corpus.py --book 1 --chapter 1 --force-fetch
+    python scripts/process-corpus.py --all
     python scripts/process-corpus.py --validate-only content/corpus.json
 """
 
@@ -15,6 +16,7 @@ import argparse
 import logging
 import re
 import sys
+from collections import Counter
 
 from corpus.models import (
     Section,
@@ -229,7 +231,124 @@ def lemmatize_and_score(sentences: list[SegmentedSentence]) -> list[Sentence]:
 
 
 # =============================================================================
-# Main Pipeline
+# Full Corpus Generation
+# =============================================================================
+
+def process_chapter_sentences(
+    book: int, chapter: int, force_fetch: bool,
+    latin_source: PerseusSource, english_source: MITClassicsSource
+) -> list:
+    """
+    Process a single chapter and return scored sentences.
+    
+    Extracted from process_chapter() for reuse in process_all_books().
+    """
+    # Step 1: Fetch Latin
+    sections = latin_source.fetch(book, chapter, force_fetch)
+    
+    # Step 2: Fetch English with section distribution
+    english_texts = english_source.fetch_with_sections(
+        book, chapter, len(sections), force_fetch
+    )
+    
+    # Merge English into sections
+    for section, english in zip(sections, english_texts, strict=True):
+        section.english_text = english
+    
+    # Step 3: Segment Latin sentences
+    segmented = segment_latin(sections, book, chapter)
+    
+    # Step 4: Align translations
+    aligned = align_translations(segmented, english_texts)
+    
+    # Step 5: Score difficulty (but don't assign order yet)
+    scored = lemmatize_and_score(aligned)
+    
+    return scored
+
+
+def process_all_books(force_fetch: bool, output_path: str) -> int:
+    """
+    Process all 8 books of De Bello Gallico into a single corpus.
+    
+    Chapter counts are discovered dynamically from Perseus CTS API.
+    Global order is assigned sequentially across all sentences.
+    """
+    log.info("Starting full corpus generation for De Bello Gallico")
+    
+    latin_source = PerseusSource()
+    english_source = MITClassicsSource()
+    
+    all_sentences = []
+    failed_chapters = []
+    difficulty_counts = Counter()
+    
+    for book in range(1, 9):
+        try:
+            chapter_count = latin_source.get_chapter_count(book, force_fetch)
+            log.info(f"Book {book}: {chapter_count} chapters")
+        except Exception as e:
+            log.error(f"Failed to discover chapters for Book {book}: {e}")
+            failed_chapters.append((book, 0, str(e)))
+            continue
+        
+        for chapter in range(1, chapter_count + 1):
+            try:
+                log.info(f"Processing Book {book}, Chapter {chapter}...")
+                sentences = process_chapter_sentences(
+                    book, chapter, force_fetch,
+                    latin_source, english_source
+                )
+                all_sentences.extend(sentences)
+                log.info(f"  → {len(sentences)} sentences")
+                
+            except Exception as e:
+                log.error(f"Failed Book {book} Ch {chapter}: {e}")
+                failed_chapters.append((book, chapter, str(e)))
+                # Continue to next chapter, don't abort entire run
+    
+    if not all_sentences:
+        log.error("No sentences processed - aborting")
+        return EXIT_PARSE_FAILED
+    
+    # Assign global sequential order
+    log.info("Assigning global order...")
+    for idx, sentence in enumerate(all_sentences, start=1):
+        sentence.order = idx
+        # Track difficulty distribution
+        bucket = (sentence.difficulty // 10) * 10
+        difficulty_counts[bucket] += 1
+    
+    # Validate no duplicate IDs
+    ids = [s.id for s in all_sentences]
+    if len(ids) != len(set(ids)):
+        log.error("Duplicate sentence IDs detected!")
+        return EXIT_VALIDATION_FAILED
+    
+    # Log difficulty distribution
+    log.info("Difficulty distribution:")
+    for bucket in sorted(difficulty_counts.keys()):
+        log.info(f"  {bucket}-{bucket+9}: {difficulty_counts[bucket]} sentences")
+    
+    # Export
+    log.info(f"Exporting {len(all_sentences)} sentences to {output_path}...")
+    export_corpus(all_sentences, output_path)
+    
+    # Summary
+    log.info("=" * 60)
+    log.info(f"COMPLETE: {len(all_sentences)} sentences exported")
+    log.info(f"Order range: 1 to {len(all_sentences)}")
+    
+    if failed_chapters:
+        log.warning(f"Failed chapters ({len(failed_chapters)}):")
+        for book, ch, err in failed_chapters:
+            log.warning(f"  Book {book} Ch {ch}: {err}")
+    
+    return EXIT_SUCCESS
+
+
+# =============================================================================
+# Main Pipeline (updated)
 # =============================================================================
 
 def process_chapter(book: int, chapter: int, force_fetch: bool, output_path: str) -> int:
@@ -305,6 +424,8 @@ def main():
 Examples:
   python scripts/process-corpus.py --book 1 --chapter 1
   python scripts/process-corpus.py --book 1 --chapter 1 --force-fetch
+  python scripts/process-corpus.py --all
+  python scripts/process-corpus.py --all --force-fetch
   python scripts/process-corpus.py --validate-only content/corpus.json
 
 Exit codes:
@@ -320,6 +441,10 @@ Exit codes:
     group.add_argument(
         '--book', type=int, choices=range(1, 9), metavar='N',
         help='DBG book number (1-8)'
+    )
+    group.add_argument(
+        '--all', action='store_true',
+        help='Process all 8 books into full corpus'
     )
     group.add_argument(
         '--validate-only', type=str, metavar='FILE',
@@ -349,6 +474,9 @@ Exit codes:
         except (ValidationError, FileNotFoundError) as e:
             log.error(f"Validation failed: {e}")
             return EXIT_VALIDATION_FAILED
+
+    if args.all:
+        return process_all_books(args.force_fetch, args.output)
 
     if args.book and not args.chapter:
         parser.error("--chapter is required when --book is specified")

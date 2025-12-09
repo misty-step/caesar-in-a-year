@@ -4,6 +4,7 @@ Source fetchers for corpus processing.
 Deep modules that hide URL patterns, caching, and parsing details.
 """
 
+import json
 import logging
 import re
 import time
@@ -57,6 +58,78 @@ class PerseusSource:
 
     def __init__(self, cache_dir: Path = CACHE_DIR):
         self.cache_dir = cache_dir
+        self._chapter_counts: dict[int, int] = {}
+
+    def get_chapter_count(self, book: int, force: bool = False) -> int:
+        """
+        Discover how many chapters exist in a book using CTS GetValidReff.
+        
+        Args:
+            book: Book number (1-8)
+            force: Bypass cache
+            
+        Returns:
+            Number of chapters in the book
+        """
+        # Check memory cache
+        if not force and book in self._chapter_counts:
+            return self._chapter_counts[book]
+        
+        # Check file cache
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = self.cache_dir / "chapter_counts.json"
+        
+        if not force and cache_path.exists():
+            try:
+                counts = json.loads(cache_path.read_text())
+                self._chapter_counts = {int(k): v for k, v in counts.items()}
+                if book in self._chapter_counts:
+                    return self._chapter_counts[book]
+            except (json.JSONDecodeError, KeyError):
+                pass
+        
+        # Query Perseus CTS API for valid references
+        urn = f"{self.URN_BASE}:{book}"
+        url = f"{self.CTS_URL}?request=GetValidReff&urn={urn}&level=2"
+        log.info(f"Discovering chapters for Book {book} from Perseus...")
+        
+        try:
+            xml = _http_get_with_retry(url)
+            chapters = self._parse_valid_reff(xml, book)
+            self._chapter_counts[book] = chapters
+            
+            # Persist to file cache
+            cache_path.write_text(json.dumps(self._chapter_counts))
+            log.info(f"Book {book}: {chapters} chapters discovered")
+            
+            return chapters
+        except FetchError as e:
+            raise FetchError(f"Failed to discover chapters for Book {book}: {e}") from e
+    
+    def _parse_valid_reff(self, xml: str, book: int) -> int:
+        """Parse GetValidReff response to count chapters."""
+        try:
+            soup = BeautifulSoup(xml, 'lxml-xml')
+        except Exception as e:
+            raise ParseError(f"Failed to parse CTS response: {e}") from e
+        
+        # GetValidReff returns <urn> elements with passage refs
+        # e.g., urn:cts:latinLit:phi0448.phi001.perseus-lat1:1.1
+        urns = soup.find_all('urn')
+        
+        chapters = set()
+        pattern = re.compile(rf'{book}\.(\d+)')
+        
+        for urn_elem in urns:
+            text = urn_elem.get_text(strip=True)
+            match = pattern.search(text)
+            if match:
+                chapters.add(int(match.group(1)))
+        
+        if not chapters:
+            raise ParseError(f"No chapters found for Book {book} in CTS response")
+        
+        return max(chapters)
 
     def fetch(self, book: int, chapter: int, force: bool = False) -> list[Section]:
         """
