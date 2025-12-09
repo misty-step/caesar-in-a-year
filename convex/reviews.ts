@@ -182,3 +182,18 @@ export const record = mutation({
     });
   },
 });
+
+export const getSentenceIds = query({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    assertAuthenticated(identity, userId);
+
+    const reviews = await ctx.db
+      .query("sentenceReviews")
+      .withIndex("by_user_sentence", (q) => q.eq("userId", userId))
+      .collect();
+
+    return reviews.map((r) => r.sentenceId);
+  },
+});

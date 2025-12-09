@@ -117,7 +117,7 @@ const memoryAdapter: DataAdapter = {
     progressStore.set(progress.userId, progress);
   },
 
-  async getContent(): Promise<ContentSeed> {
+  async getContent(_userId: string): Promise<ContentSeed> {
     return getMemoryContent();
   },
 

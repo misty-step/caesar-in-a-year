@@ -6,6 +6,7 @@ import {
   ContentSeed,
   DataAdapter,
   GradingResult,
+  ReadingPassage,
   ReviewSentence,
   ReviewStats,
   Sentence,
@@ -16,6 +17,8 @@ import {
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
+
+const DEFAULT_MAX_DIFFICULTY = 10;
 
 const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
@@ -77,17 +80,32 @@ function reconstructCard(doc: FsrsReviewDoc): Card {
   };
 }
 
-function mapSentence(doc: {
+type SentenceDoc = {
   sentenceId: string;
   latin: string;
   referenceTranslation: string;
   difficulty?: number;
-}): Sentence {
+};
+
+function mapSentence(doc: SentenceDoc): Sentence {
   return {
     id: doc.sentenceId,
     latin: doc.latin,
     referenceTranslation: doc.referenceTranslation,
     context: `Difficulty: ${doc.difficulty ?? 'unknown'}`,
+  };
+}
+
+function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
+  const first = sentences[0];
+  const parts = first.sentenceId.split('.');
+  return {
+    id: `reading-${first.sentenceId}`,
+    title: `De Bello Gallico ${parts.slice(1, 3).join('.')}`,
+    latinText: sentences.map((s) => s.latin),
+    glossary: {},
+    gistQuestion: 'Translate this passage into natural English.',
+    referenceGist: sentences.map((s) => s.referenceTranslation).join(' '),
   };
 }
 
@@ -135,17 +153,54 @@ export class ConvexAdapter implements DataAdapter {
     await fetchMutation(api.userProgress.upsert, progress, this.options);
   }
 
-  async getContent(): Promise<ContentSeed> {
+  async getContent(userId: string): Promise<ContentSeed> {
     try {
-      const sentences = await fetchQuery(api.sentences.getAll, {}, this.options);
-      if (!sentences || sentences.length === 0) {
-        return FALLBACK_CONTENT;
+      // 1. Get user progress (or default)
+      const progress = await this.getUserProgress(userId);
+      const maxDifficulty = progress?.maxDifficulty ?? DEFAULT_MAX_DIFFICULTY;
+
+      // 2. Get due reviews (FSRS-scheduled)
+      const dueReviews = await this.getDueReviews(userId, 5);
+
+      // 3. Get candidate sentences at/below difficulty
+      const candidates = await fetchQuery(
+        api.sentences.getByDifficulty,
+        { maxDifficulty },
+        this.options
+      );
+
+      if (!candidates || candidates.length === 0) {
+        return {
+          review: dueReviews.length > 0 ? dueReviews : FALLBACK_CONTENT.review,
+          reading: FALLBACK_CONTENT.reading,
+        };
       }
 
-      const mapped = sentences.map(mapSentence);
+      // 4. Get seen sentence IDs
+      const seenIds = new Set(
+        await fetchQuery(api.reviews.getSentenceIds, { userId }, this.options)
+      );
+
+      // 5. Filter unseen, sort by difficulty (easiest first), take 2
+      const unseen = candidates
+        .filter((s) => !seenIds.has(s.sentenceId))
+        .sort((a, b) => a.difficulty - b.difficulty)
+        .slice(0, 2);
+
+      // 6. Build response
+      const reviewContent = dueReviews.length > 0 ? dueReviews : candidates.slice(0, 3).map(mapSentence);
+
+      if (unseen.length > 0) {
+        return {
+          review: reviewContent,
+          reading: mapToReading(unseen),
+        };
+      }
+
+      // User has seen everything at their level
       return {
-        review: mapped.slice(0, 3),
-        reading: DAILY_READING,
+        review: reviewContent,
+        reading: FALLBACK_CONTENT.reading,
       };
     } catch {
       return FALLBACK_CONTENT;
@@ -156,7 +211,7 @@ export class ConvexAdapter implements DataAdapter {
     const now = new Date().toISOString();
     const id = `sess_${now}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const content = await this.getContent();
+    const content = await this.getContent(userId);
     const seededItems = items.length ? items : buildSessionItems(content);
 
     const session: Session = {

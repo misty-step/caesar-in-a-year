@@ -5,7 +5,9 @@ Contains dataclasses, frequency tables, scoring functions, and validation.
 """
 
 import json
+import math
 import re
+from collections import Counter
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -159,6 +161,118 @@ def tokenize_latin(text: str) -> list[str]:
     text = re.sub(r'[^\w\s]', ' ', text)
     words = text.lower().split()
     return [w for w in words if len(w) > 1 and not w.isdigit()]
+
+
+class FrequencyBuilder:
+    """Builds corpus-based word frequency table."""
+
+    def __init__(self):
+        self._counter: Counter[str] = Counter()
+
+    def add_text(self, latin_text: str) -> None:
+        """Accumulate word counts from Latin text."""
+        words = tokenize_latin(latin_text)
+        self._counter.update(words)
+
+    def build_ranks(self) -> dict[str, int]:
+        """Return word -> rank mapping (1 = most common)."""
+        return {
+            word: rank
+            for rank, (word, _) in enumerate(self._counter.most_common(), start=1)
+        }
+
+    def get_max_rank(self) -> int:
+        """Return total number of unique words."""
+        return len(self._counter)
+
+    def get_word_count(self) -> int:
+        """Return total word occurrences (for stats)."""
+        return sum(self._counter.values())
+
+
+def calculate_raw_difficulty(
+    latin_text: str,
+    freq_ranks: dict[str, int],
+    max_rank: int,
+) -> float:
+    """
+    Calculate raw difficulty score (0-1 range) for percentile-based ranking.
+
+    Formula: 60% vocab_rarity + 25% length_score + 15% hapax_ratio
+    """
+    words = tokenize_latin(latin_text)
+    if not words:
+        return 0.5
+
+    # Vocabulary component (60%) - sqrt-scaled for better spread
+    ranks = [freq_ranks.get(w, max_rank) for w in words]
+    avg_rank = sum(ranks) / len(ranks)
+    vocab_score = math.sqrt(avg_rank) / math.sqrt(max_rank)
+
+    # Length component (25%) - 3 words = easy, 50 words = hard
+    length_score = min(1.0, max(0, (len(words) - 3) / 47))
+
+    # Hapax penalty (15%) - proportion of rare words (bottom 50% of frequency)
+    rare_threshold = max_rank * 0.5
+    hapax_count = sum(1 for w in words if freq_ranks.get(w, max_rank) > rare_threshold)
+    hapax_score = hapax_count / len(words)
+
+    return 0.60 * vocab_score + 0.25 * length_score + 0.15 * hapax_score
+
+
+def calculate_difficulty(
+    latin_text: str,
+    freq_ranks: dict[str, int],
+    max_rank: int,
+) -> int:
+    """
+    Calculate sentence difficulty on 1-100 scale.
+
+    Uses raw score converted to 1-100 range.
+    For percentile-based scaling, use assign_percentile_difficulties() instead.
+    """
+    raw = calculate_raw_difficulty(latin_text, freq_ranks, max_rank)
+    return max(1, min(100, int(1 + 99 * raw)))
+
+
+def assign_percentile_difficulties(raw_scores: list[float]) -> list[int]:
+    """
+    Convert raw scores to 1-100 difficulty using percentile ranking.
+
+    Guarantees full range usage: easiest sentence = 1, hardest = 100.
+    """
+    if not raw_scores:
+        return []
+
+    n = len(raw_scores)
+    # Create (index, score) pairs and sort by score
+    indexed = sorted(enumerate(raw_scores), key=lambda x: x[1])
+
+    # Assign difficulty based on percentile rank
+    difficulties = [0] * n
+    for rank, (orig_idx, _) in enumerate(indexed):
+        # rank 0 = easiest → difficulty 1
+        # rank n-1 = hardest → difficulty 100
+        percentile = rank / max(1, n - 1)
+        difficulties[orig_idx] = max(1, min(100, int(1 + 99 * percentile)))
+
+    return difficulties
+
+
+def export_frequency_table(freq_ranks: dict[str, int], output_path: str) -> None:
+    """Export frequency table to JSON for single-chapter mode."""
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    temp_path = output.with_suffix('.json.tmp')
+    try:
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            json.dump(freq_ranks, f, indent=2, ensure_ascii=False)
+        temp_path.rename(output)
+    except Exception as e:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise ValidationError(f"Failed to write frequency table: {e}") from e
 
 
 # =============================================================================

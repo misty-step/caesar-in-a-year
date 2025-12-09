@@ -45,7 +45,7 @@ export default function NotFound() {
           <LatinText 
             latin="Errare humanum est." 
             english="To err is human."
-            interaction="hover"
+            interaction="tooltip"
           />
         </div>
       </div>

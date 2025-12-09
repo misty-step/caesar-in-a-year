@@ -12,6 +12,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import fs from "fs";
+import path from "path";
 import { z } from "zod";
 
 // Zod schema matching Python output
@@ -122,14 +123,18 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
     process.exit(1);
   }
 
-  // 5. Connect to Convex and sync
-  console.log("\nSyncing to Convex...");
   const client = new ConvexHttpClient(convexUrl);
 
+  // 5. Create backup before sync
+  console.log("\nBacking up current corpus...");
+  await createBackup(client);
+
+  // 6. Connect to Convex and sync using safe syncCorpus mutation
+  console.log("\nSyncing to Convex...");
+
   try {
-    // Use string-based mutation call (works without generated types)
     const result = await client.mutation(
-      "sentences:replaceAll" as unknown as never,
+      "sentences:syncCorpus" as unknown as never,
       {
         sentences: sentences.map((s: Sentence) => ({
           sentenceId: s.id,
@@ -142,12 +147,58 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
       }
     );
 
+    const syncResult = result as {
+      synced: number;
+      updated: number;
+      inserted: number;
+      deleted: number;
+    };
     console.log(
-      `✓ Synced ${(result as { count: number }).count} sentences to Convex`
+      `✓ Synced ${syncResult.synced} sentences (${syncResult.updated} updated, ${syncResult.inserted} inserted, ${syncResult.deleted} deleted)`
     );
   } catch (e) {
-    console.error(`Error syncing to Convex: ${e}`);
+    const error = e as Error;
+    // Check for orphan error
+    if (error.message?.includes("Would orphan")) {
+      console.error(`\n❌ Sync blocked to protect user data:`);
+      console.error(`   ${error.message}`);
+      console.error(`\n   To fix: Ensure corpus contains all sentences that users have reviewed.`);
+    } else {
+      console.error(`Error syncing to Convex: ${e}`);
+    }
     process.exit(1);
+  }
+}
+
+async function createBackup(client: ConvexHttpClient): Promise<void> {
+  try {
+    // Fetch current sentences from Convex
+    const sentences = await client.query("sentences:getAll" as unknown as never);
+
+    if (!sentences || (sentences as unknown[]).length === 0) {
+      console.log("  No existing sentences to backup");
+      return;
+    }
+
+    // Ensure backups directory exists
+    const backupsDir = "backups";
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+
+    // Create timestamped backup file
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupPath = path.join(backupsDir, `corpus-${timestamp}.json`);
+
+    fs.writeFileSync(
+      backupPath,
+      JSON.stringify({ sentences, backed_up_at: new Date().toISOString() }, null, 2)
+    );
+
+    console.log(`✓ Backup created: ${backupPath} (${(sentences as unknown[]).length} sentences)`);
+  } catch (e) {
+    console.warn(`Warning: Could not create backup: ${e}`);
+    // Continue with sync even if backup fails
   }
 }
 
