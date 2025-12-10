@@ -46,3 +46,6 @@ venv/
 lefthook.yml
 tsconfig.tsbuildinfo
 content/raw/chapter_counts.json
+
+# Corpus sync backups
+backups/
