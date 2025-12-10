@@ -16,6 +16,7 @@ import {
   UserProgress,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
+import { generateSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
 
 const DEFAULT_MAX_DIFFICULTY = 10;
@@ -116,15 +117,27 @@ const DEFAULT_PROGRESS: Omit<UserProgress, 'userId'> = {
   lastSessionAt: 0,
 };
 
-// Module-scoped session store shared across all adapter instances
-// Keeps sessions ephemeral but reusable across requests in same process
-const sessionStore = new Map<string, Session>();
+// Structured logger for observability
+const logger = {
+  query: (name: string, args: Record<string, unknown>) => {
+    console.log(`[Convex:Query] ${name}`, JSON.stringify(args));
+  },
+  mutation: (name: string, args: Record<string, unknown>) => {
+    console.log(`[Convex:Mutation] ${name}`, JSON.stringify(args));
+  },
+  error: (op: string, error: unknown) => {
+    console.error(`[Convex:Error] ${op}`, error);
+  },
+  warn: (op: string, message: string) => {
+    console.warn(`[Convex:Warn] ${op}`, message);
+  },
+};
 
 /**
  * Convex-backed DataAdapter for server-side persistence.
  *
  * Uses fetchQuery/fetchMutation from convex/nextjs for imperative calls.
- * Sessions remain ephemeral (in-memory) per DESIGN.md.
+ * Sessions are persisted in Convex to survive across server processes.
  *
  * Requires auth token for authenticated Convex functions.
  */
@@ -209,28 +222,70 @@ export class ConvexAdapter implements DataAdapter {
 
   async createSession(userId: string, items: SessionItem[]): Promise<Session> {
     const now = new Date().toISOString();
-    const id = `sess_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const sessionId = generateSessionId();
 
     const content = await this.getContent(userId);
     const seededItems = items.length ? items : buildSessionItems(content);
 
-    const session: Session = {
-      id,
+    logger.mutation('sessions.create', { sessionId, userId: userId.slice(0, 8) + '...', itemCount: seededItems.length });
+
+    await fetchMutation(
+      api.sessions.create,
+      {
+        sessionId,
+        userId,
+        items: seededItems,
+        currentIndex: 0,
+        status: 'active' as const,
+        startedAt: now,
+      },
+      this.options
+    );
+
+    console.log(`[Session:Created] ${sessionId}`);
+
+    return {
+      id: sessionId,
       userId,
       items: seededItems,
       currentIndex: 0,
       status: 'active',
       startedAt: now,
     };
-
-    sessionStore.set(id, session);
-    return session;
   }
 
   async getSession(sessionId: string, userId: string): Promise<Session | null> {
-    const session = sessionStore.get(sessionId);
-    if (!session || session.userId !== userId) return null;
-    return session;
+    logger.query('sessions.get', { sessionId, userId: userId.slice(0, 8) + '...' });
+
+    const result = await fetchQuery(
+      api.sessions.get,
+      { sessionId, userId },
+      this.options
+    );
+
+    // Handle error responses from Convex
+    if (result.error) {
+      logger.error('sessions.get', `${result.error} for session ${sessionId}`);
+      if (result.error === 'AUTH_REQUIRED') {
+        throw new Error('Authentication required for session access');
+      }
+      return null;
+    }
+
+    if (!result.session) {
+      logger.warn('sessions.get', `No session returned for ${sessionId}`);
+      return null;
+    }
+
+    return {
+      id: result.session.sessionId,
+      userId: result.session.userId,
+      items: result.session.items as SessionItem[],
+      currentIndex: result.session.currentIndex,
+      status: result.session.status,
+      startedAt: result.session.startedAt,
+      completedAt: result.session.completedAt,
+    };
   }
 
   async advanceSession(params: {
@@ -239,28 +294,35 @@ export class ConvexAdapter implements DataAdapter {
     nextIndex: number;
     status: SessionStatus;
   }): Promise<Session> {
-    const session = sessionStore.get(params.sessionId);
-    if (!session || session.userId !== params.userId) {
+    const session = await this.getSession(params.sessionId, params.userId);
+    if (!session) {
       throw new Error('Session not found');
     }
 
     const nextIndex = Math.max(session.currentIndex, params.nextIndex);
-    const base: Session = {
+    const completedAt =
+      params.status === 'complete'
+        ? session.completedAt ?? new Date().toISOString()
+        : undefined;
+
+    await fetchMutation(
+      api.sessions.advance,
+      {
+        sessionId: params.sessionId,
+        userId: params.userId,
+        currentIndex: nextIndex,
+        status: params.status,
+        completedAt,
+      },
+      this.options
+    );
+
+    return {
       ...session,
       currentIndex: nextIndex,
       status: params.status,
+      completedAt,
     };
-
-    const finalized =
-      params.status === 'complete'
-        ? {
-            ...base,
-            completedAt: base.completedAt ?? new Date().toISOString(),
-          }
-        : base;
-
-    sessionStore.set(finalized.id, finalized);
-    return finalized;
   }
 
   // Phase 1: attempts not persisted

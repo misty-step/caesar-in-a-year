@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { notFound } from 'next/navigation';
 
 import { createDataAdapter } from '@/lib/data/adapter';
+import { normalizeSessionId } from '@/lib/session/id';
 import { SessionClient } from '@/components/Session/SessionClient';
 
 export const dynamic = 'force-dynamic';
@@ -18,12 +19,27 @@ export default async function SessionPage(props: SessionPageProps) {
     throw new Error('Unauthorized');
   }
 
-  const { sessionId } = await props.params;
+  const { sessionId: rawSessionId } = await props.params;
+  const sessionId = normalizeSessionId(rawSessionId);
   const token = await getToken({ template: 'convex' });
+
+  console.log(`[SessionPage] Loading session ${sessionId}, token: ${token ? 'present' : 'MISSING'}`);
+
   const data = createDataAdapter(token ?? undefined);
-  const session = await data.getSession(sessionId, userId);
+  let session = await data.getSession(sessionId, userId);
+
+  // Retry once with fresh token if session not found (token may have been stale)
+  if (!session && token) {
+    console.warn(`[SessionPage] Session ${sessionId} not found, retrying with fresh token`);
+    const freshToken = await getToken({ template: 'convex' });
+    if (freshToken) {
+      const freshData = createDataAdapter(freshToken);
+      session = await freshData.getSession(sessionId, userId);
+    }
+  }
 
   if (!session) {
+    console.error(`[SessionPage] Session ${sessionId} not found after retry`);
     notFound();
   }
 

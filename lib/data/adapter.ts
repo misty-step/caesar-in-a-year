@@ -11,6 +11,7 @@ import type {
   ReviewStats,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
+import { generateSessionId } from '@/lib/session/id';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ConvexAdapter } from './convexAdapter';
@@ -22,10 +23,20 @@ export type { DataAdapter } from './types';
  * Factory to create the appropriate DataAdapter.
  *
  * @param token - Auth token for Convex (from Clerk). If provided, uses ConvexAdapter.
- *                If not provided, falls back to in-memory adapter.
+ *                If not provided, falls back to in-memory adapter (dev only).
  */
 export function createDataAdapter(token?: string): DataAdapter {
-  if (token) return new ConvexAdapter(token);
+  // In production, always require Convex token
+  if (!token && process.env.NODE_ENV === 'production') {
+    throw new Error('[DataAdapter] Convex token required in production');
+  }
+
+  if (token) {
+    console.log('[DataAdapter] Using ConvexAdapter');
+    return new ConvexAdapter(token);
+  }
+
+  console.warn('[DataAdapter] No token provided, falling back to memoryAdapter');
   return memoryAdapter;
 }
 
@@ -123,7 +134,7 @@ const memoryAdapter: DataAdapter = {
 
   async createSession(userId: string, items: Session['items']): Promise<Session> {
     const now = new Date().toISOString();
-    const id = `sess_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = generateSessionId();
 
     const content = await getMemoryContent();
     const seededItems = items.length ? items : buildSessionItems(content);

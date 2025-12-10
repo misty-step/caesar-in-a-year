@@ -2,6 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { createDataAdapter } from '@/lib/data/adapter';
+import { normalizeSessionId } from '@/lib/session/id';
 import { gradeTranslation } from '@/lib/ai/gradeTranslation';
 import { advanceSession } from '@/lib/session/advance';
 import type { GradingResult } from '@/types';
@@ -37,7 +38,8 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
  * Core grading + session-advance flow, shared by server actions and API routes.
  */
 export async function submitReviewForUser(params: SubmitReviewInput & { userId: string; token?: string }): Promise<SubmitReviewResult> {
-  const { userId, sessionId, itemIndex, userInput, token } = params;
+  const { userId, itemIndex, userInput, token } = params;
+  const sessionId = normalizeSessionId(params.sessionId);
 
   const data = createDataAdapter(token);
   const session = await data.getSession(sessionId, userId);
@@ -103,7 +105,8 @@ export async function advanceSessionForUser(params: {
   sessionId: string;
   token?: string;
 }): Promise<AdvanceSessionResult> {
-  const { userId, sessionId, token } = params;
+  const { userId, token } = params;
+  const sessionId = normalizeSessionId(params.sessionId);
 
   const data = createDataAdapter(token);
   const session = await data.getSession(sessionId, userId);
