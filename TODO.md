@@ -115,7 +115,7 @@
 ## Validation Checklist
 
 After all tasks:
-- [ ] `pnpm corpus:sync --dry-run` validates full corpus
+- [x] `pnpm corpus:sync --dry-run` validates full corpus (2,211 sentences)
 - [ ] `pnpm corpus:sync` completes without orphan errors (requires Convex deployment)
 - [ ] New user sees difficulty ≤ 10 sentences (requires E2E testing)
 - [ ] Level-up button unlocks harder content (requires E2E testing)
