@@ -116,7 +116,7 @@
 
 After all tasks:
 - [x] `pnpm corpus:sync --dry-run` validates full corpus (2,211 sentences)
-- [ ] `pnpm corpus:sync` completes without orphan errors (requires Convex deployment)
+- [x] `pnpm corpus:sync` completes without orphan errors (2,211 sentences synced)
 - [ ] New user sees difficulty ≤ 10 sentences (requires E2E testing)
 - [ ] Level-up button unlocks harder content (requires E2E testing)
 - [x] `pnpm lint` passes (warnings only - intentional await in loops)
@@ -138,7 +138,7 @@ After all tasks:
 ## Remaining Work
 
 ### Required for Production
-- [ ] Deploy to Convex and run `pnpm corpus:sync`
+- [x] Deploy to Convex and run `pnpm corpus:sync` (2,211 sentences)
 - [ ] Manual E2E testing of content selection flow
 - [ ] Manual E2E testing of level-up button
 

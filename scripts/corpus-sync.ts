@@ -10,6 +10,9 @@
  *   pnpm corpus:sync --dry-run          # Validate without writing
  */
 
+import dotenv from "dotenv";
+// Load .env.local (Next.js convention)
+dotenv.config({ path: ".env.local" });
 import { ConvexHttpClient } from "convex/browser";
 import fs from "fs";
 import path from "path";
@@ -115,10 +118,10 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
     return;
   }
 
-  // 4. Check for Convex URL
-  const convexUrl = process.env.CONVEX_URL;
+  // 4. Check for Convex URL (support both naming conventions)
+  const convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
   if (!convexUrl) {
-    console.error("\nError: CONVEX_URL environment variable not set");
+    console.error("\nError: CONVEX_URL or NEXT_PUBLIC_CONVEX_URL environment variable not set");
     console.error("Run `npx convex dev` to configure Convex deployment");
     process.exit(1);
   }
@@ -129,22 +132,32 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
   console.log("\nBacking up current corpus...");
   await createBackup(client);
 
-  // 6. Connect to Convex and sync using safe syncCorpus mutation
+  // 6. Sync to Convex using HTTP client with admin key
   console.log("\nSyncing to Convex...");
+
+  const adminKey = process.env.CORPUS_ADMIN_KEY;
+  if (!adminKey) {
+    console.error("\nError: CORPUS_ADMIN_KEY environment variable not set");
+    console.error("Add CORPUS_ADMIN_KEY to .env.local for script authentication");
+    process.exit(1);
+  }
+
+  const syncArgs = {
+    sentences: sentences.map((s: Sentence) => ({
+      sentenceId: s.id,
+      latin: s.latin,
+      referenceTranslation: s.referenceTranslation,
+      difficulty: s.difficulty,
+      order: s.order,
+      alignmentConfidence: s.alignmentConfidence ?? null,
+    })),
+    adminKey,
+  };
 
   try {
     const result = await client.mutation(
       "sentences:syncCorpus" as unknown as never,
-      {
-        sentences: sentences.map((s: Sentence) => ({
-          sentenceId: s.id,
-          latin: s.latin,
-          referenceTranslation: s.referenceTranslation,
-          difficulty: s.difficulty,
-          order: s.order,
-          alignmentConfidence: s.alignmentConfidence ?? null,
-        })),
-      }
+      syncArgs as never
     );
 
     const syncResult = result as {
