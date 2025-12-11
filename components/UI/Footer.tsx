@@ -89,11 +89,11 @@ export const Footer: React.FC = () => {
           </p>
           <div className="flex items-center mt-4 md:mt-0 text-xs text-roman-500">
             <span className="mr-2">Designed in Rome. Built with</span>
-            <LatinText 
-              latin="Cura" 
-              english="Care" 
-              className="text-roman-400 hover:text-roman-200 transition-colors" 
-              interaction="hover"
+            <LatinText
+              latin="Cura"
+              english="Care"
+              className="text-roman-400 hover:text-roman-200 transition-colors"
+              interaction="tooltip"
             />
           </div>
         </div>

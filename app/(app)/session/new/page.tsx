@@ -16,7 +16,7 @@ export default async function NewSessionPage() {
 
   const token = await getToken({ template: 'convex' });
   const data = createDataAdapter(token ?? undefined);
-  const content = await data.getContent();
+  const content = await data.getContent(userId);
   const items = buildSessionItems(content);
   const session = await data.createSession(userId, items);
 

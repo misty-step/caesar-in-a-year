@@ -23,6 +23,19 @@ export default defineSchema({
     lastSessionAt: v.number(), // Unix ms - for streak calculation
   }).index("by_user", ["userId"]),
 
+  // Learning sessions (persisted for cross-request survival)
+  sessions: defineTable({
+    sessionId: v.string(), // "sess_2025-12-09T20:40:30.677Z_abc123"
+    userId: v.string(), // Clerk user ID
+    items: v.array(v.any()), // SessionItem[] (polymorphic REVIEW/NEW_READING)
+    currentIndex: v.number(),
+    status: v.union(v.literal("active"), v.literal("complete")),
+    startedAt: v.string(), // ISO timestamp
+    completedAt: v.optional(v.string()),
+  })
+    .index("by_session_id", ["sessionId"])
+    .index("by_user", ["userId"]),
+
   // Per-sentence SRS state (FSRS algorithm)
   sentenceReviews: defineTable({
     userId: v.string(),

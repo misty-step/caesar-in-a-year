@@ -6,6 +6,7 @@ import {
   ContentSeed,
   DataAdapter,
   GradingResult,
+  ReadingPassage,
   ReviewSentence,
   ReviewStats,
   Sentence,
@@ -15,7 +16,10 @@ import {
   UserProgress,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
+import { generateSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
+
+const DEFAULT_MAX_DIFFICULTY = 10;
 
 const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
@@ -77,17 +81,32 @@ function reconstructCard(doc: FsrsReviewDoc): Card {
   };
 }
 
-function mapSentence(doc: {
+type SentenceDoc = {
   sentenceId: string;
   latin: string;
   referenceTranslation: string;
   difficulty?: number;
-}): Sentence {
+};
+
+function mapSentence(doc: SentenceDoc): Sentence {
   return {
     id: doc.sentenceId,
     latin: doc.latin,
     referenceTranslation: doc.referenceTranslation,
     context: `Difficulty: ${doc.difficulty ?? 'unknown'}`,
+  };
+}
+
+function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
+  const first = sentences[0];
+  const parts = first.sentenceId.split('.');
+  return {
+    id: `reading-${first.sentenceId}`,
+    title: `De Bello Gallico ${parts.slice(1, 3).join('.')}`,
+    latinText: sentences.map((s) => s.latin),
+    glossary: {},
+    gistQuestion: 'Translate this passage into natural English.',
+    referenceGist: sentences.map((s) => s.referenceTranslation).join(' '),
   };
 }
 
@@ -98,15 +117,27 @@ const DEFAULT_PROGRESS: Omit<UserProgress, 'userId'> = {
   lastSessionAt: 0,
 };
 
-// Module-scoped session store shared across all adapter instances
-// Keeps sessions ephemeral but reusable across requests in same process
-const sessionStore = new Map<string, Session>();
+// Structured logger for observability
+const logger = {
+  query: (name: string, args: Record<string, unknown>) => {
+    console.log(`[Convex:Query] ${name}`, JSON.stringify(args));
+  },
+  mutation: (name: string, args: Record<string, unknown>) => {
+    console.log(`[Convex:Mutation] ${name}`, JSON.stringify(args));
+  },
+  error: (op: string, error: unknown) => {
+    console.error(`[Convex:Error] ${op}`, error);
+  },
+  warn: (op: string, message: string) => {
+    console.warn(`[Convex:Warn] ${op}`, message);
+  },
+};
 
 /**
  * Convex-backed DataAdapter for server-side persistence.
  *
  * Uses fetchQuery/fetchMutation from convex/nextjs for imperative calls.
- * Sessions remain ephemeral (in-memory) per DESIGN.md.
+ * Sessions are persisted in Convex to survive across server processes.
  *
  * Requires auth token for authenticated Convex functions.
  */
@@ -135,17 +166,54 @@ export class ConvexAdapter implements DataAdapter {
     await fetchMutation(api.userProgress.upsert, progress, this.options);
   }
 
-  async getContent(): Promise<ContentSeed> {
+  async getContent(userId: string): Promise<ContentSeed> {
     try {
-      const sentences = await fetchQuery(api.sentences.getAll, {}, this.options);
-      if (!sentences || sentences.length === 0) {
-        return FALLBACK_CONTENT;
+      // 1. Get user progress (or default)
+      const progress = await this.getUserProgress(userId);
+      const maxDifficulty = progress?.maxDifficulty ?? DEFAULT_MAX_DIFFICULTY;
+
+      // 2. Get due reviews (FSRS-scheduled)
+      const dueReviews = await this.getDueReviews(userId, 5);
+
+      // 3. Get candidate sentences at/below difficulty
+      const candidates = await fetchQuery(
+        api.sentences.getByDifficulty,
+        { maxDifficulty },
+        this.options
+      );
+
+      if (!candidates || candidates.length === 0) {
+        return {
+          review: dueReviews.length > 0 ? dueReviews : FALLBACK_CONTENT.review,
+          reading: FALLBACK_CONTENT.reading,
+        };
       }
 
-      const mapped = sentences.map(mapSentence);
+      // 4. Get seen sentence IDs
+      const seenIds = new Set(
+        await fetchQuery(api.reviews.getSentenceIds, { userId }, this.options)
+      );
+
+      // 5. Filter unseen, sort by difficulty (easiest first), take 2
+      const unseen = candidates
+        .filter((s) => !seenIds.has(s.sentenceId))
+        .sort((a, b) => a.difficulty - b.difficulty)
+        .slice(0, 2);
+
+      // 6. Build response
+      const reviewContent = dueReviews.length > 0 ? dueReviews : candidates.slice(0, 3).map(mapSentence);
+
+      if (unseen.length > 0) {
+        return {
+          review: reviewContent,
+          reading: mapToReading(unseen),
+        };
+      }
+
+      // User has seen everything at their level
       return {
-        review: mapped.slice(0, 3),
-        reading: DAILY_READING,
+        review: reviewContent,
+        reading: FALLBACK_CONTENT.reading,
       };
     } catch {
       return FALLBACK_CONTENT;
@@ -154,28 +222,70 @@ export class ConvexAdapter implements DataAdapter {
 
   async createSession(userId: string, items: SessionItem[]): Promise<Session> {
     const now = new Date().toISOString();
-    const id = `sess_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const sessionId = generateSessionId();
 
-    const content = await this.getContent();
+    const content = await this.getContent(userId);
     const seededItems = items.length ? items : buildSessionItems(content);
 
-    const session: Session = {
-      id,
+    logger.mutation('sessions.create', { sessionId, userId: userId.slice(0, 8) + '...', itemCount: seededItems.length });
+
+    await fetchMutation(
+      api.sessions.create,
+      {
+        sessionId,
+        userId,
+        items: seededItems,
+        currentIndex: 0,
+        status: 'active' as const,
+        startedAt: now,
+      },
+      this.options
+    );
+
+    console.log(`[Session:Created] ${sessionId}`);
+
+    return {
+      id: sessionId,
       userId,
       items: seededItems,
       currentIndex: 0,
       status: 'active',
       startedAt: now,
     };
-
-    sessionStore.set(id, session);
-    return session;
   }
 
   async getSession(sessionId: string, userId: string): Promise<Session | null> {
-    const session = sessionStore.get(sessionId);
-    if (!session || session.userId !== userId) return null;
-    return session;
+    logger.query('sessions.get', { sessionId, userId: userId.slice(0, 8) + '...' });
+
+    const result = await fetchQuery(
+      api.sessions.get,
+      { sessionId, userId },
+      this.options
+    );
+
+    // Handle error responses from Convex
+    if (result.error) {
+      logger.error('sessions.get', `${result.error} for session ${sessionId}`);
+      if (result.error === 'AUTH_REQUIRED') {
+        throw new Error('Authentication required for session access');
+      }
+      return null;
+    }
+
+    if (!result.session) {
+      logger.warn('sessions.get', `No session returned for ${sessionId}`);
+      return null;
+    }
+
+    return {
+      id: result.session.sessionId,
+      userId: result.session.userId,
+      items: result.session.items as SessionItem[],
+      currentIndex: result.session.currentIndex,
+      status: result.session.status,
+      startedAt: result.session.startedAt,
+      completedAt: result.session.completedAt,
+    };
   }
 
   async advanceSession(params: {
@@ -184,28 +294,35 @@ export class ConvexAdapter implements DataAdapter {
     nextIndex: number;
     status: SessionStatus;
   }): Promise<Session> {
-    const session = sessionStore.get(params.sessionId);
-    if (!session || session.userId !== params.userId) {
+    const session = await this.getSession(params.sessionId, params.userId);
+    if (!session) {
       throw new Error('Session not found');
     }
 
     const nextIndex = Math.max(session.currentIndex, params.nextIndex);
-    const base: Session = {
+    const completedAt =
+      params.status === 'complete'
+        ? session.completedAt ?? new Date().toISOString()
+        : undefined;
+
+    await fetchMutation(
+      api.sessions.advance,
+      {
+        sessionId: params.sessionId,
+        userId: params.userId,
+        currentIndex: nextIndex,
+        status: params.status,
+        completedAt,
+      },
+      this.options
+    );
+
+    return {
       ...session,
       currentIndex: nextIndex,
       status: params.status,
+      completedAt,
     };
-
-    const finalized =
-      params.status === 'complete'
-        ? {
-            ...base,
-            completedAt: base.completedAt ?? new Date().toISOString(),
-          }
-        : base;
-
-    sessionStore.set(finalized.id, finalized);
-    return finalized;
   }
 
   // Phase 1: attempts not persisted

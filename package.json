@@ -7,13 +7,16 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently --kill-others-on-fail -n \"Next,Convex\" -c \"cyan,magenta\" \"pnpm dev:next\" \"pnpm dev:convex\"",
+    "dev:next": "next dev --turbopack",
+    "dev:convex": "convex dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "corpus:process": ".venv/bin/python scripts/process-corpus.py --book 1 --chapter 1",
+    "corpus:process-all": ".venv/bin/python scripts/process-corpus.py --all",
     "corpus:sync": "tsx scripts/corpus-sync.ts",
-    "corpus:all": "pnpm corpus:process && pnpm corpus:sync"
+    "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.8.1",
@@ -32,6 +35,8 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.2.3",
     "eslint": "^9.13.0",
     "eslint-config-next": "^16.0.0",
     "eslint-plugin-react": "^7.37.5",

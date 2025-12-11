@@ -62,3 +62,46 @@ export const upsert = mutation({
     });
   },
 });
+
+const DEFAULT_START_DIFFICULTY = 10;
+const MAX_DIFFICULTY = 100;
+
+export const incrementDifficulty = mutation({
+  args: {
+    userId: v.string(),
+    increment: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, increment = 5 }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    if (identity.subject !== userId) {
+      throw new ConvexError("Cannot modify another user's progress");
+    }
+
+    const existing = await ctx.db
+      .query("userProgress")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (existing) {
+      const newDifficulty = Math.min(existing.maxDifficulty + increment, MAX_DIFFICULTY);
+      await ctx.db.patch(existing._id, { maxDifficulty: newDifficulty });
+      return { maxDifficulty: newDifficulty };
+    }
+
+    // Create progress with default + increment
+    const newDifficulty = Math.min(DEFAULT_START_DIFFICULTY + increment, MAX_DIFFICULTY);
+    await ctx.db.insert("userProgress", {
+      userId,
+      streak: 0,
+      totalXp: 0,
+      maxDifficulty: newDifficulty,
+      lastSessionAt: Date.now(),
+    });
+
+    return { maxDifficulty: newDifficulty };
+  },
+});

@@ -19,6 +19,11 @@ vi.mock('@/lib/data/adapter', () => ({
   }),
 }));
 
+// Mock ConvexProvider to avoid client requirements
+vi.mock('convex/react', () => ({
+  useMutation: () => vi.fn(),
+}));
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     getUserProgress.mockReset();

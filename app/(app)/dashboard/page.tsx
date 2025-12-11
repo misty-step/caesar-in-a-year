@@ -8,12 +8,14 @@ import type { UserProgress } from '@/types';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats } from '@/components/dashboard/Stats';
+import { LevelUpButton } from '@/components/dashboard/LevelUpButton';
 import { Button } from '@/components/UI/Button';
 
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgress;
+  maxDifficulty: number;
   summary: {
     reviewCount: number;
     readingTitle: string;
@@ -23,13 +25,14 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
 
   const [rawProgress, content] = await Promise.all([
     data.getUserProgress(userId),
-    data.getContent(),
+    data.getContent(userId),
   ]);
 
   const progress = mapProgress(rawProgress);
   const summary = mapContentToSummary(content);
+  const maxDifficulty = rawProgress?.maxDifficulty ?? 10;
 
-  return { progress, summary };
+  return { progress, maxDifficulty, summary };
 }
 
 function mapProgress(progress: DataUserProgress | null): UserProgress {
@@ -66,7 +69,7 @@ export default async function DashboardPage() {
   }
 
   const token = await getToken({ template: 'convex' });
-  const { progress, summary } = await getDashboardData(userId, token);
+  const { progress, maxDifficulty, summary } = await getDashboardData(userId, token);
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">
@@ -91,6 +94,23 @@ export default async function DashboardPage() {
             <Link href="/session/new">
               <Button className="w-full sm:w-auto text-base px-8 py-3" labelLatin="Incipe Sessionem" labelEnglish="Start Session" />
             </Link>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+              Difficulty Level
+            </p>
+            <p className="text-sm text-roman-700">
+              Current max difficulty: <span className="font-semibold">{maxDifficulty}/100</span>
+            </p>
+            <p className="text-xs text-roman-500">
+              Unlock harder content when you&apos;re ready for more challenge.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <LevelUpButton userId={userId} currentDifficulty={maxDifficulty} />
           </div>
         </section>
       </div>

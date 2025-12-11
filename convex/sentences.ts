@@ -1,19 +1,30 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import type { MutationCtx } from "./_generated/server";
+
+// Sentence schema for validation
+const sentenceArg = v.object({
+  sentenceId: v.string(),
+  latin: v.string(),
+  referenceTranslation: v.string(),
+  difficulty: v.number(),
+  order: v.number(),
+  alignmentConfidence: v.optional(v.number()),
+});
+
+type SentenceInput = {
+  sentenceId: string;
+  latin: string;
+  referenceTranslation: string;
+  difficulty: number;
+  order: number;
+  alignmentConfidence?: number;
+};
 
 export const replaceAll = mutation({
   args: {
-    sentences: v.array(
-      v.object({
-        sentenceId: v.string(),
-        latin: v.string(),
-        referenceTranslation: v.string(),
-        difficulty: v.number(),
-        order: v.number(),
-        alignmentConfidence: v.optional(v.number()),
-      })
-    ),
+    sentences: v.array(sentenceArg),
   },
   handler: async (ctx, args) => {
     // Require authentication
@@ -60,3 +71,100 @@ export const getAll = query({
     return ctx.db.query("sentences").withIndex("by_order").collect();
   },
 });
+
+// Internal mutation for admin scripts (no auth required, callable via deploy key)
+export const syncCorpusInternal = internalMutation({
+  args: {
+    sentences: v.array(sentenceArg),
+  },
+  handler: async (ctx, args) => {
+    return syncCorpusHandler(ctx, args.sentences);
+  },
+});
+
+// Public mutation with auth (for authenticated admin users)
+// In dev mode, also accepts ADMIN_KEY for scripts
+export const syncCorpus = mutation({
+  args: {
+    sentences: v.array(sentenceArg),
+    adminKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check for admin key first (for scripts)
+    const validAdminKey = process.env.CORPUS_ADMIN_KEY;
+    if (args.adminKey && validAdminKey && args.adminKey === validAdminKey) {
+      return syncCorpusHandler(ctx, args.sentences);
+    }
+
+    // Require authentication
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    // Admin check (same pattern as replaceAll)
+    const isAdmin = identity.email?.endsWith("@mistystep.io") ?? false;
+    if (!isAdmin) {
+      throw new ConvexError("Admin access required");
+    }
+
+    return syncCorpusHandler(ctx, args.sentences);
+  },
+});
+
+// Shared handler for sync logic
+async function syncCorpusHandler(ctx: MutationCtx, sentences: SentenceInput[]) {
+  // 1. Build incoming ID set
+  const incomingIds = new Set(sentences.map((s) => s.sentenceId));
+
+  // 2. Check for orphaned reviews BEFORE any changes
+  const allReviews = await ctx.db.query("sentenceReviews").collect();
+  const orphaned = allReviews.filter((r) => !incomingIds.has(r.sentenceId));
+
+  if (orphaned.length > 0) {
+    const affectedUsers = new Set(orphaned.map((r) => r.userId));
+    const sampleIds = orphaned.slice(0, 5).map((r) => r.sentenceId);
+    throw new ConvexError(
+      `Would orphan ${orphaned.length} reviews for ${affectedUsers.size} users. ` +
+        `Sentence IDs: ${sampleIds.join(", ")}${orphaned.length > 5 ? "..." : ""}`
+    );
+  }
+
+  // 3. Upsert each sentence (patch existing, insert new)
+  let updated = 0;
+  let inserted = 0;
+
+  for (const sentence of sentences) {
+    const existing = await ctx.db
+      .query("sentences")
+      .withIndex("by_sentence_id", (q) => q.eq("sentenceId", sentence.sentenceId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        latin: sentence.latin,
+        referenceTranslation: sentence.referenceTranslation,
+        difficulty: sentence.difficulty,
+        order: sentence.order,
+        alignmentConfidence: sentence.alignmentConfidence,
+      });
+      updated++;
+    } else {
+      await ctx.db.insert("sentences", sentence);
+      inserted++;
+    }
+  }
+
+  // 4. Delete stale sentences (not in incoming - already verified no reviews)
+  const existingSentences = await ctx.db.query("sentences").collect();
+  let deleted = 0;
+
+  for (const doc of existingSentences) {
+    if (!incomingIds.has(doc.sentenceId)) {
+      await ctx.db.delete(doc._id);
+      deleted++;
+    }
+  }
+
+  return { synced: sentences.length, updated, inserted, deleted };
+}
