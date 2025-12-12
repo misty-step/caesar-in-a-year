@@ -168,6 +168,7 @@ export const record = mutation({
       lapses: args.lapses,
       lastReview: args.lastReview,
       nextReviewAt: args.nextReviewAt,
+      sentenceDifficulty: sentence.difficulty, // Denormalized for efficient mastery queries
     };
 
     if (existing) {
@@ -207,38 +208,46 @@ export const getMasteredAtLevel = query({
     const identity = await ctx.auth.getUserIdentity();
     assertAuthenticated(identity, userId);
 
-    // Use compound index to efficiently fetch only mastered reviews (state='review', stability>=21)
-    const masteredReviews = await ctx.db
+    // Tier bounds: level 10 = difficulty 1-10, level 15 = 11-15, etc.
+    const tierFloor = maxDifficulty <= 10 ? 0 : maxDifficulty - 5;
+
+    // Single indexed query: fetch reviews in current tier (no join needed)
+    const tierReviews = await ctx.db
       .query("sentenceReviews")
-      .withIndex("by_user_state_stability", (q) =>
-        q.eq("userId", userId).eq("state", "review").gte("stability", MASTERED_STABILITY_THRESHOLD)
+      .withIndex("by_user_state_difficulty", (q) =>
+        q.eq("userId", userId)
+          .eq("state", "review")
+          .gt("sentenceDifficulty", tierFloor)
+          .lte("sentenceDifficulty", maxDifficulty)
       )
       .collect();
 
-    if (masteredReviews.length === 0) {
-      return 0;
-    }
+    // Filter for mastered (stability >= 21 days) in memory
+    return tierReviews.filter((r) => r.stability >= MASTERED_STABILITY_THRESHOLD).length;
+  },
+});
 
-    // Batch fetch sentence difficulties
-    const sentences = await Promise.all(
-      masteredReviews.map((r) =>
-        ctx.db
-          .query("sentences")
-          .withIndex("by_sentence_id", (q) => q.eq("sentenceId", r.sentenceId))
-          .first()
-      )
-    );
+// One-time migration: backfill sentenceDifficulty for existing reviews
+export const backfillSentenceDifficulty = mutation({
+  handler: async (ctx) => {
+    const reviews = await ctx.db.query("sentenceReviews").collect();
+    let updated = 0;
 
-    // Count sentences in CURRENT tier only (prevents repeated level-ups)
-    // Tier is defined as (previousMax, currentMax]: e.g., level 10 = difficulty 1-10, level 15 = 11-15
-    const tierFloor = maxDifficulty <= 10 ? 0 : maxDifficulty - 5;
-    let count = 0;
-    for (const sentence of sentences) {
-      if (sentence && sentence.difficulty > tierFloor && sentence.difficulty <= maxDifficulty) {
-        count++;
+    for (const review of reviews) {
+      // Skip if already backfilled
+      if (review.sentenceDifficulty !== undefined) continue;
+
+      const sentence = await ctx.db
+        .query("sentences")
+        .withIndex("by_sentence_id", (q) => q.eq("sentenceId", review.sentenceId))
+        .first();
+
+      if (sentence) {
+        await ctx.db.patch(review._id, { sentenceDifficulty: sentence.difficulty });
+        updated++;
       }
     }
 
-    return count;
+    return { updated, total: reviews.length };
   },
 });
