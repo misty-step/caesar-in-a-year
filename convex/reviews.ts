@@ -168,6 +168,7 @@ export const record = mutation({
       lapses: args.lapses,
       lastReview: args.lastReview,
       nextReviewAt: args.nextReviewAt,
+      sentenceDifficulty: sentence.difficulty, // Denormalized for efficient mastery queries
     };
 
     if (existing) {
@@ -195,5 +196,58 @@ export const getSentenceIds = query({
       .collect();
 
     return reviews.map((r) => r.sentenceId);
+  },
+});
+
+export const getMasteredAtLevel = query({
+  args: {
+    userId: v.string(),
+    maxDifficulty: v.number(),
+  },
+  handler: async (ctx, { userId, maxDifficulty }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    assertAuthenticated(identity, userId);
+
+    // Tier bounds: level 10 = difficulty 1-10, level 15 = 11-15, etc.
+    const tierFloor = maxDifficulty <= 10 ? 0 : maxDifficulty - 5;
+
+    // Single indexed query: fetch reviews in current tier (no join needed)
+    const tierReviews = await ctx.db
+      .query("sentenceReviews")
+      .withIndex("by_user_state_difficulty", (q) =>
+        q.eq("userId", userId)
+          .eq("state", "review")
+          .gt("sentenceDifficulty", tierFloor)
+          .lte("sentenceDifficulty", maxDifficulty)
+      )
+      .collect();
+
+    // Filter for mastered (stability >= 21 days) in memory
+    return tierReviews.filter((r) => r.stability >= MASTERED_STABILITY_THRESHOLD).length;
+  },
+});
+
+// One-time migration: backfill sentenceDifficulty for existing reviews
+export const backfillSentenceDifficulty = mutation({
+  handler: async (ctx) => {
+    const reviews = await ctx.db.query("sentenceReviews").collect();
+    let updated = 0;
+
+    for (const review of reviews) {
+      // Skip if already backfilled
+      if (review.sentenceDifficulty !== undefined) continue;
+
+      const sentence = await ctx.db
+        .query("sentences")
+        .withIndex("by_sentence_id", (q) => q.eq("sentenceId", review.sentenceId))
+        .first();
+
+      if (sentence) {
+        await ctx.db.patch(review._id, { sentenceDifficulty: sentence.difficulty });
+        updated++;
+      }
+    }
+
+    return { updated, total: reviews.length };
   },
 });

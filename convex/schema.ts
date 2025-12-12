@@ -49,17 +49,19 @@ export default defineSchema({
       v.literal("relearning")
     ),
     stability: v.number(), // Days until 90% forgetting
-    difficulty: v.number(), // 1-10 scale
+    difficulty: v.number(), // 1-10 scale (FSRS difficulty)
     elapsedDays: v.number(), // Days since last review
     scheduledDays: v.number(), // Days until next review
     learningSteps: v.number(), // Current step in learning phase
     reps: v.number(), // Total review count
     lapses: v.number(), // Times forgotten (Again count)
     lastReview: v.optional(v.number()), // Unix ms, optional for new cards
-
-    // Indexed for due queries
     nextReviewAt: v.number(), // Unix ms (from card.due)
+
+    // Denormalized from sentences table for efficient mastery queries
+    sentenceDifficulty: v.number(), // 1-100 content difficulty
   })
     .index("by_user_due", ["userId", "nextReviewAt"])
-    .index("by_user_sentence", ["userId", "sentenceId"]),
+    .index("by_user_sentence", ["userId", "sentenceId"])
+    .index("by_user_state_difficulty", ["userId", "state", "sentenceDifficulty"]),
 });

@@ -8,7 +8,7 @@ import type { UserProgress } from '@/types';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats } from '@/components/dashboard/Stats';
-import { LevelUpButton } from '@/components/dashboard/LevelUpButton';
+import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 import { Button } from '@/components/UI/Button';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgress;
   maxDifficulty: number;
+  masteredCount: number;
   summary: {
     reviewCount: number;
     readingTitle: string;
@@ -28,11 +29,15 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
     data.getContent(userId),
   ]);
 
-  const progress = mapProgress(rawProgress);
-  const summary = mapContentToSummary(content);
   const maxDifficulty = rawProgress?.maxDifficulty ?? 10;
 
-  return { progress, maxDifficulty, summary };
+  // Fetch mastery count for current level
+  const masteredCount = await data.getMasteredAtLevel(userId, maxDifficulty);
+
+  const progress = mapProgress(rawProgress);
+  const summary = mapContentToSummary(content);
+
+  return { progress, maxDifficulty, masteredCount, summary };
 }
 
 function mapProgress(progress: DataUserProgress | null): UserProgress {
@@ -69,7 +74,7 @@ export default async function DashboardPage() {
   }
 
   const token = await getToken({ template: 'convex' });
-  const { progress, maxDifficulty, summary } = await getDashboardData(userId, token);
+  const { progress, maxDifficulty, masteredCount, summary } = await getDashboardData(userId, token);
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">
@@ -97,22 +102,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
-              Difficulty Level
-            </p>
-            <p className="text-sm text-roman-700">
-              Current max difficulty: <span className="font-semibold">{maxDifficulty}/100</span>
-            </p>
-            <p className="text-xs text-roman-500">
-              Unlock harder content when you&apos;re ready for more challenge.
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <LevelUpButton userId={userId} currentDifficulty={maxDifficulty} />
-          </div>
-        </section>
+        <MasteryProgress masteredCount={masteredCount} readingLevel={maxDifficulty} />
       </div>
     </main>
   );

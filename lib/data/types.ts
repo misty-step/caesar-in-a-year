@@ -82,4 +82,6 @@ export interface DataAdapter {
   getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]>;
   getReviewStats(userId: string): Promise<ReviewStats>;
   recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
+  getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number>;
+  incrementDifficulty(userId: string, increment?: number): Promise<{ maxDifficulty: number }>;
 }
