@@ -207,4 +207,18 @@ const memoryAdapter: DataAdapter = {
   async recordReview(): Promise<void> {
     return;
   },
+
+  async getMasteredAtLevel(): Promise<number> {
+    return 0;
+  },
+
+  async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
+    const existing = progressStore.get(userId);
+    const current = existing?.maxDifficulty ?? 10;
+    const newDifficulty = Math.min(current + increment, 100);
+    if (existing) {
+      progressStore.set(userId, { ...existing, maxDifficulty: newDifficulty });
+    }
+    return { maxDifficulty: newDifficulty };
+  },
 };

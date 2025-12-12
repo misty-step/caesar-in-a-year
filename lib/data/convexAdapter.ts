@@ -364,4 +364,12 @@ export class ConvexAdapter implements DataAdapter {
       nextReviewAt: newCard.due.getTime(),
     }, this.options);
   }
+
+  async getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number> {
+    return fetchQuery(api.reviews.getMasteredAtLevel, { userId, maxDifficulty }, this.options);
+  }
+
+  async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
+    return fetchMutation(api.userProgress.incrementDifficulty, { userId, increment }, this.options);
+  }
 }

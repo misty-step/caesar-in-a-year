@@ -197,3 +197,48 @@ export const getSentenceIds = query({
     return reviews.map((r) => r.sentenceId);
   },
 });
+
+export const getMasteredAtLevel = query({
+  args: {
+    userId: v.string(),
+    maxDifficulty: v.number(),
+  },
+  handler: async (ctx, { userId, maxDifficulty }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    assertAuthenticated(identity, userId);
+
+    // Get all mastered reviews (stability >= 21, state = 'review')
+    const allReviews = await ctx.db
+      .query("sentenceReviews")
+      .withIndex("by_user_sentence", (q) => q.eq("userId", userId))
+      .collect();
+
+    const masteredReviews = allReviews.filter(
+      (r) => r.state === "review" && r.stability >= MASTERED_STABILITY_THRESHOLD
+    );
+
+    if (masteredReviews.length === 0) {
+      return 0;
+    }
+
+    // Batch fetch sentence difficulties
+    const sentences = await Promise.all(
+      masteredReviews.map((r) =>
+        ctx.db
+          .query("sentences")
+          .withIndex("by_sentence_id", (q) => q.eq("sentenceId", r.sentenceId))
+          .first()
+      )
+    );
+
+    // Count where sentence difficulty <= maxDifficulty
+    let count = 0;
+    for (const sentence of sentences) {
+      if (sentence && sentence.difficulty <= maxDifficulty) {
+        count++;
+      }
+    }
+
+    return count;
+  },
+});
