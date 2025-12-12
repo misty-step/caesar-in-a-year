@@ -61,5 +61,6 @@ export default defineSchema({
     nextReviewAt: v.number(), // Unix ms (from card.due)
   })
     .index("by_user_due", ["userId", "nextReviewAt"])
-    .index("by_user_sentence", ["userId", "sentenceId"]),
+    .index("by_user_sentence", ["userId", "sentenceId"])
+    .index("by_user_state_stability", ["userId", "state", "stability"]),
 });

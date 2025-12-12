@@ -207,15 +207,13 @@ export const getMasteredAtLevel = query({
     const identity = await ctx.auth.getUserIdentity();
     assertAuthenticated(identity, userId);
 
-    // Get all mastered reviews (stability >= 21, state = 'review')
-    const allReviews = await ctx.db
+    // Use compound index to efficiently fetch only mastered reviews (state='review', stability>=21)
+    const masteredReviews = await ctx.db
       .query("sentenceReviews")
-      .withIndex("by_user_sentence", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state_stability", (q) =>
+        q.eq("userId", userId).eq("state", "review").gte("stability", MASTERED_STABILITY_THRESHOLD)
+      )
       .collect();
-
-    const masteredReviews = allReviews.filter(
-      (r) => r.state === "review" && r.stability >= MASTERED_STABILITY_THRESHOLD
-    );
 
     if (masteredReviews.length === 0) {
       return 0;
@@ -231,10 +229,12 @@ export const getMasteredAtLevel = query({
       )
     );
 
-    // Count where sentence difficulty <= maxDifficulty
+    // Count sentences in CURRENT tier only (prevents repeated level-ups)
+    // Tier is defined as (previousMax, currentMax]: e.g., level 10 = difficulty 1-10, level 15 = 11-15
+    const tierFloor = maxDifficulty <= 10 ? 0 : maxDifficulty - 5;
     let count = 0;
     for (const sentence of sentences) {
-      if (sentence && sentence.difficulty <= maxDifficulty) {
+      if (sentence && sentence.difficulty > tierFloor && sentence.difficulty <= maxDifficulty) {
         count++;
       }
     }

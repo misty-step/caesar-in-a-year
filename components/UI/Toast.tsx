@@ -1,19 +1,17 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Toaster, toast } from 'sonner';
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
       <Toaster
         position="top-center"
         toastOptions={{
-          className: 'font-serif',
-          style: {
-            background: '#faf8f5', // roman-50
-            border: '1px solid #e5e0d8', // roman-200
-            color: '#3d3730', // roman-900
+          classNames: {
+            toast: 'font-serif bg-roman-50 border border-roman-200 text-roman-900',
           },
         }}
       />

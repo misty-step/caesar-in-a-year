@@ -9,7 +9,7 @@ interface MasteryProgressProps {
 
 export function MasteryProgress({ masteredCount, readingLevel }: MasteryProgressProps) {
   const displayCount = Math.min(masteredCount, MASTERY_GOAL);
-  const percentage = Math.min((displayCount / MASTERY_GOAL) * 100, 100);
+  const percentage = (displayCount / MASTERY_GOAL) * 100;
   const isMaxLevel = readingLevel >= 100;
 
   return (

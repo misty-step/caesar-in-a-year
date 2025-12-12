@@ -13,7 +13,9 @@ interface SummaryClientProps {
 export function SummaryClient({ session, levelUpParam }: SummaryClientProps) {
   useEffect(() => {
     if (levelUpParam) {
-      const [oldLevel, newLevel] = levelUpParam.split('-').map(Number);
+      const [oldLevelStr, newLevelStr] = levelUpParam.split('-');
+      const oldLevel = parseInt(oldLevelStr, 10);
+      const newLevel = parseInt(newLevelStr, 10);
       if (!isNaN(oldLevel) && !isNaN(newLevel)) {
         showToast(`Level ${oldLevel} → ${newLevel}. Bene factum!`);
       }
