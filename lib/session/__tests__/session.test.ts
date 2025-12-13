@@ -44,10 +44,10 @@ describe('advanceSession', () => {
     expect(result.status).toBe('active');
   });
 
-  it('marks complete when at last item', () => {
+  it('marks complete when advancing from last item', () => {
     const nearEnd = { ...baseSession, currentIndex: 3 };
     const result = advanceSession(nearEnd);
-    expect(result.nextIndex).toBe(3);
+    expect(result.nextIndex).toBe(4);
     expect(result.status).toBe('complete');
   });
 

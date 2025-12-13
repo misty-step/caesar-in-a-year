@@ -82,6 +82,41 @@ pnpm corpus:sync -- --dry-run    # Validate first
 pnpm corpus:sync                 # Actually sync
 ```
 
-**Sources**: Latin from [Perseus](http://www.perseus.tufts.edu), English from [MIT Classics](https://classics.mit.edu).
+**Text Sources** (public domain):
+- Latin: Caesar's *De Bello Gallico* (~50 BCE), digitized by [Perseus Digital Library](http://www.perseus.tufts.edu)
+- English: W. A. McDevitte & W. S. Bohn translation (1869), via [MIT Internet Classics Archive](https://classics.mit.edu)
 
-See `DESIGN.md` for architecture details.
+## Architecture
+
+### Philosophy
+
+**Trust the LLM.** Gemini grades translations for meaning, not grammar rules. Flexible wording, strict meaning.
+
+**Trust the corpus.** Caesar's text IS the curriculum. Difficulty computed from word count, clause depth, vocabulary rarity.
+
+**Trust FSRS.** Spaced repetition handles personalization (timing). Content selection is deterministic by difficulty level.
+
+### Core Loop
+
+```
+Corpus (static) → Difficulty Filter (user level) → Session Builder → FSRS Scheduling
+```
+
+### Data Model
+
+- **Sentence**: Latin text with reference translation, difficulty score, book/chapter
+- **SentenceReview**: FSRS state per user per sentence (stability, next review date)
+- **UserProgress**: Level, streak, XP
+- **Session**: Queue of review items + new reading passage
+
+### Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `lib/srs/fsrs.ts` | FSRS wrapper for spaced repetition |
+| `lib/ai/gradeTranslation.ts` | Gemini grading with JSON schema |
+| `lib/session/builder.ts` | Session construction from due reviews + new content |
+| `lib/data/convexAdapter.ts` | Convex persistence layer |
+| `convex/reviews.ts` | FSRS state mutations |
+
+See `BACKLOG.md` for current work items.

@@ -85,7 +85,7 @@ export const Footer: React.FC = () => {
 
         <div className="mt-12 pt-8 border-t border-roman-800 flex flex-col md:flex-row justify-between items-center">
           <p className="text-xs text-roman-400">
-            &copy; {currentYear} Caesar in a Year. 
+            &copy; {currentYear} Caesar in a Year. Text: McDevitte & Bohn (1869), public domain.
           </p>
           <div className="flex items-center mt-4 md:mt-0 text-xs text-roman-500">
             <span className="mr-2">Designed in Rome. Built with</span>
