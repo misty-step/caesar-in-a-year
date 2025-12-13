@@ -13,14 +13,9 @@ export function advanceSession(session: Session): AdvanceResult {
     return { nextIndex: session.currentIndex, status: 'complete' };
   }
 
-  const atLastItem = session.currentIndex >= session.items.length - 1;
-  if (atLastItem) {
-    return { nextIndex: session.currentIndex, status: 'complete' };
-  }
-
   const nextIndex = session.currentIndex + 1;
   return {
     nextIndex,
-    status: nextIndex >= session.items.length - 1 ? 'complete' : 'active',
+    status: nextIndex >= session.items.length ? 'complete' : 'active',
   };
 }

@@ -54,6 +54,10 @@ export async function submitReviewForUser(params: SubmitReviewInput & { userId: 
     throw new Error('Invalid session item');
   }
 
+  if (itemIndex !== session.currentIndex) {
+    throw new Error('Out of sync');
+  }
+
   const result = await gradeTranslation(
     item.type === 'REVIEW'
       ? {
@@ -78,6 +82,11 @@ export async function submitReviewForUser(params: SubmitReviewInput & { userId: 
     gradingResult: result,
     createdAt: new Date().toISOString(),
   });
+
+  // Update FSRS spaced repetition state for review items
+  if (item.type === 'REVIEW') {
+    await data.recordReview(userId, item.sentence.id, result);
+  }
 
   const advanced = advanceSession(session);
 
