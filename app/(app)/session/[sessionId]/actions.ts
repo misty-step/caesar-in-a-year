@@ -4,8 +4,10 @@ import { auth } from '@clerk/nextjs/server';
 import { createDataAdapter } from '@/lib/data/adapter';
 import { normalizeSessionId } from '@/lib/session/id';
 import { gradeTranslation } from '@/lib/ai/gradeTranslation';
+import { gradeGist } from '@/lib/ai/gradeGist';
 import { advanceSession } from '@/lib/session/advance';
-import type { GradingResult } from '@/types';
+import { computeStreak } from '@/lib/progress/streak';
+import { GradeStatus, type GradingResult } from '@/types';
 import type { SessionStatus } from '@/lib/data/types';
 
 export type SubmitReviewInput = {
@@ -37,8 +39,13 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
 /**
  * Core grading + session-advance flow, shared by server actions and API routes.
  */
-export async function submitReviewForUser(params: SubmitReviewInput & { userId: string; token?: string }): Promise<SubmitReviewResult> {
-  const { userId, itemIndex, userInput, token } = params;
+export async function submitReviewForUser(params: SubmitReviewInput & {
+  userId: string;
+  token?: string;
+  tzOffsetMin?: number;
+  aiAllowed?: boolean;
+}): Promise<SubmitReviewResult> {
+  const { userId, itemIndex, userInput, token, tzOffsetMin, aiAllowed = true } = params;
   const sessionId = normalizeSessionId(params.sessionId);
 
   const data = createDataAdapter(token);
@@ -58,34 +65,57 @@ export async function submitReviewForUser(params: SubmitReviewInput & { userId: 
     throw new Error('Out of sync');
   }
 
-  const result = await gradeTranslation(
-    item.type === 'REVIEW'
-      ? {
-          latin: item.sentence.latin,
-          userTranslation: userInput,
-          reference: item.sentence.referenceTranslation,
-          context: item.sentence.context,
-        }
-      : {
-          latin: item.reading.latinText.join(' '),
-          userTranslation: userInput,
-          reference: item.reading.referenceGist,
-          context: 'The user is summarizing a new passage.',
-        },
-  );
+  // Grade based on item type and AI availability
+  let result: GradingResult;
 
-  await data.recordAttempt({
-    sessionId: session.id,
-    itemId: item.type === 'REVIEW' ? item.sentence.id : item.reading.id,
-    type: item.type,
-    userInput,
-    gradingResult: result,
-    createdAt: new Date().toISOString(),
-  });
+  if (!aiAllowed) {
+    // Rate limited or AI unavailable → fallback result
+    const reference = item.type === 'REVIEW'
+      ? item.sentence.referenceTranslation
+      : item.reading.referenceGist;
+    result = {
+      status: GradeStatus.PARTIAL,
+      feedback: 'The AI tutor is temporarily unavailable. Compare your answer with the reference and self-assess.',
+      correction: reference,
+    };
+  } else if (item.type === 'REVIEW') {
+    result = await gradeTranslation({
+      latin: item.sentence.latin,
+      userTranslation: userInput,
+      reference: item.sentence.referenceTranslation,
+      context: item.sentence.context,
+    });
+  } else {
+    // NEW_READING → use gist grader
+    result = await gradeGist({
+      latin: item.reading.latinText.join(' '),
+      question: item.reading.gistQuestion,
+      userAnswer: userInput,
+      referenceGist: item.reading.referenceGist,
+    });
+  }
 
-  // Update FSRS spaced repetition state for review items
+  // Record attempt (best-effort, don't block session)
+  try {
+    await data.recordAttempt({
+      sessionId: session.id,
+      itemId: item.type === 'REVIEW' ? item.sentence.id : item.reading.id,
+      type: item.type,
+      userInput,
+      gradingResult: result,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Failed to record attempt (continuing):', e);
+  }
+
+  // Update FSRS spaced repetition state for review items (best-effort)
   if (item.type === 'REVIEW') {
-    await data.recordReview(userId, item.sentence.id, result);
+    try {
+      await data.recordReview(userId, item.sentence.id, result);
+    } catch (e) {
+      console.error('Failed to record review for FSRS (continuing):', e);
+    }
   }
 
   const advanced = advanceSession(session);
@@ -96,6 +126,30 @@ export async function submitReviewForUser(params: SubmitReviewInput & { userId: 
     nextIndex: advanced.nextIndex,
     status: advanced.status,
   });
+
+  // Update user progress on session completion (best-effort)
+  if (updated.status === 'complete' && tzOffsetMin !== undefined) {
+    try {
+      const progress = await data.getUserProgress(userId);
+      const nowMs = Date.now();
+      const streakResult = computeStreak({
+        prevStreak: progress?.streak ?? 0,
+        prevLastSessionAtMs: progress?.lastSessionAt ?? 0,
+        nowMs,
+        tzOffsetMin,
+      });
+
+      await data.upsertUserProgress({
+        userId,
+        streak: streakResult.nextStreak,
+        totalXp: (progress?.totalXp ?? 0) + session.items.length,
+        maxDifficulty: progress?.maxDifficulty ?? 1,
+        lastSessionAt: streakResult.nextLastSessionAtMs,
+      });
+    } catch (e) {
+      console.error('Failed to update user progress (continuing):', e);
+    }
+  }
 
   return {
     result,

@@ -18,6 +18,11 @@ vi.mock('@/app/(app)/session/[sessionId]/actions', () => ({
   submitReviewForUser,
 }));
 
+// Mock rate limiter to always allow
+vi.mock('@/lib/rateLimit/inMemoryRateLimit', () => ({
+  consumeAiCall: () => ({ allowed: true, remaining: 99, resetAtMs: Date.now() + 3600000 }),
+}));
+
 describe('POST /api/grade', () => {
   beforeEach(() => {
     submitReviewForUser.mockReset();
@@ -36,7 +41,7 @@ describe('POST /api/grade', () => {
     expect(submitReviewForUser).not.toHaveBeenCalled();
   });
 
-  it('invokes submitReviewForUser and returns result', async () => {
+  it('invokes submitReviewForUser and returns result with rate limit info', async () => {
     submitReviewForUser.mockResolvedValueOnce({
       result: { status: 'CORRECT', feedback: 'Nice.', correction: undefined },
       nextIndex: 1,
@@ -49,6 +54,7 @@ describe('POST /api/grade', () => {
         sessionId: 'sess-1',
         itemIndex: 0,
         userInput: 'hello',
+        tzOffsetMin: 300,
       }),
     });
 
@@ -62,12 +68,14 @@ describe('POST /api/grade', () => {
       itemIndex: 0,
       userInput: 'hello',
       token: 'mock-token',
+      tzOffsetMin: 300,
+      aiAllowed: true,
     });
 
-    expect(json).toEqual({
-      result: { status: 'CORRECT', feedback: 'Nice.', correction: undefined },
-      nextIndex: 1,
-      status: 'active',
-    });
+    expect(json.result).toEqual({ status: 'CORRECT', feedback: 'Nice.', correction: undefined });
+    expect(json.nextIndex).toBe(1);
+    expect(json.status).toBe('active');
+    expect(json.rateLimit).toBeDefined();
+    expect(json.rateLimit.remaining).toBe(99);
   });
 });
