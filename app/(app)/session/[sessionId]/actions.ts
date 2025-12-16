@@ -128,6 +128,9 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
   });
 
   // Update user progress on session completion (best-effort)
+  if (updated.status === 'complete' && tzOffsetMin === undefined) {
+    console.warn('Session complete but tzOffsetMin missing; skipping streak/XP update');
+  }
   if (updated.status === 'complete' && tzOffsetMin !== undefined) {
     try {
       const progress = await data.getUserProgress(userId);
