@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { gradeTranslation } from '../gradeTranslation';
-import { GradeStatus } from '@/types';
+import { GradeStatus } from '@/lib/data/types';
 
 // Use vi.hoisted to ensure mocks are initialized before vi.mock factory runs
 const { mockGenerateContent, mockModels } = vi.hoisted(() => {

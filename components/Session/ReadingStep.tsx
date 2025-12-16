@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { ReadingPassage, GradingResult } from '@/types';
-import { GradeStatus } from '@/types';
-import type { SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type ReadingPassage, type GradingResult, type SessionStatus } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
 

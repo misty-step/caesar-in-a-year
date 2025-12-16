@@ -1,4 +1,4 @@
-import { ReadingPassage, Sentence } from './types';
+import type { ReadingPassage, Sentence } from '@/lib/data/types';
 
 // In a real app, this would come from a CMS/DB
 export const REVIEW_SENTENCES: Sentence[] = [

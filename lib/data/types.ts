@@ -1,4 +1,14 @@
-import { GradeStatus, type GradingResult } from '@/types';
+export enum GradeStatus {
+  CORRECT = 'CORRECT',
+  PARTIAL = 'PARTIAL',
+  INCORRECT = 'INCORRECT'
+}
+
+export interface GradingResult {
+  status: GradeStatus;
+  feedback: string;
+  correction?: string;
+}
 
 export interface Sentence {
   id: string;
@@ -63,8 +73,6 @@ export interface ReviewStats {
   totalReviewed: number;
   masteredCount: number;
 }
-
-export { GradeStatus, type GradingResult };
 
 export interface DataAdapter {
   getUserProgress(userId: string): Promise<UserProgress | null>;

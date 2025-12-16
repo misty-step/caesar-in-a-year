@@ -2,19 +2,17 @@ import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
-import type { ContentSeed } from '@/lib/data/types';
-import type { UserProgress as DataUserProgress } from '@/lib/data/types';
-import type { UserProgress } from '@/types';
+import type { ContentSeed, UserProgress as DataUserProgress } from '@/lib/data/types';
 
 import { Hero } from '@/components/dashboard/Hero';
-import { Stats } from '@/components/dashboard/Stats';
+import { Stats, type UserProgressVM } from '@/components/dashboard/Stats';
 import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 import { Button } from '@/components/UI/Button';
 
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData(userId: string, token?: string | null): Promise<{
-  progress: UserProgress;
+  progress: UserProgressVM;
   maxDifficulty: number;
   masteredCount: number;
   summary: {
@@ -40,7 +38,7 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
   return { progress, maxDifficulty, masteredCount, summary };
 }
 
-function mapProgress(progress: DataUserProgress | null): UserProgress {
+function mapProgress(progress: DataUserProgress | null): UserProgressVM {
   if (!progress) {
     return {
       currentDay: 1,
