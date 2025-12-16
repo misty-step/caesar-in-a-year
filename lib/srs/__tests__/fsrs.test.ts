@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mapGradeToRating, scheduleReview, Rating, State } from '../fsrs';
-import { GradeStatus } from '@/types';
+import { GradeStatus } from '@/lib/data/types';
 
 describe('mapGradeToRating', () => {
   it('maps INCORRECT to Again', () => {

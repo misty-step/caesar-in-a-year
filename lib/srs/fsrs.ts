@@ -10,7 +10,7 @@
  */
 
 import { fsrs, createEmptyCard, Rating, State, type Card, type RecordLogItem } from 'ts-fsrs';
-import { GradeStatus } from '@/types';
+import { GradeStatus } from '@/lib/data/types';
 
 // Re-export for consumers
 export { Rating, State, createEmptyCard };

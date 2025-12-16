@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { GradeStatus, GradingResult } from "@/types";
+import { GradeStatus, type GradingResult } from "@/lib/data/types";
 
 const MODEL_NAME = "gemini-2.5-flash";
 const TIMEOUT_MS = 5000;

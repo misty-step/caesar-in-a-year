@@ -1,8 +1,15 @@
-import type { UserProgress } from '@/types';
 import { LatinText } from '@/components/UI/LatinText';
 
+/** View model for dashboard stats display */
+export type UserProgressVM = {
+  currentDay: number;
+  totalXp: number;
+  streak: number;
+  unlockedPhase: number;
+};
+
 interface StatsProps {
-  progress: UserProgress;
+  progress: UserProgressVM;
   reviewCount: number;
   readingTitle: string;
 }

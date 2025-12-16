@@ -7,8 +7,7 @@ import { gradeTranslation } from '@/lib/ai/gradeTranslation';
 import { gradeGist } from '@/lib/ai/gradeGist';
 import { advanceSession } from '@/lib/session/advance';
 import { computeStreak } from '@/lib/progress/streak';
-import { GradeStatus, type GradingResult } from '@/types';
-import type { SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type GradingResult, type SessionStatus } from '@/lib/data/types';
 
 export type SubmitReviewInput = {
   sessionId: string;

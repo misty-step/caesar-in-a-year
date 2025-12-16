@@ -42,7 +42,7 @@ CLERK_SECRET_KEY=...
 Under the hood:
 - `lib/data/adapter.ts` currently uses an in-memory adapter for sessions, attempts, and progress (Convex-ready interface).
 - `lib/session` builds/advances the session queue.
-- `app/api/grade` + `app/api/session/advance` handle grading and pointer updates server-side.
+- `app/api/grade` handles grading server-side; session advance is internal to the grading flow.
 
 ## Scripts
 
