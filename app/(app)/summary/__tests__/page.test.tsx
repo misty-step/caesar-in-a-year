@@ -9,10 +9,14 @@ vi.mock('@clerk/nextjs/server', () => ({
 }));
 
 const getSession = vi.fn();
+const getUserProgress = vi.fn().mockResolvedValue(null);
+const getMasteredAtLevel = vi.fn().mockResolvedValue(0);
 
 vi.mock('@/lib/data/adapter', () => ({
   createDataAdapter: () => ({
     getSession,
+    getUserProgress,
+    getMasteredAtLevel,
   }),
 }));
 
@@ -32,7 +36,10 @@ describe('SummaryPage', () => {
     });
 
     const { default: SummaryPage } = await import('@/app/(app)/summary/[sessionId]/page');
-    const tree = await SummaryPage({ params: { sessionId: 'sess-1' } });
+    const tree = await SummaryPage({
+      params: Promise.resolve({ sessionId: 'sess-1' }),
+      searchParams: Promise.resolve({})
+    });
     const html = renderToString(tree as React.ReactElement);
 
     expect(html).toContain('Session Summary');
