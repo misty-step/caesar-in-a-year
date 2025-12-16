@@ -44,6 +44,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
           sessionId,
           itemIndex,
           userInput: input,
+          tzOffsetMin: new Date().getTimezoneOffset(),
         }),
       });
 

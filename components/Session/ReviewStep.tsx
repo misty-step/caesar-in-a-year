@@ -32,6 +32,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           sessionId,
           itemIndex,
           userInput: input,
+          tzOffsetMin: new Date().getTimezoneOffset(),
         }),
       });
 

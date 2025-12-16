@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 import { createDataAdapter } from '@/lib/data/adapter';
 import { normalizeSessionId } from '@/lib/session/id';
@@ -41,6 +41,11 @@ export default async function SessionPage(props: SessionPageProps) {
   if (!session) {
     console.error(`[SessionPage] Session ${sessionId} not found after retry`);
     notFound();
+  }
+
+  // Resume correctness: if session is already complete, redirect to summary
+  if (session.status === 'complete') {
+    redirect(`/summary/${session.id}`);
   }
 
   return (

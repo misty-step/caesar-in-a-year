@@ -12,10 +12,13 @@ vi.mock('@clerk/nextjs/server', () => ({
 const getUserProgress = vi.fn();
 const getContent = vi.fn();
 
+const getMasteredAtLevel = vi.fn().mockResolvedValue(0);
+
 vi.mock('@/lib/data/adapter', () => ({
   createDataAdapter: () => ({
     getUserProgress,
     getContent,
+    getMasteredAtLevel,
   }),
 }));
 
