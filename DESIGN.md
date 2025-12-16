@@ -1,256 +1,250 @@
-# Checkpoint 1: Core Loop Integrity — Design
+# Design: Checkpoint 2 (Code Health)
+
+Source: `TASK.md` (2.1–2.3). Goal: delete dead UI, collapse duplicated types, remove unused API surface.
 
 ## Architecture Overview
-**Selected Approach**: Budgeted AI grading + always-advance session
+**Selected Approach**: Single canonical domain-types module + single session-advance entrypoint.
 
-**Rationale**: Keep one boring “grade+record+advance” pipeline. Rate limit gates AI calls only, never blocks session completion. Streak updates happen at the same boundary as “session became complete”, so resume is consistent.
+**Rationale**: Today we have two problems: duplicated types (`types.ts` vs `lib/data/types.ts`) and duplicated “advance” entrypoints (server action + API route). Both cause drift, subtle bugs, and extra cognitive load. Fix by making one place “truth” and deleting the rest.
 
 **Core Modules**
-- `lib/ai/gradeTranslation` — grades single-sentence meaning (existing)
-- `lib/ai/gradeGist` — grades passage gist/comprehension (new)
-- `lib/rateLimit/inMemoryRateLimit` — per-user AI budget (new, process-local)
-- `app/(app)/session/[sessionId]/actions.submitReviewForUser` — orchestration: load session, grade (AI or fallback), record FSRS, advance pointer, update progress
-- `lib/progress/streak` — pure streak math (new, tiny)
+- `lib/data/types.ts` — canonical domain model + `DataAdapter` contract.
+- `lib/data/adapter.ts` — runtime selection (Convex vs in-memory) behind `DataAdapter`.
+- `app/(app)/session/[sessionId]/actions.ts` — core session flows (grade, record, advance).
+- `app/api/grade/route.ts` — HTTP boundary for client fetch (kept; used by Session UI).
 
 **Data Flow**
-User → `POST /api/grade` → `submitReviewForUser` → (AI grader?) → `DataAdapter.recordReview` → `DataAdapter.advanceSession` → (if complete) `DataAdapter.upsertUserProgress`
+User (Session UI) → `POST /api/grade` → `submitReviewForUser()` → (AI grade + recordAttempt + recordReview) → `advanceSession()` → `DataAdapter.advanceSession()` → response `{ result, nextIndex, status }`.
 
 **Key Decisions**
-1. Rate limit AI, not learning: return 200 with fallback result + advancement.
-2. Separate graders: gist != translation; prompts diverge.
-3. Session pointer may equal `items.length` when complete; session page redirects to summary.
-4. Streak uses user local day via client tz offset (best-effort DST).
+1. Canonical types live in `lib/data/types.ts` (not root `types.ts`) — reduces drift, makes `lib/` the vocab owner.
+2. One “advance session” entrypoint (`advanceSessionForUser()` only) — removes unused `/api/session/advance` surface.
+3. View-model types stay local to UI routes/components — avoid reintroducing a global `types.ts` bucket.
 
-## Module: `lib/ai/gradeGist`
-Responsibility: grade “did you understand this passage?” not “did you parse every clause”.
+---
+
+## Module: `lib/data/types.ts` (Domain Types + DataAdapter)
+Responsibility: define shared domain vocabulary; hide storage implementation behind `DataAdapter`.
+
+Public Interface (canonical; no imports from `@/types`):
+```ts
+export enum GradeStatus { CORRECT, PARTIAL, INCORRECT }
+export type GradingResult = { status: GradeStatus; feedback: string; correction?: string };
+
+export type SessionItem =
+  | { type: 'REVIEW'; sentence: Sentence }
+  | { type: 'NEW_READING'; reading: ReadingPassage };
+
+export interface DataAdapter {
+  getUserProgress(userId: string): Promise<UserProgress | null>;
+  upsertUserProgress(progress: UserProgress): Promise<void>;
+  getContent(userId: string): Promise<ContentSeed>;
+  createSession(userId: string, items: SessionItem[]): Promise<Session>;
+  getSession(sessionId: string, userId: string): Promise<Session | null>;
+  advanceSession(params: { sessionId: string; userId: string; nextIndex: number; status: SessionStatus }): Promise<Session>;
+  recordAttempt(attempt: Attempt): Promise<void>;
+  getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]>;
+  getReviewStats(userId: string): Promise<ReviewStats>;
+  recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
+  getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number>;
+  incrementDifficulty(userId: string, increment?: number): Promise<{ maxDifficulty: number }>;
+}
+```
+
+Internal Notes
+- Keep `lib/data/types.ts` import-free (except types from itself). No `@/types` backrefs.
+- Treat `SessionItem['type']` string literals as the only discriminator; delete `SegmentType` enum.
+
+---
+
+## Module: Dashboard View Model Types (UI-only)
+Responsibility: represent “what dashboard renders”, not “what DB stores”.
+
+Design: define `UserProgressVM` (or keep `UserProgress` name) local to dashboard module.
+
+Suggested shape (mirrors current UI expectations, derived from data-progress):
+```ts
+export type UserProgressVM = {
+  currentDay: number;
+  totalXp: number;
+  streak: number;
+  unlockedPhase: number;
+};
+```
+
+Where:
+- `app/(app)/dashboard/page.tsx` owns the mapping `DataUserProgress -> UserProgressVM`.
+- `components/dashboard/*` accept `UserProgressVM`.
+
+This is the replacement for the root `types.ts` “global UI type bucket”.
+
+---
+
+## Module: `app/(app)/session/[sessionId]/actions.ts` (Session Flows)
+Responsibility: single deep module for “grade + persist + advance” with explicit invariants.
 
 Public Interface:
 ```ts
-import type { GradingResult } from '@/types';
-
-export async function gradeGist(input: {
-  latin: string;            // full passage (joined)
-  question: string;         // gist prompt shown to user
-  userAnswer: string;       // user summary
-  referenceGist: string;    // reference summary
-  context?: string;         // book/chapter/etc
-}): Promise<GradingResult>;
+export function submitReview(input: SubmitReviewInput): Promise<SubmitReviewResult>;
+export function submitReviewForUser(params: SubmitReviewInput & { userId: string; token?: string; tzOffsetMin?: number; aiAllowed?: boolean }): Promise<SubmitReviewResult>;
+export function advanceSessionForUser(params: { userId: string; sessionId: string; token?: string }): Promise<{ nextIndex: number; status: SessionStatus }>;
 ```
 
-Internal Implementation
-- Same reliability envelope as `gradeTranslation`: timeout, retry, circuit breaker, JSON schema.
-- Prompt rubric:
-  - judge comprehension (entities, relations, main claim)
-  - accept paraphrase + partial credit
-  - do not nitpick grammar
-  - feedback: 1–3 sentences, actionable
-
-Error Handling
-- Empty answer → `INCORRECT` + “write something”
-- AI unavailable → fallback `PARTIAL` + show reference gist (no throw)
-
-## Module: `lib/rateLimit/inMemoryRateLimit`
-Responsibility: decide if an AI call is allowed for `{userId}` in this process.
-
-Public Interface:
-```ts
-export type RateLimitDecision =
-  | { allowed: true; remaining: number; resetAtMs: number }
-  | { allowed: false; remaining: 0; resetAtMs: number };
-
-export function consumeAiCall(userId: string, nowMs: number): RateLimitDecision;
-```
-
-Design
-- Fixed window 60m:
-  - state: `Map<userId, { windowStartMs: number; count: number }>`
-  - if `nowMs - windowStartMs >= 60m` → reset
-  - if `count < 100` → increment, allow
-  - else deny
-
-Notes
-- Process-local only (OK for MVP). In prod multi-instance, budget becomes “per instance”; acceptable until Upstash.
-- Never throw; worst case allow.
-
-## Module: `lib/progress/streak`
-Responsibility: pure “given last activity timestamp and tz offset, compute next streak”.
-
-Public Interface:
-```ts
-export function computeStreak(params: {
-  prevStreak: number;
-  prevLastSessionAtMs: number;   // 0 if none
-  nowMs: number;                 // server time
-  tzOffsetMin: number;           // from client (Date.getTimezoneOffset)
-}): { nextStreak: number; nextLastSessionAtMs: number; didIncrement: boolean };
-```
-
-Rules (MVP)
-- First completion → streak=1
-- Same local day → streak unchanged
-- Next local day → streak+1
-- Otherwise → streak=1
-
-Local day math (best-effort)
-- `localDayIndex = floor((tsMs - tzOffsetMin*60_000) / 86_400_000)`
-- DST caveat: uses current offset for prior timestamp too; can be off 1 day at DST boundary. Accept.
-
-## Module: `submitReviewForUser` (grading + advance pipeline)
-Responsibility: one entrypoint for correctness + persistence. No route/UI logic.
-
-Public Interface (updated):
-```ts
-export async function submitReviewForUser(params: {
-  userId: string;
-  sessionId: string;
-  itemIndex: number;
-  userInput: string;
-  token?: string;
-  tzOffsetMin?: number;   // optional, for streak update
-  aiAllowed?: boolean;    // optional, gate AI calls
-}): Promise<{
-  result: GradingResult;
-  nextIndex: number;
-  status: SessionStatus;
-}>;
-```
-
-Dependencies
-- Reads: `DataAdapter.getSession`, `DataAdapter.getUserProgress`
-- Writes: `DataAdapter.recordAttempt`, `DataAdapter.recordReview`, `DataAdapter.advanceSession`, `DataAdapter.upsertUserProgress`
-- Uses: `gradeTranslation`, `gradeGist`, `advanceSession`, `computeStreak`
+Key Invariants (enforced)
+- `itemIndex === session.currentIndex` else throw `Out of sync` (prevents race/regress).
+- `advanceSession()` is pure and monotonic; persistence layer must not regress `currentIndex`.
 
 Error Handling Strategy
-- Validation/consistency errors:
-  - session not found, item missing → throw (route maps to 404/400)
-  - out-of-sync (`itemIndex !== session.currentIndex`) → throw typed error (route maps to 409)
-- Operational errors: never block learning
-  - AI failure / rate limit → fallback `GradingResult` + continue
-  - `recordReview` failure → log + continue (FSRS degraded, session not blocked)
-  - progress update failure → log + continue
+- Server action entrypoints (`submitReview`) throw on auth failure and invariant violations.
+- HTTP routes (`/api/grade`) translate bad inputs to `400`, missing auth to `401`, unexpected to `500`.
+
+---
+
+## Module: `app/api/grade/route.ts` (HTTP Boundary)
+Responsibility: validate payload, apply AI rate-limit, call `submitReviewForUser()`, return JSON.
+
+Design Notes
+- Keep this route because Session UI uses `fetch('/api/grade')`.
+- Keep rate limiting here (HTTP boundary) so actions stay deterministic and testable.
+
+Payload contract:
+```ts
+type GradeRequest = { sessionId: string; itemIndex: number; userInput: string; tzOffsetMin?: number };
+type GradeResponse = SubmitReviewResult & { rateLimit: { remaining: number; resetAtMs: number } };
+```
+
+---
+
+## Removal: `app/api/session/advance/*` (Orphan API)
+Current state: route exists + tested, but no callers in app code (only self-references + test).
+
+Decision: delete entire `app/api/session/advance/` directory and its tests.
+
+Replacement: callers that need “advance without grading” use `advanceSessionForUser()` directly (server-side), or add a new HTTP endpoint only when a real client needs it (mobile, external integration).
+
+---
 
 ## Core Algorithms (Pseudocode)
 
-### `POST /api/grade`
-1. auth via Clerk → `userId`, `token`
-2. parse JSON body: `{sessionId, itemIndex, userInput, tzOffsetMin?}`
-3. `decision = consumeAiCall(userId, Date.now())`
-4. `result = submitReviewForUser({userId, token, ..., aiAllowed: decision.allowed, tzOffsetMin})`
-5. return 200 with `{...result, rateLimit: { remaining, resetAtMs } }` (optional)
+### Type Consolidation (2.2)
+1. Move `GradeStatus` + `GradingResult` into `lib/data/types.ts`.
+2. Update all imports of `@/types` to import from `@/lib/data/types`:
+   - `lib/ai/*`, `lib/srs/*`, `components/Session/*`, `app/(app)/session/*`, dashboard types.
+3. Delete `types.ts` (and `SegmentType`).
+4. Add local `UserProgressVM` type for dashboard (no global types file).
+5. Run `pnpm lint` + `pnpm vitest`.
 
-### `submitReviewForUser`
-1. normalize `sessionId`
-2. load session
-3. validate `itemIndex === session.currentIndex`
-4. pick grader:
-   - REVIEW → `gradeTranslation(...)`
-   - NEW_READING → `gradeGist(...)`
-5. if `aiAllowed === false`:
-   - skip AI call
-   - `result = { status: PARTIAL, feedback: "...tutor unavailable...", correction: reference }`
-6. best-effort:
-   - `recordAttempt(...)` (no-op in Convex today)
-   - if REVIEW → `recordReview(userId, sentenceId, result)`
-7. `advanced = advanceSession(session)`
-8. `updatedSession = data.advanceSession({ nextIndex: advanced.nextIndex, status: advanced.status })`
-9. if `updatedSession.status === 'complete'`:
-   - load progress
-   - if `tzOffsetMin` present: `computeStreak(...)` using `nowMs = Date.now()`
-   - update `totalXp += session.items.length` (or `+1`, see Open Questions)
-   - `upsertUserProgress(...)` (best-effort)
-10. return `{ result, nextIndex: updatedSession.currentIndex, status: updatedSession.status }`
+### Delete Dead Components (2.1)
+1. Confirm no imports of `components/Dashboard.tsx` and `components/Layout.tsx` (already true via search).
+2. Delete both files.
+3. Run `pnpm lint` (ensures no stale imports).
 
-### `SessionPage` redirect (resume correctness)
-If session status is `complete`, redirect to `/summary/[sessionId]`.
+### Remove Orphaned API Route (2.3)
+1. Confirm no usage of `/api/session/advance` (only route/test currently).
+2. Delete `app/api/session/advance/route.ts` and `app/api/session/advance/__tests__/route.test.ts`.
+3. Ensure no docs point at it (README “Under the hood” line).
+4. Run `pnpm vitest` (removes route test, ensures nothing else relies on it).
 
-## File Organization (Planned)
-```
-lib/
-  ai/
-    gradeTranslation.ts          (update: stop using for gist)
-    gradeGist.ts                 (new)
-  progress/
-    streak.ts                    (new)
-  rateLimit/
-    inMemoryRateLimit.ts         (new)
-  session/
-    advance.ts                   (update: clamp edge cases, see tests)
-    __tests__/
-      advance.test.ts            (new)
-lib/data/
-  __tests__/
-    convexAdapter.test.ts        (new)
-app/api/grade/route.ts           (update: rate limit + tzOffset pass-through)
-app/(app)/session/[sessionId]/actions.ts  (update: gradeGist + aiAllowed + progress update)
-app/(app)/session/[sessionId]/page.tsx    (update: redirect if session complete)
-components/Session/ReviewStep.tsx         (update: send tzOffsetMin)
-components/Session/ReadingStep.tsx        (update: send tzOffsetMin)
-```
+---
+
+## File Organization (Planned Diffs)
+- Delete `components/Dashboard.tsx`
+- Delete `components/Layout.tsx`
+- Delete `app/api/session/advance/route.ts`
+- Delete `app/api/session/advance/__tests__/route.test.ts`
+- Delete `types.ts`
+- Update `lib/data/types.ts` to own grading types (no import from `@/types`)
+- Update imports across:
+  - `lib/ai/gradeTranslation.ts`, `lib/ai/gradeGist.ts`, related tests
+  - `lib/srs/fsrs.ts`, related tests
+  - `components/Session/ReviewStep.tsx`, `components/Session/ReadingStep.tsx`
+  - `app/(app)/dashboard/page.tsx`, `components/dashboard/Stats.tsx`
+  - `app/(app)/session/[sessionId]/actions.ts`
+- Optional (doc hygiene): update README/CLAUDE/GEMINI to stop claiming `/api/session/advance` exists.
+
+---
 
 ## Integration Points
-- Env: `GEMINI_API_KEY` (server only)
-- Convex mutations/queries already used by `ConvexAdapter`
-- No new third-party deps in this checkpoint
+- **Auth**: Clerk middleware (`middleware.ts`) protects `(app)`; server actions/routes use `auth()` again defensively.
+- **AI**: Gemini graders in `lib/ai/*`; called only from `submitReviewForUser()`; rate limiting decided in `/api/grade`.
+- **Data**: `createDataAdapter(token)` chooses Convex vs in-memory; in production token required.
+- **Env Vars**: `GEMINI_API_KEY`, Clerk keys; Convex URL via Convex tooling (`pnpm dev` runs `convex dev`).
+
+## Infrastructure Audit (Current)
+- **Quality gates**: no `.github/` workflows, no pre-commit hooks; local-only `pnpm lint` + `pnpm vitest`.
+- **Build/deploy**: Next.js build (`pnpm build`) + server (`pnpm start`); Convex runs in dev via `pnpm dev`.
+- **Design system**: Tailwind tokens (`roman-*`, `pompeii-*`), primitives in `components/UI/*`.
+- **Observability**: `console.*` logging; no error tracking, no tracing.
+
+Observability (current)
+- `console.*` logging; no structured logger boundary, no Sentry.
+- Convex adapter has a tiny structured logger; expand only if/when CI + prod deploy exists.
+
+---
 
 ## State Management
-- Server source of truth: session `currentIndex`, `status`, FSRS state, user progress.
-- Client state: current input + “show result”.
-- Resume: `SessionPage` reads persisted `currentIndex`; no client guessing.
-- Concurrency:
-  - out-of-sync check prevents double-submit from corrupting pointer
-  - UI should disable submit while pending (already)
+- Client: `SessionClient` holds `currentIndex` + `status` locally; advances only after server confirms.
+- Server: session pointer stored in adapter; `advanceSession()` monotonic + adapter clamps index (already implemented).
+- Concurrency: `submitReviewForUser()` rejects “out of sync” itemIndex; UI should refresh on this error (future).
 
-## Error Handling Strategy (HTTP)
-- 400: invalid payload
-- 401: unauthorized
-- 404: session not found
-- 409: out of sync (client should reload session)
-- 200 with fallback grading when:
-  - rate limit hit
-  - AI unavailable / circuit open
-  - FSRS write failed (still continue; log)
+---
+
+## Error Handling Strategy
+Categories:
+- Validation (bad payload) → `400` JSON `{ error: 'Invalid payload' }`.
+- Auth missing → `401`.
+- Invariant (out-of-sync, missing session/item) → throw in actions; API boundary returns `500` today (option: map to `409` later).
+- External (AI/Convex) → best-effort fallbacks already exist:
+  - AI unavailable: use `aiAllowed=false` or catch in client, return `GradeStatus.PARTIAL` w/ correction.
+  - recordAttempt/recordReview failures: log + continue.
+
+Sensitive data
+- Never log user input; if logging session IDs, truncate in logs (Convex adapter already truncs userId).
+
+---
 
 ## Testing Strategy
-**Unit**
-- `lib/session/__tests__/advance.test.ts`
-  - currentIndex at end → status complete, nextIndex clamped to `items.length`
-  - currentIndex beyond end → stays complete, no runaway increment
-  - empty items → complete, index 0
-- `lib/rateLimit/__tests__/inMemoryRateLimit.test.ts` (optional)
-  - allows first 100, denies 101st, resets after 60m
+Goal: keep existing coverage, delete tests for deleted surfaces, add none unless needed.
 
-**Adapter**
-- `lib/data/__tests__/convexAdapter.test.ts`
-  - mocks `fetchQuery` (existing review doc) + `fetchMutation`
-  - asserts `recordReview()` calls `scheduleReview()` and writes mapped fields (state, stability, due)
-  - cover: new card (existing null) and existing card path
+Unit tests to update (import-path only)
+- `lib/ai/__tests__/gradeTranslation.test.ts`
+- `lib/srs/__tests__/fsrs.test.ts`
+- Any TS compile errors from moved types.
 
-**Route**
-- extend `app/api/grade/__tests__/route.test.ts`
-  - when rate limited: still returns 200 and calls `submitReviewForUser` with `aiAllowed:false`
+Route tests
+- Delete `app/api/session/advance/__tests__/route.test.ts` with the route.
+- Keep `app/api/grade/__tests__/route.test.ts` (critical path; includes rate-limit behavior).
 
-Coverage Targets (new code)
-- Critical path (`submitReviewForUser`, rate limiter, streak math): 90%+ lines/branches
+Commands
+- `pnpm vitest`
+- `pnpm lint`
+
+---
 
 ## Performance & Security Notes
-- AI call budget: 100/hour/user (process-local).
-- AI latency budget: `gradeTranslation` currently 5s timeout × retries; consider lowering attempts if UX suffers.
-- Do not log raw `userInput` or full `userId`; truncate in logs.
-- `tzOffsetMin` is client-controlled; treat as hint only. Worst-case user can “cheat” streak; acceptable for solo MVP.
+- Removing unused route reduces attack surface and maintenance load.
+- Types consolidation removes accidental runtime coupling (`lib/data/types.ts` currently imports from `@/types`).
+- Keep `runtime = 'nodejs'` on API routes needing SDKs/tokens; avoid edge runtime for Gemini/Convex.
+
+---
 
 ## Alternative Architectures Considered
 
-| Option | Pros | Cons | Score (Simp 40 / Depth 30 / Explicit 20 / Robust 10) | Verdict |
-|---|---|---|---:|---|
-| A) 429 on rate limit | trivial | blocks session, violates PRD | 40 | no |
-| B) Budget AI, fallback + advance (selected) | simple, no UI work, never blocks | FSRS accuracy degraded when fallback | 84 | yes |
-| C) Manual self-grade on fallback | FSRS stays accurate | extra endpoint + UI + idempotency complexity | 72 | later |
-| D) Redis rate limit now | consistent across instances | adds infra + ops | 60 | later |
-| E) Server actions (no `/api/grade`) | fewer moving parts | refactor client flow, harder to test | 65 | later |
+| Option | Summary | Pros | Cons | Verdict |
+|---|---|---|---|---|
+| A | Keep `types.ts` canonical; `lib/data/types.ts` imports/re-exports | Minimal churn | Root “types bucket” grows; `lib/` leaks vocab ownership | Reject |
+| B | Canonical `lib/data/types.ts`; keep `types.ts` as re-export shim | Low churn, gradual migration | Still two public entrypoints; easy to keep using shim forever | Consider only if diff size matters |
+| C | Canonical `lib/data/types.ts`; delete `types.ts`; colocate view-model types | One truth; clear ownership; least long-term complexity | Larger one-time diff | **Select** |
+| D | Keep `/api/session/advance` “just in case” | Future mobile client ready | Dead surface now; duplicates `advanceSessionForUser()`; docs drift | Reject |
+
+Rubric scores (Simplicity 40%, Module depth 30%, Explicitness 20%, Robustness 10%)
+- A: 5.5/10
+- B: 7.0/10
+- C: 8.3/10
+- D: 4.8/10
+
+---
 
 ## Open Questions / Assumptions
-- XP: keep as hidden metric? If not, delete `totalXp` later (Checkpoint 2).
-- Fallback FSRS: recordReview with PARTIAL vs skip? (selected: record, keeps loop simple)
-- Gist prompt content: should reading question be “summary” everywhere (Convex `mapToReading` currently says “translate”)?
-- DST correctness: accept best-effort offset math until we store timezone.
-
+- Any external client (mobile/CLI) depends on `POST /api/session/advance`? If yes, keep it and add a real caller + contract test.
+- Do we want to map “Out of sync” to HTTP `409` (better UX) instead of `500`? (Nice-to-have; not in Checkpoint 2.)
