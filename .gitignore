@@ -26,6 +26,9 @@ dist-ssr
 # Claude Code
 .claude/
 
+# AI planning documents (ephemeral)
+history/
+
 # Environment variables
 .env*
 !.env.example
