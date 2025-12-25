@@ -1,5 +1,4 @@
 import { auth } from '@clerk/nextjs/server';
-import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
 import type { ContentSeed, UserProgress as DataUserProgress } from '@/lib/data/types';
@@ -7,7 +6,8 @@ import type { ContentSeed, UserProgress as DataUserProgress } from '@/lib/data/t
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats, type UserProgressVM } from '@/components/dashboard/Stats';
 import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
-import { Button } from '@/components/UI/Button';
+import { JustCompletedBanner } from '@/components/dashboard/JustCompletedBanner';
+import { SessionCard } from '@/components/dashboard/SessionCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +53,7 @@ function mapProgress(progress: DataUserProgress | null): UserProgressVM {
     streak: progress.streak,
     totalXp: progress.totalXp,
     unlockedPhase: progress.maxDifficulty,
+    lastSessionAt: progress.lastSessionAt,
   };
 }
 
@@ -74,31 +75,21 @@ export default async function DashboardPage() {
   const token = await getToken({ template: 'convex' });
   const { progress, maxDifficulty, masteredCount, summary } = await getDashboardData(userId, token);
 
+  // Detect if user just completed a session (within last 60 seconds)
+  const justCompleted = progress.lastSessionAt
+    ? Date.now() - progress.lastSessionAt < 60_000
+    : false;
+
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-10">
         <Hero />
 
-        <Stats progress={progress} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} />
+        {justCompleted && <JustCompletedBanner />}
 
-        <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
-              Session
-            </p>
-            <h2 className="text-xl font-serif font-semibold text-roman-900">
-              Ready for today&apos;s guided reading?
-            </h2>
-            <p className="text-sm text-roman-700">
-              You&apos;ll review key sentences, then tackle a short passage with glossary support.
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <Link href="/session/new">
-              <Button className="w-full sm:w-auto text-base px-8 py-3" labelLatin="Incipe Sessionem" labelEnglish="Start Session" />
-            </Link>
-          </div>
-        </section>
+        <Stats progress={progress} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
+
+        <SessionCard justCompleted={justCompleted} />
 
         <MasteryProgress masteredCount={masteredCount} readingLevel={maxDifficulty} />
       </div>

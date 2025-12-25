@@ -6,15 +6,17 @@ export type UserProgressVM = {
   totalXp: number;
   streak: number;
   unlockedPhase: number;
+  lastSessionAt?: number; // Unix ms - for detecting "just completed" state
 };
 
 interface StatsProps {
   progress: UserProgressVM;
   reviewCount: number;
   readingTitle: string;
+  justCompleted?: boolean;
 }
 
-export function Stats({ progress, reviewCount, readingTitle }: StatsProps) {
+export function Stats({ progress, reviewCount, readingTitle, justCompleted }: StatsProps) {
   return (
     <section className="grid gap-4 md:grid-cols-3">
       <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col justify-between">
@@ -34,8 +36,10 @@ export function Stats({ progress, reviewCount, readingTitle }: StatsProps) {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col items-center justify-center">
-        <div className="text-4xl font-serif text-pompeii-600 mb-1">{progress.streak}</div>
+      <div className={`bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col items-center justify-center ${justCompleted ? 'ring-2 ring-pompeii-400 ring-offset-2' : ''}`}>
+        <div className={`text-4xl font-serif text-pompeii-600 mb-1 ${justCompleted ? 'animate-bounce' : ''}`}>
+          {progress.streak}
+        </div>
         <span className="text-xs uppercase text-roman-400 font-bold">
           <LatinText latin="Series Dierum" english="Day Streak" />
         </span>
