@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GradeStatus, type GradingResult } from "@/lib/data/types";
 
-const MODEL_NAME = "gemini-2.5-flash";
-const TIMEOUT_MS = 5000;
+const MODEL_NAME = "gemini-3-flash-preview";
+const TIMEOUT_MS = 20000; // 20s - covers Gemini cold start latency
 const RETRY_BACKOFF_MS = 500;
 const MAX_ATTEMPTS = 2;
 
