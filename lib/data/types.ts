@@ -4,10 +4,25 @@ export enum GradeStatus {
   INCORRECT = 'INCORRECT'
 }
 
+export type ErrorType = 'grammar' | 'vocabulary' | 'word_order' | 'omission' | 'other';
+
+export interface GradingError {
+  type: ErrorType;
+  latinSegment?: string;
+  explanation: string;
+}
+
+export interface GradingAnalysis {
+  userTranslationLiteral?: string;
+  errors: GradingError[];
+  glossary?: Record<string, string>; // word → meaning for interactive display
+}
+
 export interface GradingResult {
   status: GradeStatus;
   feedback: string;
   correction?: string;
+  analysis?: GradingAnalysis;
 }
 
 export interface Sentence {

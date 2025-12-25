@@ -17,6 +17,7 @@ export type SubmitReviewInput = {
 
 export type SubmitReviewResult = {
   result: GradingResult;
+  userInput: string; // Echo back for display in feedback UI
   nextIndex: number;
   status: SessionStatus;
 };
@@ -155,6 +156,7 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
 
   return {
     result,
+    userInput,
     nextIndex: updated.currentIndex,
     status: updated.status,
   };

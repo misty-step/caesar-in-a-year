@@ -20,6 +20,40 @@ const gradingSchema = {
     correction: {
       type: Type.STRING,
     },
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        userTranslationLiteral: {
+          type: Type.STRING,
+        },
+        errors: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              type: {
+                type: Type.STRING,
+                enum: ['grammar', 'vocabulary', 'word_order', 'omission', 'other'],
+              },
+              latinSegment: {
+                type: Type.STRING,
+              },
+              explanation: {
+                type: Type.STRING,
+              },
+            },
+            required: ['type', 'explanation'],
+          },
+        },
+        glossary: {
+          type: Type.OBJECT,
+          additionalProperties: {
+            type: Type.STRING,
+          },
+        },
+      },
+      required: ['errors'],
+    },
   },
   required: ["status", "feedback"],
 };
@@ -149,19 +183,30 @@ function constructPrompt(input: {
   context?: string;
 }): string {
   return `
-You are a supportive but rigorous Latin tutor.
+You are a supportive but rigorous Latin tutor helping a student learn to read Caesar.
 Analyze the student's translation of a Latin sentence.
 
 Latin: "${input.latin}"
-Reference: "${input.reference}"
+Reference Translation: "${input.reference}"
 Context: ${input.context || "None"}
+Student's Translation: "${input.userTranslation}"
 
-Student Input: "${input.userTranslation}"
+GRADING CRITERIA:
+- CORRECT: Core meaning captured (S-V-O relationships correct), minor word choice differences OK
+- PARTIAL: Some understanding shown but key elements wrong or missing
+- INCORRECT: Fundamental misunderstanding or completely off-topic
 
-Task:
-1. Determine if the student understood the core meaning (Subject, Object, Verb).
-2. Be forgiving of synonyms.
-3. Be strict on grammar relationships.
-4. Return JSON with status (CORRECT, PARTIAL, INCORRECT), helpful feedback, and optional correction.
+ANALYSIS REQUIREMENTS:
+1. Provide a brief, encouraging feedback summary (1-2 sentences)
+2. If not CORRECT, explain what the student's translation literally means vs what the Latin says
+3. List specific errors with:
+   - type: grammar | vocabulary | word_order | omission | other
+   - latinSegment: the Latin word/phrase involved
+   - explanation: what it means and why the student's version was wrong
+4. Provide a glossary with key Latin words → English meanings for learning
+
+Be specific and pedagogical. Help the student understand WHY their translation was wrong and WHAT each Latin word means.
+
+Return JSON with: status, feedback, correction (reference translation), analysis (userTranslationLiteral, errors[], glossary{})
 `;
 }
