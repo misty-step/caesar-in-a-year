@@ -4,7 +4,7 @@ export enum GradeStatus {
   INCORRECT = 'INCORRECT'
 }
 
-export type ErrorType = 'grammar' | 'vocabulary' | 'word_order' | 'omission' | 'other';
+export type ErrorType = 'grammar' | 'vocabulary' | 'word_order' | 'omission' | 'comprehension' | 'misreading' | 'other';
 
 export interface GradingError {
   type: ErrorType;

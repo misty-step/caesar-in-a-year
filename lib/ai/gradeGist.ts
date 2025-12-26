@@ -20,6 +20,45 @@ const gistGradingSchema = {
     correction: {
       type: Type.STRING,
     },
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        userTranslationLiteral: {
+          type: Type.STRING,
+        },
+        errors: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              type: {
+                type: Type.STRING,
+                enum: ['comprehension', 'omission', 'misreading', 'other'],
+              },
+              latinSegment: {
+                type: Type.STRING,
+              },
+              explanation: {
+                type: Type.STRING,
+              },
+            },
+            required: ['type', 'explanation'],
+          },
+        },
+        glossary: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              meaning: { type: Type.STRING },
+            },
+            required: ['word', 'meaning'],
+          },
+        },
+      },
+      required: ['errors'],
+    },
   },
   required: ["status", "feedback"],
 };
@@ -154,7 +193,7 @@ function constructGistPrompt(input: {
   context?: string;
 }): string {
   return `
-You are a supportive Latin comprehension tutor.
+You are a supportive but rigorous Latin comprehension tutor helping a student read Caesar.
 Analyze the student's summary/gist of a Latin passage.
 
 Latin Passage: "${input.latin}"
@@ -162,16 +201,24 @@ Question: "${input.question}"
 Reference Gist: "${input.referenceGist}"
 Context: ${input.context || "None"}
 
-Student Summary: "${input.userAnswer}"
+Student's Summary: "${input.userAnswer}"
 
-Task:
-1. Judge comprehension: Did the student identify the main entities, relationships, and central claim?
-2. Accept paraphrase and partial credit for getting the essential meaning.
-3. Do NOT nitpick grammar or style in their English response.
-4. Focus on understanding, not translation accuracy.
-5. Return JSON with:
-   - status: CORRECT (understood main points), PARTIAL (got some but missed key elements), INCORRECT (major misunderstanding)
-   - feedback: 1-3 sentences of actionable feedback
-   - correction: (optional) include reference gist if student missed key points
+GRADING CRITERIA:
+- CORRECT: Understood main entities, relationships, and central claim
+- PARTIAL: Got some elements but missed key points
+- INCORRECT: Fundamental misunderstanding of the passage
+
+ANALYSIS REQUIREMENTS:
+1. Provide a brief, encouraging feedback summary (1-2 sentences)
+2. If not CORRECT, explain what the student's answer implies they understood
+3. List specific comprehension errors with:
+   - type: comprehension | omission | misreading | other
+   - latinSegment: the Latin word/phrase they misunderstood (if applicable)
+   - explanation: what the Latin actually says and why their understanding was off
+4. Provide a glossary with EVERY individual Latin word → English meaning (one entry per word, no phrases)
+
+Be specific and pedagogical. Help the student understand WHAT they missed and WHY the Latin means something different.
+
+Return JSON with: status, feedback, correction (reference gist), analysis (userTranslationLiteral, errors[], glossary[])
 `;
 }
