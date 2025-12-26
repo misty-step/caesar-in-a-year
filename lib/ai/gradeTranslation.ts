@@ -46,9 +46,14 @@ const gradingSchema = {
           },
         },
         glossary: {
-          type: Type.OBJECT,
-          additionalProperties: {
-            type: Type.STRING,
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              meaning: { type: Type.STRING },
+            },
+            required: ['word', 'meaning'],
           },
         },
       },

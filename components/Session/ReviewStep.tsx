@@ -79,8 +79,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
     setSelectedWord(null);
   };
 
-  // Get glossary from analysis or empty
-  const glossary = feedback?.result.analysis?.glossary ?? {};
+  // Convert glossary array to map for lookup
+  const glossary = (feedback?.result.analysis?.glossary ?? []).reduce<Record<string, string>>(
+    (acc, { word, meaning }) => ({ ...acc, [word.toLowerCase()]: meaning }),
+    {}
+  );
 
   // Clean word for glossary lookup (remove punctuation)
   const cleanWord = (word: string) => word.replace(/[.,;:!?'"()[\]{}]/g, '').toLowerCase();

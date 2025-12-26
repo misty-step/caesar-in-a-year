@@ -12,10 +12,15 @@ export interface GradingError {
   explanation: string;
 }
 
+export interface GlossaryEntry {
+  word: string;
+  meaning: string;
+}
+
 export interface GradingAnalysis {
   userTranslationLiteral?: string;
   errors: GradingError[];
-  glossary?: Record<string, string>; // word → meaning for interactive display
+  glossary?: GlossaryEntry[]; // word-meaning pairs for interactive display
 }
 
 export interface GradingResult {
