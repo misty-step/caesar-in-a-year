@@ -208,7 +208,7 @@ ANALYSIS REQUIREMENTS:
    - type: grammar | vocabulary | word_order | omission | other
    - latinSegment: the Latin word/phrase involved
    - explanation: what it means and why the student's version was wrong
-4. Provide a glossary with key Latin words → English meanings for learning
+4. Provide a glossary with EVERY individual Latin word → English meaning (one entry per word, no phrases)
 
 Be specific and pedagogical. Help the student understand WHY their translation was wrong and WHAT each Latin word means.
 
