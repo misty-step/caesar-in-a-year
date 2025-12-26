@@ -1,20 +1,22 @@
 import { auth } from '@clerk/nextjs/server';
 
 import { createDataAdapter } from '@/lib/data/adapter';
-import type { ContentSeed, UserProgress as DataUserProgress } from '@/lib/data/types';
+import type { ContentSeed, ProgressMetrics, UserProgress as DataUserProgress } from '@/lib/data/types';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats, type UserProgressVM } from '@/components/dashboard/Stats';
-import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 import { JustCompletedBanner } from '@/components/dashboard/JustCompletedBanner';
 import { SessionCard } from '@/components/dashboard/SessionCard';
+import { LegionStatus } from '@/components/dashboard/LegionStatus';
+import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
+import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
+import { XPDisplay } from '@/components/dashboard/XPDisplay';
 
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgressVM;
-  maxDifficulty: number;
-  masteredCount: number;
+  metrics: ProgressMetrics;
   summary: {
     reviewCount: number;
     readingTitle: string;
@@ -22,20 +24,16 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
 }> {
   const data = createDataAdapter(token ?? undefined);
 
-  const [rawProgress, content] = await Promise.all([
+  const [rawProgress, content, metrics] = await Promise.all([
     data.getUserProgress(userId),
     data.getContent(userId),
+    data.getProgressMetrics(userId),
   ]);
-
-  const maxDifficulty = rawProgress?.maxDifficulty ?? 10;
-
-  // Fetch mastery count for current level
-  const masteredCount = await data.getMasteredAtLevel(userId, maxDifficulty);
 
   const progress = mapProgress(rawProgress);
   const summary = mapContentToSummary(content);
 
-  return { progress, maxDifficulty, masteredCount, summary };
+  return { progress, metrics, summary };
 }
 
 function mapProgress(progress: DataUserProgress | null): UserProgressVM {
@@ -73,7 +71,7 @@ export default async function DashboardPage() {
   }
 
   const token = await getToken({ template: 'convex' });
-  const { progress, maxDifficulty, masteredCount, summary } = await getDashboardData(userId, token);
+  const { progress, metrics, summary } = await getDashboardData(userId, token);
 
   // Detect if user just completed a session (within last 60 seconds)
   const justCompleted = progress.lastSessionAt
@@ -82,7 +80,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-10">
+      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <Hero />
 
         {justCompleted && <JustCompletedBanner />}
@@ -91,7 +89,15 @@ export default async function DashboardPage() {
 
         <SessionCard justCompleted={justCompleted} />
 
-        <MasteryProgress masteredCount={masteredCount} readingLevel={maxDifficulty} />
+        {/* New Progress Visualization */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <LegionStatus legion={metrics.legion} />
+          <XPDisplay xp={metrics.xp} />
+        </div>
+
+        <JourneyProgress iter={metrics.iter} />
+
+        <ActivityHeatmap activity={metrics.activity} streak={metrics.streak} />
       </div>
     </main>
   );

@@ -6,6 +6,7 @@ import {
   ContentSeed,
   DataAdapter,
   GradingResult,
+  ProgressMetrics,
   ReadingPassage,
   ReviewSentence,
   ReviewStats,
@@ -371,5 +372,9 @@ export class ConvexAdapter implements DataAdapter {
 
   async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
     return fetchMutation(api.userProgress.incrementDifficulty, { userId, increment }, this.options);
+  }
+
+  async getProgressMetrics(userId: string): Promise<ProgressMetrics> {
+    return fetchQuery(api.progress.getMetrics, { userId }, this.options) as Promise<ProgressMetrics>;
   }
 }

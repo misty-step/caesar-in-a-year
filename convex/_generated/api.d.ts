@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as progress from "../progress.js";
 import type * as reviews from "../reviews.js";
 import type * as sentences from "../sentences.js";
 import type * as sessions from "../sessions.js";
@@ -21,6 +22,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  progress: typeof progress;
   reviews: typeof reviews;
   sentences: typeof sentences;
   sessions: typeof sessions;

@@ -94,6 +94,49 @@ export interface ReviewStats {
   masteredCount: number;
 }
 
+// === Progress Visualization Types ===
+
+/** Roman military ranks based on FSRS stability */
+export interface LegionTiers {
+  tirones: number;    // stability < 1 day (recruits)
+  milites: number;    // stability 1-7 days (soldiers)
+  veterani: number;   // stability 7-21 days (veterans)
+  decuriones: number; // stability 21+ days (officers/masters)
+}
+
+/** Journey through Caesar's text */
+export interface JourneyProgress {
+  sentencesEncountered: number;
+  totalSentences: number;
+  percentComplete: number;
+}
+
+/** XP and level data */
+export interface XPProgress {
+  total: number;
+  level: number;
+  currentLevelXp: number;
+  toNextLevel: number;
+}
+
+/** Daily activity for heatmap */
+export interface ActivityDay {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
+/**
+ * Deep module: All progress metrics in one response.
+ * UI components just render slices, no calculation.
+ */
+export interface ProgressMetrics {
+  legion: LegionTiers;
+  iter: JourneyProgress;
+  activity: ActivityDay[];
+  xp: XPProgress;
+  streak: number;
+}
+
 export interface DataAdapter {
   getUserProgress(userId: string): Promise<UserProgress | null>;
   upsertUserProgress(progress: UserProgress): Promise<void>;
@@ -112,4 +155,5 @@ export interface DataAdapter {
   recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
   getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number>;
   incrementDifficulty(userId: string, increment?: number): Promise<{ maxDifficulty: number }>;
+  getProgressMetrics(userId: string): Promise<ProgressMetrics>;
 }

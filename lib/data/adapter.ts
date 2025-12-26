@@ -3,6 +3,7 @@ import type {
   Attempt,
   ContentSeed,
   DataAdapter,
+  ProgressMetrics,
   Sentence,
   Session,
   SessionStatus,
@@ -220,5 +221,16 @@ const memoryAdapter: DataAdapter = {
       progressStore.set(userId, { ...existing, maxDifficulty: newDifficulty });
     }
     return { maxDifficulty: newDifficulty };
+  },
+
+  async getProgressMetrics(userId: string): Promise<ProgressMetrics> {
+    const progress = progressStore.get(userId);
+    return {
+      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
+      iter: { sentencesEncountered: 0, totalSentences: 100, percentComplete: 0 },
+      activity: [],
+      xp: { total: progress?.totalXp ?? 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
+      streak: progress?.streak ?? 0,
+    };
   },
 };
