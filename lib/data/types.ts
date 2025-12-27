@@ -46,9 +46,21 @@ export interface ReadingPassage {
   referenceGist: string;
 }
 
+/** Vocabulary card for adaptive learning */
+export interface VocabCard {
+  id: string;
+  latinWord: string;
+  meaning: string;
+  questionType: 'latin_to_english' | 'form_identification' | 'context_fill';
+  question: string;
+  answer: string;
+  sourceSentenceId: string;
+}
+
 export type SessionItem =
   | { type: 'REVIEW'; sentence: Sentence }
-  | { type: 'NEW_READING'; reading: ReadingPassage };
+  | { type: 'NEW_READING'; reading: ReadingPassage }
+  | { type: 'VOCAB_DRILL'; vocab: VocabCard };
 
 export type SessionStatus = 'active' | 'complete';
 
@@ -71,12 +83,22 @@ export interface UserProgress {
 }
 
 export interface Attempt {
+  userId: string;
   sessionId: string;
-  itemId: string;
+  itemId: string; // sentenceId or readingId
   type: SessionItem['type'];
   userInput: string;
   gradingResult: GradingResult;
   createdAt: string;
+}
+
+/** Persisted attempt history entry (returned from queries) */
+export interface AttemptHistoryEntry {
+  sentenceId: string;
+  userInput: string;
+  gradingStatus: string;
+  errorTypes: string[];
+  createdAt: number;
 }
 
 export interface ContentSeed {
@@ -150,6 +172,7 @@ export interface DataAdapter {
     status: SessionStatus;
   }): Promise<Session>;
   recordAttempt(attempt: Attempt): Promise<void>;
+  getAttemptHistory(userId: string, sentenceId: string, limit?: number): Promise<AttemptHistoryEntry[]>;
   getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]>;
   getReviewStats(userId: string): Promise<ReviewStats>;
   recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;

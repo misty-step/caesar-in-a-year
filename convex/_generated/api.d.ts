@@ -8,12 +8,14 @@
  * @module
  */
 
+import type * as attempts from "../attempts.js";
 import type * as progress from "../progress.js";
 import type * as reviews from "../reviews.js";
 import type * as sentences from "../sentences.js";
 import type * as sessions from "../sessions.js";
 import type * as userProgress from "../userProgress.js";
 import type * as users from "../users.js";
+import type * as vocab from "../vocab.js";
 
 import type {
   ApiFromModules,
@@ -22,12 +24,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  attempts: typeof attempts;
   progress: typeof progress;
   reviews: typeof reviews;
   sentences: typeof sentences;
   sessions: typeof sessions;
   userProgress: typeof userProgress;
   users: typeof users;
+  vocab: typeof vocab;
 }>;
 
 /**

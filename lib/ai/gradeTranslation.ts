@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { GradeStatus, type GradingResult } from "@/lib/data/types";
+import { GradeStatus, type GradingResult, type AttemptHistoryEntry } from "@/lib/data/types";
 
 const MODEL_NAME = "gemini-3-flash-preview";
 const TIMEOUT_MS = 20000; // 20s - covers Gemini cold start latency
@@ -99,6 +99,7 @@ export async function gradeTranslation(input: {
   userTranslation: string;
   reference: string;
   context?: string;
+  attemptHistory?: AttemptHistoryEntry[];
 }): Promise<GradingResult> {
   // Input validation
   if (!input.userTranslation?.trim()) {
@@ -181,12 +182,50 @@ function getFallbackResult(reference: string): GradingResult {
   };
 }
 
+function formatHistoryForPrompt(history: AttemptHistoryEntry[]): string {
+  if (!history || history.length === 0) return "";
+
+  const lines = history.map((h, i) => {
+    const date = new Date(h.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const errors = h.errorTypes.length > 0 ? ` - errors: [${h.errorTypes.join(', ')}]` : '';
+    return `- Attempt ${history.length - i} (${date}): ${h.gradingStatus}${errors}`;
+  });
+
+  return `
+STUDENT HISTORY FOR THIS SENTENCE:
+${lines.join('\n')}
+Current attempt is #${history.length + 1}.
+`;
+}
+
+function getEscalationInstructions(attemptCount: number): string {
+  if (attemptCount === 0) {
+    return ""; // First attempt: standard feedback
+  }
+  if (attemptCount === 1) {
+    return `
+ADAPTATION: This is the student's 2nd attempt. Reference their previous mistake if relevant.
+Be slightly more detailed in your explanations.`;
+  }
+  // 3+ attempts
+  return `
+ADAPTATION: This is attempt #${attemptCount + 1}. The student has struggled with this sentence multiple times.
+- Provide thorough, hand-holding explanations
+- Include memory aids or mnemonics where helpful
+- Break down the grammar step by step
+- Be extra encouraging while still being rigorous`;
+}
+
 function constructPrompt(input: {
   latin: string;
   userTranslation: string;
   reference: string;
   context?: string;
+  attemptHistory?: AttemptHistoryEntry[];
 }): string {
+  const historySection = formatHistoryForPrompt(input.attemptHistory ?? []);
+  const escalationSection = getEscalationInstructions(input.attemptHistory?.length ?? 0);
+
   return `
 You are a supportive but rigorous Latin tutor helping a student learn to read Caesar.
 Analyze the student's translation of a Latin sentence.
@@ -195,12 +234,12 @@ Latin: "${input.latin}"
 Reference Translation: "${input.reference}"
 Context: ${input.context || "None"}
 Student's Translation: "${input.userTranslation}"
-
+${historySection}
 GRADING CRITERIA:
 - CORRECT: Core meaning captured (S-V-O relationships correct), minor word choice differences OK
 - PARTIAL: Some understanding shown but key elements wrong or missing
 - INCORRECT: Fundamental misunderstanding or completely off-topic
-
+${escalationSection}
 ANALYSIS REQUIREMENTS:
 1. Provide a brief, encouraging feedback summary (1-2 sentences)
 2. If not CORRECT, explain what the student's translation literally means vs what the Latin says

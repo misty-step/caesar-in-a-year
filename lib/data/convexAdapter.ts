@@ -3,6 +3,7 @@ import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import {
   Attempt,
+  AttemptHistoryEntry,
   ContentSeed,
   DataAdapter,
   GradingResult,
@@ -326,9 +327,38 @@ export class ConvexAdapter implements DataAdapter {
     };
   }
 
-  // Phase 1: attempts not persisted
-  async recordAttempt(_attempt: Attempt): Promise<void> {
-    return;
+  async recordAttempt(attempt: Attempt): Promise<void> {
+    // Extract error types from grading result
+    const errorTypes = attempt.gradingResult.analysis?.errors.map(e => e.type) ?? [];
+
+    await fetchMutation(
+      api.attempts.record,
+      {
+        userId: attempt.userId,
+        sentenceId: attempt.itemId,
+        sessionId: attempt.sessionId,
+        userInput: attempt.userInput,
+        gradingStatus: attempt.gradingResult.status,
+        errorTypes,
+      },
+      this.options
+    );
+  }
+
+  async getAttemptHistory(userId: string, sentenceId: string, limit?: number): Promise<AttemptHistoryEntry[]> {
+    const results = await fetchQuery(
+      api.attempts.getHistory,
+      { userId, sentenceId, limit },
+      this.options
+    );
+
+    return results.map(r => ({
+      sentenceId: r.sentenceId,
+      userInput: r.userInput,
+      gradingStatus: r.gradingStatus,
+      errorTypes: r.errorTypes,
+      createdAt: r.createdAt,
+    }));
   }
 
   async getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]> {

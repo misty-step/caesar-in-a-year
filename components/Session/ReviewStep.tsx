@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GradeStatus, type Sentence, type GradingResult, type SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type Sentence, type GradingResult, type SessionStatus, type AttemptHistoryEntry, type ErrorType } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { AttemptHistory } from './AttemptHistory';
+import { ErrorTypeIcon } from '@/components/UI/ErrorTypeIcon';
 
 interface ReviewStepProps {
   sentence: Sentence;
@@ -15,6 +17,7 @@ interface ReviewStepProps {
 interface FeedbackState {
   result: GradingResult;
   userInput: string;
+  attemptHistory?: AttemptHistoryEntry[];
 }
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, itemIndex, onAdvance }) => {
@@ -49,9 +52,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
         userInput: string;
         nextIndex: number;
         status: SessionStatus;
+        attemptHistory?: AttemptHistoryEntry[];
       };
 
-      setFeedback({ result: data.result, userInput: data.userInput });
+      setFeedback({ result: data.result, userInput: data.userInput, attemptHistory: data.attemptHistory });
       setAdvancePayload({ nextIndex: data.nextIndex, status: data.status });
     } catch (error) {
       console.error('Error grading review sentence', error);
@@ -125,22 +129,22 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
   const getStatusColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'bg-green-50 border-green-500';
+        return 'bg-laurel-50 border-laurel-500';
       case GradeStatus.PARTIAL:
-        return 'bg-yellow-50 border-yellow-500';
+        return 'bg-terracotta-50 border-terracotta-500';
       default:
-        return 'bg-red-50 border-red-500';
+        return 'bg-iron-50 border-iron-500';
     }
   };
 
   const getStatusTextColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'text-green-800';
+        return 'text-laurel-700';
       case GradeStatus.PARTIAL:
-        return 'text-yellow-800';
+        return 'text-terracotta-700';
       default:
-        return 'text-red-800';
+        return 'text-iron-700';
     }
   };
 
@@ -163,27 +167,43 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
       )}
 
       {!feedback ? (
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-roman-700">
-            <LatinText latin="Quid hoc significat?" english="What does this mean?" />
-          </label>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 text-lg font-sans min-h-[120px]"
-            placeholder="Scribe interpretationem tuam..."
-            autoFocus
-          />
-          <div className="flex justify-end">
-            <Button
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-              disabled={!input.trim()}
-              labelLatin="Confirma Sensum"
-              labelEnglish="Check Meaning"
-            />
+        isSubmitting ? (
+          /* Loading state - thoughtful AI grading messaging */
+          <div className="rounded-lg bg-roman-50 border border-roman-200 p-8 text-center space-y-3 animate-fade-in">
+            <p className="text-lg font-serif text-roman-700 animate-pulse">
+              MAGISTER EXAMINAT...
+            </p>
+            <p className="text-sm text-roman-500">
+              Your tutor is reviewing your translation
+            </p>
+            <div className="flex justify-center gap-1 pt-2">
+              <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-roman-700">
+              <LatinText latin="Quid hoc significat?" english="What does this mean?" />
+            </label>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 text-lg font-sans min-h-[120px]"
+              placeholder="Scribe interpretationem tuam..."
+              autoFocus
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSubmit}
+                disabled={!input.trim()}
+                labelLatin="Confirma Sensum"
+                labelEnglish="Check Meaning"
+              />
+            </div>
+          </div>
+        )
       ) : (
         <div className={`rounded-lg p-6 border-l-4 space-y-5 ${getStatusColor(feedback.result.status)}`}>
           {/* Status header */}
@@ -225,27 +245,40 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           {/* Feedback summary */}
           <p className="text-roman-900">{feedback.result.feedback}</p>
 
-          {/* Detailed errors */}
+          {/* Detailed errors - collapsible */}
           {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+            <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
+              <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-wide font-bold list-none flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 transition-transform group-open:rotate-90"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
                 <LatinText latin="Errores Specifici" english="Specific Errors" />
-              </p>
-              <ul className="space-y-2">
+                <span className="text-roman-400">({feedback.result.analysis.errors.length})</span>
+              </summary>
+              <ul className="mt-3 space-y-2">
                 {feedback.result.analysis.errors.map((error, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="text-red-600 font-bold">✗</span>
-                    <div>
-                      {error.latinSegment && (
-                        <span className="font-medium text-roman-900">"{error.latinSegment}"</span>
-                      )}
-                      <span className="text-roman-700"> — {error.explanation}</span>
-                      <span className="text-xs text-roman-500 ml-2">({error.type})</span>
+                  <li key={i} className="flex items-start gap-3 text-sm bg-white/30 rounded-lg p-2">
+                    <span className="text-pompeii-600 shrink-0 mt-0.5">
+                      <ErrorTypeIcon type={error.type as ErrorType} className="w-5 h-5" />
+                    </span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold uppercase text-roman-500">{error.type.replace('_', ' ')}</span>
+                        {error.latinSegment && (
+                          <span className="font-serif font-medium text-roman-900">"{error.latinSegment}"</span>
+                        )}
+                      </div>
+                      <span className="text-roman-700">{error.explanation}</span>
                     </div>
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
 
           {/* Glossary hint */}
@@ -253,6 +286,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
             <p className="text-xs text-roman-500 italic">
               Tap words in the Latin above to see their meanings.
             </p>
+          )}
+
+          {/* Attempt history */}
+          {feedback.attemptHistory && feedback.attemptHistory.length > 0 && (
+            <AttemptHistory history={feedback.attemptHistory} />
           )}
 
           <div className="pt-4 flex justify-end">

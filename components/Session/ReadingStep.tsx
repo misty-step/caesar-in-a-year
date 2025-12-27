@@ -99,22 +99,22 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
   const getStatusColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'bg-green-50 border-green-500';
+        return 'bg-laurel-50 border-laurel-500';
       case GradeStatus.PARTIAL:
-        return 'bg-yellow-50 border-yellow-500';
+        return 'bg-terracotta-50 border-terracotta-500';
       default:
-        return 'bg-red-50 border-red-500';
+        return 'bg-iron-50 border-iron-500';
     }
   };
 
   const getStatusTextColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'text-green-800';
+        return 'text-laurel-700';
       case GradeStatus.PARTIAL:
-        return 'text-yellow-800';
+        return 'text-terracotta-700';
       default:
-        return 'text-red-800';
+        return 'text-iron-700';
     }
   };
 
@@ -180,37 +180,53 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
 
       <div className="space-y-4">
         {!feedback ? (
-          <>
-            <div className="flex items-center space-x-2">
-              <span className="bg-roman-200 text-roman-700 text-xs font-bold px-2 py-1 rounded">
-                <LatinText latin="Pensum" english="Task" />
-              </span>
-              <p className="font-medium text-roman-900">{reading.gistQuestion}</p>
+          isSubmitting ? (
+            /* Loading state - thoughtful AI grading messaging */
+            <div className="rounded-lg bg-roman-50 border border-roman-200 p-8 text-center space-y-3 animate-fade-in">
+              <p className="text-lg font-serif text-roman-700 animate-pulse">
+                MAGISTER EXAMINAT...
+              </p>
+              <p className="text-sm text-roman-500">
+                Your tutor is reviewing your response
+              </p>
+              <div className="flex justify-center gap-1 pt-2">
+                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
             </div>
-            <div className="relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 font-sans h-32"
-                placeholder=""
-                aria-label="Your summary"
-              />
-              {!input && (
-                <div className="absolute top-4 left-4 pointer-events-none text-roman-400">
-                  <LatinText latin="Explica summam hic..." english="Explain the gist here..." />
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubmit}
-                isLoading={isSubmitting}
-                disabled={!input.trim()}
-                labelLatin="Proba Intellectum"
-                labelEnglish="Verify Understanding"
-              />
-            </div>
-          </>
+          ) : (
+            <>
+              <div className="flex items-center space-x-2">
+                <span className="bg-roman-200 text-roman-700 text-xs font-bold px-2 py-1 rounded">
+                  <LatinText latin="Pensum" english="Task" />
+                </span>
+                <p className="font-medium text-roman-900">{reading.gistQuestion}</p>
+              </div>
+              <div className="relative">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 font-sans h-32"
+                  placeholder=""
+                  aria-label="Your summary"
+                />
+                {!input && (
+                  <div className="absolute top-4 left-4 pointer-events-none text-roman-400">
+                    <LatinText latin="Explica summam hic..." english="Explain the gist here..." />
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!input.trim()}
+                  labelLatin="Proba Intellectum"
+                  labelEnglish="Verify Understanding"
+                />
+              </div>
+            </>
+          )
         ) : (
           <div className={`rounded-lg p-6 border-l-4 space-y-5 ${getStatusColor(feedback.result.status)}`}>
             {/* Status header */}
@@ -261,7 +277,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                 <ul className="space-y-2">
                   {feedback.result.analysis.errors.map((error, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-red-600 font-bold">✗</span>
+                      <span className="text-pompeii-500 font-bold">✗</span>
                       <div>
                         {error.latinSegment && (
                           <span className="font-medium text-roman-900">"{error.latinSegment}"</span>

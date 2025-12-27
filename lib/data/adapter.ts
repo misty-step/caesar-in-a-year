@@ -1,6 +1,7 @@
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import type {
   Attempt,
+  AttemptHistoryEntry,
   ContentSeed,
   DataAdapter,
   ProgressMetrics,
@@ -195,6 +196,25 @@ const memoryAdapter: DataAdapter = {
     const existing = attemptStore.get(attempt.sessionId) ?? [];
     existing.push(attempt);
     attemptStore.set(attempt.sessionId, existing);
+  },
+
+  async getAttemptHistory(userId: string, sentenceId: string, limit = 10): Promise<AttemptHistoryEntry[]> {
+    // In-memory: search all sessions for matching attempts
+    const allAttempts: AttemptHistoryEntry[] = [];
+    for (const [, attempts] of attemptStore) {
+      for (const a of attempts) {
+        if (a.userId === userId && a.itemId === sentenceId) {
+          allAttempts.push({
+            sentenceId: a.itemId,
+            userInput: a.userInput,
+            gradingStatus: a.gradingResult.status,
+            errorTypes: a.gradingResult.analysis?.errors.map(e => e.type) ?? [],
+            createdAt: new Date(a.createdAt).getTime(),
+          });
+        }
+      }
+    }
+    return allAttempts.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
   },
 
   async getDueReviews(): Promise<ReviewSentence[]> {
