@@ -106,6 +106,7 @@ function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
     id: `reading-${first.sentenceId}`,
     title: `De Bello Gallico ${parts.slice(1, 3).join('.')}`,
     latinText: sentences.map((s) => s.latin),
+    sentenceIds: sentences.map((s) => s.sentenceId),
     glossary: {},
     gistQuestion: 'Translate this passage into natural English.',
     referenceGist: sentences.map((s) => s.referenceTranslation).join(' '),

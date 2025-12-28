@@ -30,6 +30,7 @@ export const DAILY_READING: ReadingPassage = {
     'Quarum unam incolunt Belgae.',
     'Aliam Aquitani incolunt.'
   ],
+  sentenceIds: ['bg.1.1.1', 'bg.1.1.2', 'bg.1.1.3'],
   glossary: {
     'divisa': 'divided',
     'incolunt': 'inhabit / live in',

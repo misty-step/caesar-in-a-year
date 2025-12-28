@@ -172,6 +172,21 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
         console.error('Failed to generate/save vocab drills (continuing):', e);
       }
     }
+  } else if (item.type === 'NEW_READING') {
+    // Record reviews for each sentence in the reading passage (best-effort)
+    // This ensures passage sentences are counted in progress metrics and scheduled for future review
+    if (item.reading.sentenceIds && item.reading.sentenceIds.length > 0) {
+      try {
+        await Promise.all(
+          item.reading.sentenceIds.map(sentenceId =>
+            data.recordReview(userId, sentenceId, result)
+          )
+        );
+        console.log(`[Progress] Recorded ${item.reading.sentenceIds.length} sentence reviews from reading passage`);
+      } catch (e) {
+        console.error('Failed to record reading passage reviews (continuing):', e);
+      }
+    }
   }
 
   const advanced = advanceSession(session);

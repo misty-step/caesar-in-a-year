@@ -41,6 +41,7 @@ export interface ReadingPassage {
   id: string;
   title: string;
   latinText: string[];
+  sentenceIds: string[]; // Individual sentence IDs for progress tracking
   glossary: Record<string, string>;
   gistQuestion: string;
   referenceGist: string;

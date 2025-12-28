@@ -13,6 +13,7 @@ const sampleContent: ContentSeed = {
     id: 'r1',
     title: 'Reading',
     latinText: ['foo'],
+    sentenceIds: ['test.1.1.1'],
     glossary: {},
     gistQuestion: 'q',
     referenceGist: 'ref',
