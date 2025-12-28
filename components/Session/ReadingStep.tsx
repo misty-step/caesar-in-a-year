@@ -96,17 +96,6 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
     setSelectedWord(null);
   };
 
-  const getStatusColor = (status: GradeStatus) => {
-    switch (status) {
-      case GradeStatus.CORRECT:
-        return 'bg-laurel-50 border-laurel-500';
-      case GradeStatus.PARTIAL:
-        return 'bg-terracotta-50 border-terracotta-500';
-      default:
-        return 'bg-iron-50 border-iron-500';
-    }
-  };
-
   const getStatusTextColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
@@ -115,6 +104,50 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
         return 'text-terracotta-700';
       default:
         return 'text-iron-700';
+    }
+  };
+
+  const getAccentColor = (status: GradeStatus) => {
+    switch (status) {
+      case GradeStatus.CORRECT:
+        return 'border-laurel-500';
+      case GradeStatus.PARTIAL:
+        return 'border-terracotta-500';
+      default:
+        return 'border-iron-500';
+    }
+  };
+
+  // Status icon component - Roman themed
+  const StatusIcon = ({ status }: { status: GradeStatus }) => {
+    const baseClass = "w-8 h-8";
+    switch (status) {
+      case GradeStatus.CORRECT:
+        return (
+          <svg className={`${baseClass} text-laurel-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 3c-1.5 2-2 4-2 6s.5 4 2 6c1.5-2 2-4 2-6s-.5-4-2-6z" />
+            <path d="M6 6c1 2 3 3 5 3M18 6c-1 2-3 3-5 3" />
+            <path d="M4 10c1.5 1.5 3.5 2 6 2M20 10c-1.5 1.5-3.5 2-6 2" />
+            <path d="M3 15c2 1 4.5 1.5 7 1M21 15c-2 1-4.5 1.5-7 1" />
+            <path d="M5 19c2 .5 4.5.5 7 0M19 19c-2 .5-4.5.5-7 0" />
+          </svg>
+        );
+      case GradeStatus.PARTIAL:
+        return (
+          <svg className={`${baseClass} text-terracotta-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 3v18" />
+            <path d="M5 7l7-2 7 2" />
+            <path d="M3 13l4-6 4 6a4 4 0 01-8 0z" />
+            <path d="M13 13l4-6 4 6a4 4 0 01-8 0z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className={`${baseClass} text-iron-500`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9 9l6 6M15 9l-6 6" />
+          </svg>
+        );
     }
   };
 
@@ -228,56 +261,63 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
             </>
           )
         ) : (
-          <div className={`rounded-lg p-6 border-l-4 space-y-5 ${getStatusColor(feedback.result.status)}`}>
-            {/* Status header */}
-            <div className="flex items-center space-x-2">
-              <span className={`text-lg font-bold ${getStatusTextColor(feedback.result.status)}`}>
-                {feedback.result.status === GradeStatus.CORRECT ? (
-                  <LatinText latin="Optime!" english="Excellent!" />
-                ) : feedback.result.status === GradeStatus.PARTIAL ? (
-                  <LatinText latin="Paene." english="Almost there." />
-                ) : (
-                  <LatinText latin="Non satis." english="Not quite." />
-                )}
+          <div className="space-y-6 animate-fade-in">
+            {/* Status Badge - Inline with icon */}
+            <div className="flex items-center gap-3">
+              <StatusIcon status={feedback.result.status} />
+              <span className={`text-xl font-serif font-bold ${getStatusTextColor(feedback.result.status)}`}>
+                {feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
+                 feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
               </span>
             </div>
 
-            {/* User's answer */}
-            <div className="bg-white/50 rounded-lg p-4 space-y-1">
-              <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+            {/* User's answer - Clean with subtle left accent */}
+            <div>
+              <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
                 <LatinText latin="Tua Responsio" english="Your Answer" />
               </p>
-              <p className="text-roman-800 italic">"{feedback.userInput}"</p>
-              {feedback.result.analysis?.userTranslationLiteral && (
-                <p className="text-xs text-roman-600 mt-1">
-                  (Implies: {feedback.result.analysis.userTranslationLiteral})
-                </p>
-              )}
+              <p className="text-lg text-roman-800 italic border-l-2 border-roman-300 pl-4">
+                "{feedback.userInput}"
+              </p>
             </div>
 
-            {/* Reference gist */}
+            {/* Reference gist - Status-colored accent */}
             {feedback.result.correction && (
-              <div className="bg-white/50 rounded-lg p-4 space-y-1">
-                <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+              <div>
+                <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
                   <LatinText latin="Summa Vera" english="Correct Understanding" />
                 </p>
-                <p className="font-medium text-roman-800 italic">"{feedback.result.correction}"</p>
+                <p className={`text-lg text-roman-900 border-l-2 pl-4 ${getAccentColor(feedback.result.status)}`}>
+                  "{feedback.result.correction}"
+                </p>
               </div>
             )}
 
-            {/* Feedback summary */}
-            <p className="text-roman-900">{feedback.result.feedback}</p>
+            {/* Separator */}
+            <div className="border-t border-roman-200" />
 
-            {/* Detailed errors */}
+            {/* Feedback - Full width prose */}
+            <p className="text-roman-800">{feedback.result.feedback}</p>
+
+            {/* Detailed errors - collapsible */}
             {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+              <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
+                <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-wide font-bold list-none flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 transition-transform group-open:rotate-90"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                   <LatinText latin="Errores Specifici" english="Specific Errors" />
-                </p>
-                <ul className="space-y-2">
+                  <span className="text-roman-400">({feedback.result.analysis.errors.length})</span>
+                </summary>
+                <ul className="mt-3 space-y-2">
                   {feedback.result.analysis.errors.map((error, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-pompeii-500 font-bold">✗</span>
+                    <li key={i} className="flex items-start gap-3 text-sm bg-roman-50 rounded-lg p-3">
+                      <span className="text-pompeii-500 font-bold shrink-0">✗</span>
                       <div>
                         {error.latinSegment && (
                           <span className="font-medium text-roman-900">"{error.latinSegment}"</span>
@@ -288,7 +328,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                     </li>
                   ))}
                 </ul>
-              </div>
+              </details>
             )}
 
             <div className="pt-4 flex justify-end">
