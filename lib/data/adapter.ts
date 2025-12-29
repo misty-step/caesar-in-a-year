@@ -46,6 +46,7 @@ export function createDataAdapter(token?: string): DataAdapter {
 const staticContent: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
+  vocab: [],
 };
 
 // Corpus file path (relative to project root)
@@ -97,6 +98,7 @@ async function getMemoryContent(): Promise<ContentSeed> {
     cachedContent = {
       review: corpusSentences.slice(0, 3), // First 3 sentences for review
       reading: DAILY_READING,
+      vocab: [], // No vocab in dev mode
     };
   } else {
     cachedContent = staticContent;

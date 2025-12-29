@@ -105,6 +105,7 @@ export interface AttemptHistoryEntry {
 export interface ContentSeed {
   review: Sentence[];
   reading: ReadingPassage;
+  vocab: VocabCard[];
 }
 
 export interface ReviewSentence extends Sentence {

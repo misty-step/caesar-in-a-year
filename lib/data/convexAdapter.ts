@@ -16,6 +16,7 @@ import {
   SessionItem,
   SessionStatus,
   UserProgress,
+  VocabCard,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
 import { generateSessionId } from '@/lib/session/id';
@@ -26,6 +27,7 @@ const DEFAULT_MAX_DIFFICULTY = 10;
 const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
+  vocab: [],
 };
 
 // State enum ↔ string helpers for Convex persistence
@@ -178,7 +180,10 @@ export class ConvexAdapter implements DataAdapter {
       // 2. Get due reviews (FSRS-scheduled)
       const dueReviews = await this.getDueReviews(userId, 5);
 
-      // 3. Get candidate sentences at/below difficulty
+      // 3. Get due vocab cards (FSRS-scheduled)
+      const dueVocab = await this.getDueVocab(userId, 4);
+
+      // 4. Get candidate sentences at/below difficulty
       const candidates = await fetchQuery(
         api.sentences.getByDifficulty,
         { maxDifficulty },
@@ -189,27 +194,29 @@ export class ConvexAdapter implements DataAdapter {
         return {
           review: dueReviews.length > 0 ? dueReviews : FALLBACK_CONTENT.review,
           reading: FALLBACK_CONTENT.reading,
+          vocab: dueVocab,
         };
       }
 
-      // 4. Get seen sentence IDs
+      // 5. Get seen sentence IDs
       const seenIds = new Set(
         await fetchQuery(api.reviews.getSentenceIds, { userId }, this.options)
       );
 
-      // 5. Filter unseen, sort by difficulty (easiest first), take 2
+      // 6. Filter unseen, sort by difficulty (easiest first), take 2
       const unseen = candidates
         .filter((s) => !seenIds.has(s.sentenceId))
         .sort((a, b) => a.difficulty - b.difficulty)
         .slice(0, 2);
 
-      // 6. Build response
+      // 7. Build response
       const reviewContent = dueReviews.length > 0 ? dueReviews : candidates.slice(0, 3).map(mapSentence);
 
       if (unseen.length > 0) {
         return {
           review: reviewContent,
           reading: mapToReading(unseen),
+          vocab: dueVocab,
         };
       }
 
@@ -217,10 +224,16 @@ export class ConvexAdapter implements DataAdapter {
       return {
         review: reviewContent,
         reading: FALLBACK_CONTENT.reading,
+        vocab: dueVocab,
       };
     } catch {
       return FALLBACK_CONTENT;
     }
+  }
+
+  async getDueVocab(userId: string, limit?: number): Promise<VocabCard[]> {
+    const results = await fetchQuery(api.vocab.getDue, { userId, limit }, this.options);
+    return results as VocabCard[];
   }
 
   async createSession(userId: string, items: SessionItem[]): Promise<Session> {

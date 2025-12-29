@@ -18,6 +18,7 @@ const sampleContent: ContentSeed = {
     gistQuestion: 'q',
     referenceGist: 'ref',
   },
+  vocab: [],
 };
 
 describe('buildSessionItems', () => {
