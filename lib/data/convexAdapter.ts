@@ -173,18 +173,22 @@ export class ConvexAdapter implements DataAdapter {
     await fetchMutation(api.userProgress.upsert, progress, this.options);
   }
 
-  async getContent(userId: string): Promise<ContentSeed> {
+  async getContent(userId: string, daysActive?: number): Promise<ContentSeed> {
+    // Import config to determine fetch limits based on user progress
+    const { getSessionConfig } = await import('@/lib/session/config');
+    const config = getSessionConfig(daysActive ?? 1);
+
     try {
       // 1. Get user progress (or default)
       const progress = await this.getUserProgress(userId);
       const maxDifficulty = progress?.maxDifficulty ?? DEFAULT_MAX_DIFFICULTY;
 
-      // 2. Get due reviews (FSRS-scheduled)
-      const dueReviews = await this.getDueReviews(userId, 5);
+      // 2. Get due reviews (FSRS-scheduled) - fetch more than needed for flexibility
+      const dueReviews = await this.getDueReviews(userId, config.reviewCount + 2);
 
       // 3. Get due vocab and phrase cards (FSRS-scheduled)
-      const dueVocab = await this.getDueVocab(userId, 4);
-      const duePhrases = await this.getDuePhrases(userId, 2);
+      const dueVocab = await this.getDueVocab(userId, config.vocabCount);
+      const duePhrases = await this.getDuePhrases(userId, config.phraseCount);
 
       // 4. Get candidate sentences at/below difficulty
       const candidates = await fetchQuery(
@@ -207,11 +211,11 @@ export class ConvexAdapter implements DataAdapter {
         await fetchQuery(api.reviews.getSentenceIds, { userId }, this.options)
       );
 
-      // 6. Filter unseen, sort by difficulty (easiest first), take 2
+      // 6. Filter unseen, sort by difficulty (easiest first), take config amount
       const unseen = candidates
         .filter((s) => !seenIds.has(s.sentenceId))
         .sort((a, b) => a.difficulty - b.difficulty)
-        .slice(0, 2);
+        .slice(0, config.newSentenceCount);
 
       // 7. Build response
       const reviewContent = dueReviews.length > 0 ? dueReviews : candidates.slice(0, 3).map(mapSentence);
@@ -251,8 +255,12 @@ export class ConvexAdapter implements DataAdapter {
     const now = new Date().toISOString();
     const sessionId = generateSessionId();
 
-    const content = await this.getContent(userId);
-    const seededItems = items.length ? items : buildSessionItems(content);
+    // Get daysActive from progress metrics for dynamic session composition
+    const metrics = await this.getProgressMetrics(userId);
+    const daysActive = metrics.iter.daysActive;
+
+    const content = await this.getContent(userId, daysActive);
+    const seededItems = items.length ? items : buildSessionItems(content, daysActive);
 
     logger.mutation('sessions.create', { sessionId, userId: userId.slice(0, 8) + '...', itemCount: seededItems.length });
 

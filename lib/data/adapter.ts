@@ -134,7 +134,7 @@ const memoryAdapter: DataAdapter = {
     progressStore.set(progress.userId, progress);
   },
 
-  async getContent(_userId: string): Promise<ContentSeed> {
+  async getContent(_userId: string, _daysActive?: number): Promise<ContentSeed> {
     return getMemoryContent();
   },
 
@@ -142,8 +142,10 @@ const memoryAdapter: DataAdapter = {
     const now = new Date().toISOString();
     const id = generateSessionId();
 
+    // In dev mode, default to beginner (day 1)
+    const daysActive = 1;
     const content = await getMemoryContent();
-    const seededItems = items.length ? items : buildSessionItems(content);
+    const seededItems = items.length ? items : buildSessionItems(content, daysActive);
 
     const session: Session = {
       id,

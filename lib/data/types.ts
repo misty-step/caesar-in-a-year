@@ -178,7 +178,7 @@ export interface ProgressMetrics {
 export interface DataAdapter {
   getUserProgress(userId: string): Promise<UserProgress | null>;
   upsertUserProgress(progress: UserProgress): Promise<void>;
-  getContent(userId: string): Promise<ContentSeed>;
+  getContent(userId: string, daysActive?: number): Promise<ContentSeed>;
   createSession(userId: string, items: SessionItem[]): Promise<Session>;
   getSession(sessionId: string, userId: string): Promise<Session | null>;
   advanceSession(params: {
