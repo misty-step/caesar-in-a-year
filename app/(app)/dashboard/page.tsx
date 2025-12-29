@@ -39,7 +39,6 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
 function mapProgress(progress: DataUserProgress | null): UserProgressVM {
   if (!progress) {
     return {
-      currentDay: 1,
       streak: 0,
       totalXp: 0,
       unlockedPhase: 1,
@@ -47,7 +46,6 @@ function mapProgress(progress: DataUserProgress | null): UserProgressVM {
   }
 
   return {
-    currentDay: Math.max(1, progress.maxDifficulty),
     streak: progress.streak,
     totalXp: progress.totalXp,
     unlockedPhase: progress.maxDifficulty,
@@ -85,7 +83,7 @@ export default async function DashboardPage() {
 
         {justCompleted && <JustCompletedBanner />}
 
-        <Stats progress={progress} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
+        <Stats progress={progress} iter={metrics.iter} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
 
         <SessionCard justCompleted={justCompleted} />
 

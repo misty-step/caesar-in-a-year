@@ -137,12 +137,31 @@ export const getMetrics = query({
     // === Streak ===
     const streak = userProgress?.streak ?? 0;
 
+    // === Days Active (calendar days since first session) ===
+    const firstSession = sessions
+      .filter((s) => s.startedAt)
+      .sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())[0];
+    const firstSessionAt = firstSession ? new Date(firstSession.startedAt).getTime() : null;
+    const daysActive = firstSessionAt
+      ? Math.max(1, Math.floor((Date.now() - firstSessionAt) / (24 * 60 * 60 * 1000)) + 1)
+      : 0;
+
+    // === Content Day (1-indexed, sentences as "days" of content) ===
+    const contentDay = Math.max(1, sentencesEncountered);
+
+    // === Schedule Status (ahead/behind/on-track) ===
+    // Target: 1 sentence per calendar day for "Caesar in a year"
+    const scheduleDelta = daysActive > 0 ? contentDay - daysActive : 0;
+
     return {
       legion,
       iter: {
         sentencesEncountered,
         totalSentences,
         percentComplete,
+        contentDay,
+        daysActive,
+        scheduleDelta, // positive = ahead, negative = behind, 0 = on track
       },
       activity,
       xp: {

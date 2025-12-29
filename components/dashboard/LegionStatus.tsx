@@ -6,10 +6,10 @@ interface LegionStatusProps {
 }
 
 const TIERS = [
-  { key: 'tirones' as const, latin: 'Tirones', english: 'Recruits', color: 'bg-roman-300' },
-  { key: 'milites' as const, latin: 'Milites', english: 'Soldiers', color: 'bg-yellow-400' },
-  { key: 'veterani' as const, latin: 'Veterani', english: 'Veterans', color: 'bg-orange-500' },
-  { key: 'decuriones' as const, latin: 'Decuriones', english: 'Officers', color: 'bg-pompeii-600' },
+  { key: 'tirones' as const, label: 'New', color: 'bg-roman-300' },
+  { key: 'milites' as const, label: 'Learning', color: 'bg-yellow-400' },
+  { key: 'veterani' as const, label: 'Familiar', color: 'bg-orange-500' },
+  { key: 'decuriones' as const, label: 'Mastered', color: 'bg-pompeii-600' },
 ];
 
 export function LegionStatus({ legion }: LegionStatusProps) {
@@ -63,12 +63,10 @@ export function LegionStatus({ legion }: LegionStatusProps) {
 
       {/* Legend */}
       <div className="grid grid-cols-2 gap-2 text-xs">
-        {TIERS.map(({ key, latin, english, color }) => (
+        {TIERS.map(({ key, label, color }) => (
           <div key={key} className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-sm ${color}`} />
-            <span className="text-roman-700">
-              <LatinText latin={latin} english={english} />
-            </span>
+            <span className="text-roman-700">{label}</span>
             <span className="text-roman-500 ml-auto">{legion[key]}</span>
           </div>
         ))}

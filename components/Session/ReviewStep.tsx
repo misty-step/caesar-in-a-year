@@ -207,7 +207,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           /* Loading state - thoughtful AI grading messaging */
           <div className="rounded-lg bg-roman-50 border border-roman-200 p-8 text-center space-y-3 animate-fade-in">
             <p className="text-lg font-serif text-roman-700 animate-pulse">
-              MAGISTER EXAMINAT...
+              <LatinText latin="MAGISTER EXAMINAT..." english="The tutor is examining..." />
             </p>
             <p className="text-sm text-roman-500">
               Your tutor is reviewing your translation
@@ -246,8 +246,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           <div className="flex items-center gap-3">
             <StatusIcon status={feedback.result.status} />
             <span className={`text-xl font-serif font-bold ${getStatusTextColor(feedback.result.status)}`}>
-              {feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
-               feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
+              <LatinText
+                latin={feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
+                       feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
+                english={feedback.result.status === GradeStatus.CORRECT ? 'Excellent!' :
+                         feedback.result.status === GradeStatus.PARTIAL ? 'Almost.' : 'Not enough.'}
+              />
             </span>
           </div>
 

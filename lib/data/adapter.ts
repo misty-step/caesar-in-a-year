@@ -247,7 +247,14 @@ const memoryAdapter: DataAdapter = {
     const progress = progressStore.get(userId);
     return {
       legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
-      iter: { sentencesEncountered: 0, totalSentences: 100, percentComplete: 0 },
+      iter: {
+        sentencesEncountered: 0,
+        totalSentences: 100,
+        percentComplete: 0,
+        contentDay: 1,
+        daysActive: 0,
+        scheduleDelta: 0,
+      },
       activity: [],
       xp: { total: progress?.totalXp ?? 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
       streak: progress?.streak ?? 0,

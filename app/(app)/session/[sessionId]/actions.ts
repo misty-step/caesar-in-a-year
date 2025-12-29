@@ -199,18 +199,21 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
   });
 
   // Update user progress on session completion (best-effort)
-  if (updated.status === 'complete' && tzOffsetMin === undefined) {
-    console.warn('Session complete but tzOffsetMin missing; skipping streak/XP update');
-  }
-  if (updated.status === 'complete' && tzOffsetMin !== undefined) {
+  if (updated.status === 'complete') {
     try {
+      // Use provided tzOffsetMin or fallback to UTC (0) to prevent silent failures
+      const effectiveTzOffset = tzOffsetMin ?? 0;
+      if (tzOffsetMin === undefined) {
+        console.warn('tzOffsetMin missing, using UTC fallback for streak calculation');
+      }
+
       const progress = await data.getUserProgress(userId);
       const nowMs = Date.now();
       const streakResult = computeStreak({
         prevStreak: progress?.streak ?? 0,
         prevLastSessionAtMs: progress?.lastSessionAt ?? 0,
         nowMs,
-        tzOffsetMin,
+        tzOffsetMin: effectiveTzOffset,
       });
 
       await data.upsertUserProgress({

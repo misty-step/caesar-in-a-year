@@ -132,6 +132,9 @@ export interface JourneyProgress {
   sentencesEncountered: number;
   totalSentences: number;
   percentComplete: number;
+  contentDay: number;    // 1-indexed, sentences as "days" of content
+  daysActive: number;    // Calendar days since first session
+  scheduleDelta: number; // positive = ahead, negative = behind, 0 = on track
 }
 
 /** XP and level data */
