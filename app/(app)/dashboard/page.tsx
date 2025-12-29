@@ -24,10 +24,15 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
 }> {
   const data = createDataAdapter(token ?? undefined);
 
+  // TODO: Read timezone from cookie for proper local date display
+  // For now, default to UTC (offset 0). User sessions will still be
+  // attributed to the correct day relative to UTC.
+  const tzOffsetMin = 0;
+
   const [rawProgress, content, metrics] = await Promise.all([
     data.getUserProgress(userId),
     data.getContent(userId),
-    data.getProgressMetrics(userId),
+    data.getProgressMetrics(userId, tzOffsetMin),
   ]);
 
   const progress = mapProgress(rawProgress);

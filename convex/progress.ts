@@ -37,16 +37,20 @@ function levelFromXp(totalXp: number): { level: number; currentLevelXp: number; 
 }
 
 // === Date Helpers ===
-function formatDate(timestamp: number): string {
-  const d = new Date(timestamp);
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+// Timezone-aware date formatting: adjusts timestamp to user's local timezone
+function formatDateLocal(timestamp: number, tzOffsetMin: number): string {
+  // Convert UTC timestamp to user's local time by adjusting for their offset
+  // Note: getTimezoneOffset() returns minutes WEST of UTC (e.g., PST = +480)
+  const localMs = timestamp - (tzOffsetMin * 60 * 1000);
+  const d = new Date(localMs);
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD in user's local timezone
 }
 
-function getDateRange(daysBack: number): string[] {
+function getDateRangeLocal(daysBack: number, tzOffsetMin: number): string[] {
   const dates: string[] = [];
   const now = Date.now();
   for (let i = daysBack - 1; i >= 0; i--) {
-    dates.push(formatDate(now - i * 24 * 60 * 60 * 1000));
+    dates.push(formatDateLocal(now - i * 24 * 60 * 60 * 1000, tzOffsetMin));
   }
   return dates;
 }
@@ -56,8 +60,8 @@ function getDateRange(daysBack: number): string[] {
  * UI components just render slices, no calculation needed.
  */
 export const getMetrics = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
+  args: { userId: v.string(), tzOffsetMin: v.optional(v.number()) },
+  handler: async (ctx, { userId, tzOffsetMin = 0 }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new ConvexError("Authentication required");
@@ -97,7 +101,7 @@ export const getMetrics = query({
 
     // === Activity Heatmap (last 84 days = 12 weeks) ===
     const HEATMAP_DAYS = 84;
-    const dateRange = getDateRange(HEATMAP_DAYS);
+    const dateRange = getDateRangeLocal(HEATMAP_DAYS, tzOffsetMin);
     const activityMap = new Map<string, number>();
 
     // Initialize all dates to 0
@@ -105,20 +109,20 @@ export const getMetrics = query({
       activityMap.set(date, 0);
     }
 
-    // Count reviews per day from lastReview timestamps
+    // Count reviews per day from lastReview timestamps (in user's local timezone)
     for (const review of allReviews) {
       if (review.lastReview) {
-        const date = formatDate(review.lastReview);
+        const date = formatDateLocal(review.lastReview, tzOffsetMin);
         if (activityMap.has(date)) {
           activityMap.set(date, (activityMap.get(date) ?? 0) + 1);
         }
       }
     }
 
-    // Also count session completions
+    // Also count session completions (in user's local timezone)
     for (const session of sessions) {
       if (session.completedAt) {
-        const date = formatDate(new Date(session.completedAt).getTime());
+        const date = formatDateLocal(new Date(session.completedAt).getTime(), tzOffsetMin);
         if (activityMap.has(date)) {
           activityMap.set(date, (activityMap.get(date) ?? 0) + session.items.length);
         }

@@ -243,7 +243,7 @@ const memoryAdapter: DataAdapter = {
     return { maxDifficulty: newDifficulty };
   },
 
-  async getProgressMetrics(userId: string): Promise<ProgressMetrics> {
+  async getProgressMetrics(userId: string, _tzOffsetMin?: number): Promise<ProgressMetrics> {
     const progress = progressStore.get(userId);
     return {
       legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },

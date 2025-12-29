@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { LatinText } from '@/components/UI/LatinText';
 import type { ActivityDay } from '@/lib/data/types';
 
@@ -8,15 +9,26 @@ interface ActivityHeatmapProps {
   streak: number;
 }
 
+interface HoveredState {
+  day: ActivityDay;
+  rect: DOMRect;
+}
+
 function getIntensity(count: number): string {
-  if (count === 0) return 'bg-roman-100';
-  if (count <= 2) return 'bg-green-200';
-  if (count <= 5) return 'bg-green-400';
-  if (count <= 10) return 'bg-green-500';
-  return 'bg-green-600';
+  if (count === 0) return 'bg-roman-100';           // Empty - warm gray
+  if (count <= 2) return 'bg-terracotta-100';       // Light terracotta
+  if (count <= 5) return 'bg-terracotta-500';       // Medium terracotta
+  if (count <= 10) return 'bg-terracotta-700';      // Dark terracotta
+  return 'bg-pompeii-600';                          // Deep Pompeii red
+}
+
+function formatDisplayDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00'); // Parse as local time
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
+  const [hovered, setHovered] = useState<HoveredState | null>(null);
   // Group by week (7 days per column)
   const weeks: ActivityDay[][] = [];
   for (let i = 0; i < activity.length; i += 7) {
@@ -82,13 +94,30 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
             {week.map((day) => (
               <div
                 key={day.date}
-                className={`w-[10px] h-[10px] rounded-[2px] ${getIntensity(day.count)}`}
-                title={`${day.date}: ${day.count} reviews`}
+                className={`w-[10px] h-[10px] rounded-[2px] ${getIntensity(day.count)} transition-transform hover:scale-125 cursor-pointer`}
+                onMouseEnter={(e) => setHovered({ day, rect: e.currentTarget.getBoundingClientRect() })}
+                onMouseLeave={() => setHovered(null)}
               />
             ))}
           </div>
         ))}
       </div>
+
+      {/* Hover tooltip */}
+      {hovered && (
+        <div
+          className="fixed z-50 bg-roman-900 text-white px-3 py-2 rounded-lg text-sm shadow-lg pointer-events-none animate-fade-in"
+          style={{
+            top: hovered.rect.top - 52,
+            left: hovered.rect.left + hovered.rect.width / 2 - 60,
+          }}
+        >
+          <p className="font-medium">{formatDisplayDate(hovered.day.date)}</p>
+          <p className="text-roman-300">
+            {hovered.day.count} {hovered.day.count === 1 ? 'review' : 'reviews'}
+          </p>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="flex items-center justify-end gap-2 text-[10px] text-roman-400">

@@ -405,7 +405,7 @@ export class ConvexAdapter implements DataAdapter {
     return fetchMutation(api.userProgress.incrementDifficulty, { userId, increment }, this.options);
   }
 
-  async getProgressMetrics(userId: string): Promise<ProgressMetrics> {
-    return fetchQuery(api.progress.getMetrics, { userId }, this.options) as Promise<ProgressMetrics>;
+  async getProgressMetrics(userId: string, tzOffsetMin?: number): Promise<ProgressMetrics> {
+    return fetchQuery(api.progress.getMetrics, { userId, tzOffsetMin }, this.options) as Promise<ProgressMetrics>;
   }
 }

@@ -182,5 +182,5 @@ export interface DataAdapter {
   recordReview(userId: string, sentenceId: string, result: GradingResult): Promise<void>;
   getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number>;
   incrementDifficulty(userId: string, increment?: number): Promise<{ maxDifficulty: number }>;
-  getProgressMetrics(userId: string): Promise<ProgressMetrics>;
+  getProgressMetrics(userId: string, tzOffsetMin?: number): Promise<ProgressMetrics>;
 }
