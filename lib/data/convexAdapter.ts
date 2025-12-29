@@ -7,6 +7,7 @@ import {
   ContentSeed,
   DataAdapter,
   GradingResult,
+  PhraseCard,
   ProgressMetrics,
   ReadingPassage,
   ReviewSentence,
@@ -28,6 +29,7 @@ const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
   vocab: [],
+  phrases: [],
 };
 
 // State enum ↔ string helpers for Convex persistence
@@ -180,8 +182,9 @@ export class ConvexAdapter implements DataAdapter {
       // 2. Get due reviews (FSRS-scheduled)
       const dueReviews = await this.getDueReviews(userId, 5);
 
-      // 3. Get due vocab cards (FSRS-scheduled)
+      // 3. Get due vocab and phrase cards (FSRS-scheduled)
       const dueVocab = await this.getDueVocab(userId, 4);
+      const duePhrases = await this.getDuePhrases(userId, 2);
 
       // 4. Get candidate sentences at/below difficulty
       const candidates = await fetchQuery(
@@ -195,6 +198,7 @@ export class ConvexAdapter implements DataAdapter {
           review: dueReviews.length > 0 ? dueReviews : FALLBACK_CONTENT.review,
           reading: FALLBACK_CONTENT.reading,
           vocab: dueVocab,
+          phrases: duePhrases,
         };
       }
 
@@ -217,6 +221,7 @@ export class ConvexAdapter implements DataAdapter {
           review: reviewContent,
           reading: mapToReading(unseen),
           vocab: dueVocab,
+          phrases: duePhrases,
         };
       }
 
@@ -225,6 +230,7 @@ export class ConvexAdapter implements DataAdapter {
         review: reviewContent,
         reading: FALLBACK_CONTENT.reading,
         vocab: dueVocab,
+        phrases: duePhrases,
       };
     } catch {
       return FALLBACK_CONTENT;
@@ -234,6 +240,11 @@ export class ConvexAdapter implements DataAdapter {
   async getDueVocab(userId: string, limit?: number): Promise<VocabCard[]> {
     const results = await fetchQuery(api.vocab.getDue, { userId, limit }, this.options);
     return results as VocabCard[];
+  }
+
+  async getDuePhrases(userId: string, limit?: number): Promise<PhraseCard[]> {
+    const results = await fetchQuery(api.phrases.getDue, { userId, limit }, this.options);
+    return results as PhraseCard[];
   }
 
   async createSession(userId: string, items: SessionItem[]): Promise<Session> {

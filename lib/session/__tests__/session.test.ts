@@ -19,6 +19,7 @@ const sampleContent: ContentSeed = {
     referenceGist: 'ref',
   },
   vocab: [],
+  phrases: [],
 };
 
 describe('buildSessionItems', () => {

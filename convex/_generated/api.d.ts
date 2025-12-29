@@ -9,6 +9,7 @@
  */
 
 import type * as attempts from "../attempts.js";
+import type * as phrases from "../phrases.js";
 import type * as progress from "../progress.js";
 import type * as reviews from "../reviews.js";
 import type * as sentences from "../sentences.js";
@@ -25,6 +26,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   attempts: typeof attempts;
+  phrases: typeof phrases;
   progress: typeof progress;
   reviews: typeof reviews;
   sentences: typeof sentences;

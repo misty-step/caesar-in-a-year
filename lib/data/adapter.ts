@@ -47,6 +47,7 @@ const staticContent: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
   vocab: [],
+  phrases: [],
 };
 
 // Corpus file path (relative to project root)
@@ -99,6 +100,7 @@ async function getMemoryContent(): Promise<ContentSeed> {
       review: corpusSentences.slice(0, 3), // First 3 sentences for review
       reading: DAILY_READING,
       vocab: [], // No vocab in dev mode
+      phrases: [], // No phrases in dev mode
     };
   } else {
     cachedContent = staticContent;

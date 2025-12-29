@@ -58,10 +58,20 @@ export interface VocabCard {
   sourceSentenceId: string;
 }
 
+/** Phrase card for chunk translation (2-4 words) */
+export interface PhraseCard {
+  id: string;
+  latin: string;           // 2-4 word chunk, e.g., "in fines eorum"
+  english: string;         // "into their territory"
+  sourceSentenceId: string;
+  context?: string;        // Optional surrounding sentence
+}
+
 export type SessionItem =
   | { type: 'REVIEW'; sentence: Sentence }
   | { type: 'NEW_READING'; reading: ReadingPassage }
-  | { type: 'VOCAB_DRILL'; vocab: VocabCard };
+  | { type: 'VOCAB_DRILL'; vocab: VocabCard }
+  | { type: 'PHRASE_DRILL'; phrase: PhraseCard };
 
 export type SessionStatus = 'active' | 'complete';
 
@@ -106,6 +116,7 @@ export interface ContentSeed {
   review: Sentence[];
   reading: ReadingPassage;
   vocab: VocabCard[];
+  phrases: PhraseCard[];
 }
 
 export interface ReviewSentence extends Sentence {

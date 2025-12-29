@@ -69,9 +69,13 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
     throw new Error('Out of sync');
   }
 
-  // VOCAB_DRILL items are handled via /api/vocab-review, not this flow
+  // VOCAB_DRILL and PHRASE_DRILL items are handled via separate API endpoints
   if (item.type === 'VOCAB_DRILL') {
     throw new Error('VOCAB_DRILL items should use /api/vocab-review endpoint');
+  }
+
+  if (item.type === 'PHRASE_DRILL') {
+    throw new Error('PHRASE_DRILL items should use /api/phrase-review endpoint');
   }
 
   // Grade based on item type and AI availability
