@@ -1,6 +1,7 @@
 import { fetchQuery, fetchMutation } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
+import { provisionCardsForSentences } from './provisionCards';
 import {
   Attempt,
   AttemptHistoryEntry,
@@ -261,6 +262,18 @@ export class ConvexAdapter implements DataAdapter {
 
     const content = await this.getContent(userId, daysActive);
     const seededItems = items.length ? items : buildSessionItems(content, daysActive);
+
+    // Provision vocab/phrase cards for new sentences (fire-and-forget)
+    // Cards created now become available for review in subsequent sessions
+    if (content.reading.sentenceIds.length > 0) {
+      provisionCardsForSentences(userId, content.reading.sentenceIds, { token: this.token })
+        .then(result => {
+          if (result.vocabCreated > 0 || result.phrasesCreated > 0) {
+            console.log(`[Session:Provision] Created ${result.vocabCreated} vocab, ${result.phrasesCreated} phrases`);
+          }
+        })
+        .catch(err => console.error('[Session:Provision] Failed:', err));
+    }
 
     logger.mutation('sessions.create', { sessionId, userId: userId.slice(0, 8) + '...', itemCount: seededItems.length });
 
