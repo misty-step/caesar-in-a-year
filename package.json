@@ -17,6 +17,7 @@
     "corpus:process-all": ".venv/bin/python scripts/process-corpus.py --all",
     "corpus:sync": "tsx scripts/corpus-sync.ts",
     "corpus:enrich": "tsx scripts/enrich-corpus.ts",
+    "corpus:translate": "tsx scripts/regenerate-translations.ts",
     "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync"
   },
   "dependencies": {
