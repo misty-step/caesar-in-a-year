@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { GradeStatus, type ReadingPassage, type GradingResult, type SessionStatus } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { GradingLoader } from '@/components/UI/GradingLoader';
 
 interface ReadingStepProps {
   reading: ReadingPassage;
@@ -214,20 +215,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
       <div className="space-y-4">
         {!feedback ? (
           isSubmitting ? (
-            /* Loading state - thoughtful AI grading messaging */
-            <div className="rounded-lg bg-roman-50 border border-roman-200 p-8 text-center space-y-3 animate-fade-in">
-              <p className="text-lg font-serif text-roman-700 animate-pulse">
-                <LatinText latin="MAGISTER EXAMINAT..." english="The tutor is examining..." />
-              </p>
-              <p className="text-sm text-roman-500">
-                Your tutor is reviewing your response
-              </p>
-              <div className="flex justify-center gap-1 pt-2">
-                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-roman-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
+            <GradingLoader />
           ) : (
             <>
               <div className="flex items-center space-x-2">

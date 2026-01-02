@@ -4,7 +4,7 @@ import type { GradingResult, AttemptHistoryEntry, VocabCard } from "@/lib/data/t
 const MODEL_NAME = "gemini-3-flash-preview";
 const TIMEOUT_MS = 15000;
 
-// Schema for vocab drill generation
+// Schema for vocab drill generation - meaning-focused only
 const vocabDrillSchema = {
   type: Type.OBJECT,
   properties: {
@@ -17,7 +17,7 @@ const vocabDrillSchema = {
           meaning: { type: Type.STRING },
           questionType: {
             type: Type.STRING,
-            enum: ['latin_to_english', 'form_identification', 'context_fill'],
+            enum: ['latin_to_english'], // Meaning-focused only; grammar emerges from AI feedback
           },
           question: { type: Type.STRING },
           answer: { type: Type.STRING },
@@ -158,31 +158,25 @@ function constructVocabPrompt(
     .join('\n') ?? '';
 
   return `
-You are a Latin vocabulary tutor. A student struggled with these Latin words in a sentence.
+Latin vocabulary tutor. Student struggled with these words.
 
 SENTENCE: "${latin}"
 
-TARGET WORDS (student got these wrong):
+TARGET WORDS:
 ${targetWords.map(w => `- ${w}`).join('\n')}
 
-CONTEXT OF ERRORS:
+ERRORS:
 ${errorsContext}
 
-Generate 1-2 vocabulary drills for the most important words the student needs to learn.
+Generate 1-2 vocab drills (meaning only, no grammar questions).
 
-DRILL TYPES:
-1. latin_to_english: "What does '[word]' mean?" → Answer: the English meaning
-2. form_identification: "What form is '[word]'?" → Answer: grammatical description (e.g., "3rd person plural perfect active indicative")
-3. context_fill: Sentence with blank → Answer: the correct Latin word
+FORMAT:
+- questionType: always "latin_to_english"
+- question: "What does '[word]' mean?"
+- answer: the English meaning
+- latinWord: dictionary form (infinitive for verbs, nominative for nouns)
+- meaning: clear, simple definition
 
-REQUIREMENTS:
-- Focus on the words that caused the most confusion
-- For verbs, prefer form_identification to help with conjugation
-- For nouns/adjectives, prefer latin_to_english
-- Make answers concise but complete
-- latinWord should be the dictionary form (nominative singular for nouns, infinitive for verbs)
-- meaning should be a clear, simple definition
-
-Return JSON with: drills[] containing latinWord, meaning, questionType, question, answer
+Focus on words that caused the most confusion.
 `;
 }

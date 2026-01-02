@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { type PhraseCard, type SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type PhraseCard, type SessionStatus } from '@/lib/data/types';
+import { type SimpleGradingResult } from '@/lib/ai/grading-utils';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { GradingLoader } from '@/components/UI/GradingLoader';
 
 interface PhraseDrillStepProps {
   phrase: PhraseCard;
@@ -13,39 +15,8 @@ interface PhraseDrillStepProps {
 }
 
 interface FeedbackState {
-  isCorrect: boolean;
+  grading: SimpleGradingResult;
   userInput: string;
-}
-
-/**
- * Normalize text for comparison: lowercase, remove punctuation, normalize whitespace.
- */
-function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,;:!?'"()-]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Check if user answer is close enough to correct answer.
- * Uses word overlap to allow for minor variations.
- */
-function isAnswerClose(userAnswer: string, correctAnswer: string): boolean {
-  const userNorm = normalizeForComparison(userAnswer);
-  const correctNorm = normalizeForComparison(correctAnswer);
-
-  // Exact match after normalization
-  if (userNorm === correctNorm) return true;
-
-  // Word overlap check - at least 60% of words must match
-  const userWords = new Set(userNorm.split(' '));
-  const correctWords = correctNorm.split(' ');
-  const matchCount = correctWords.filter(w => userWords.has(w)).length;
-  const overlapRatio = matchCount / correctWords.length;
-
-  return overlapRatio >= 0.6;
 }
 
 export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
@@ -64,9 +35,6 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
     setIsSubmitting(true);
 
     try {
-      const isCorrect = isAnswerClose(input, phrase.english);
-
-      // Call API to record the phrase review and update FSRS
       const res = await fetch('/api/phrase-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,23 +43,27 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
           itemIndex,
           phraseCardId: phrase.id,
           userInput: input,
-          isCorrect,
         }),
       });
 
       if (!res.ok) {
-        console.error('Failed to record phrase review');
+        throw new Error('Failed to grade translation');
       }
 
       const data = await res.json();
-      setFeedback({ isCorrect, userInput: input });
+      setFeedback({ grading: data.grading, userInput: input });
       setAdvancePayload({ nextIndex: data.nextIndex ?? itemIndex + 1, status: data.status ?? 'active' });
     } catch (error) {
       console.error('Error submitting phrase drill', error);
-      // Even on error, show feedback based on local comparison
-      const isCorrect = isAnswerClose(input, phrase.english);
-      setFeedback({ isCorrect, userInput: input });
-      setAdvancePayload(null);
+      // Fallback: show error state
+      setFeedback({
+        grading: {
+          status: GradeStatus.PARTIAL,
+          feedback: "Couldn't check your translation. Compare with the expected answer.",
+        },
+        userInput: input,
+      });
+      setAdvancePayload({ nextIndex: itemIndex + 1, status: 'active' });
     } finally {
       setIsSubmitting(false);
     }
@@ -104,6 +76,9 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
     setFeedback(null);
     setInput('');
   };
+
+  const isCorrect = feedback?.grading.status === GradeStatus.CORRECT;
+  const isPartial = feedback?.grading.status === GradeStatus.PARTIAL;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
@@ -123,14 +98,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
 
       {!feedback ? (
         isSubmitting ? (
-          <div className="rounded-lg bg-roman-50 border border-roman-200 p-8 text-center space-y-3 animate-fade-in">
-            <p className="text-lg font-serif text-roman-700 animate-pulse">
-              VERBA EXAMINAMUS...
-            </p>
-            <p className="text-sm text-roman-500">
-              Checking your answer
-            </p>
-          </div>
+          <GradingLoader />
         ) : (
           <div className="space-y-4">
             <label className="block text-sm font-medium text-roman-700">
@@ -158,24 +126,37 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
       ) : (
         <div
           className={`rounded-lg p-6 border-l-4 space-y-5 ${
-            feedback.isCorrect
+            isCorrect
               ? 'bg-laurel-50 border-laurel-500'
-              : 'bg-iron-50 border-iron-500'
+              : isPartial
+                ? 'bg-amber-50 border-amber-500'
+                : 'bg-iron-50 border-iron-500'
           }`}
         >
           {/* Status header */}
           <div className="flex items-center space-x-2">
             <span
               className={`text-lg font-bold ${
-                feedback.isCorrect ? 'text-laurel-700' : 'text-iron-700'
+                isCorrect
+                  ? 'text-laurel-700'
+                  : isPartial
+                    ? 'text-amber-700'
+                    : 'text-iron-700'
               }`}
             >
-              {feedback.isCorrect ? (
+              {isCorrect ? (
                 <LatinText latin="Recte!" english="Correct!" />
+              ) : isPartial ? (
+                <LatinText latin="Paene!" english="Almost!" />
               ) : (
                 <LatinText latin="Non recte." english="Not quite." />
               )}
             </span>
+          </div>
+
+          {/* AI Feedback */}
+          <div className="text-roman-800">
+            {feedback.grading.feedback}
           </div>
 
           {/* User's answer */}
@@ -193,6 +174,14 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
             </p>
             <p className="font-medium text-roman-800">{phrase.english}</p>
           </div>
+
+          {/* Hint if provided */}
+          {feedback.grading.hint && (
+            <div className="bg-pompeii-50 rounded-lg p-4 text-sm text-pompeii-800">
+              <span className="font-bold">Hint: </span>
+              {feedback.grading.hint}
+            </div>
+          )}
 
           {/* Latin phrase reminder */}
           <div className="text-sm text-roman-700">

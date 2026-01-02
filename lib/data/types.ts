@@ -52,7 +52,7 @@ export interface VocabCard {
   id: string;
   latinWord: string;
   meaning: string;
-  questionType: 'latin_to_english' | 'form_identification' | 'context_fill';
+  questionType: 'latin_to_english'; // Meaning-focused only; grammar emerges from AI feedback
   question: string;
   answer: string;
   sourceSentenceId: string;

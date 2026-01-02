@@ -37,7 +37,7 @@ const enrichmentSchema = {
           meaning: { type: Type.STRING, description: "Clear English definition" },
           questionType: {
             type: Type.STRING,
-            enum: ["latin_to_english", "form_identification"],
+            enum: ["latin_to_english"], // Meaning-focused only
           },
           question: { type: Type.STRING },
           answer: { type: Type.STRING },
@@ -65,7 +65,7 @@ const enrichmentSchema = {
 type VocabItem = {
   latinWord: string;
   meaning: string;
-  questionType: "latin_to_english" | "form_identification";
+  questionType: "latin_to_english";
   question: string;
   answer: string;
   sourceSentenceId: string;
@@ -129,28 +129,28 @@ function constructPrompt(sentences: Sentence[]): string {
     .map((s, i) => `${i + 1}. [${s.id}] "${s.latin}"`)
     .join("\n");
 
-  return `You are enriching a Latin curriculum with vocabulary and phrase cards.
+  return `Enriching Latin curriculum with vocabulary and phrase cards.
 
-For each sentence below, extract:
+For each sentence, extract:
 
 VOCABULARY (2-4 key words per sentence):
-- Focus on: verbs (especially irregular forms), nouns in oblique cases, key adjectives
-- Skip: ultra-common words (est, et, in, ad, qui, quae, quod, is, ea, id, hic, ille, sum)
-- For verbs: use "form_identification" type, question about conjugation
-- For nouns/adjectives: use "latin_to_english" type
+- Focus on: verbs, nouns, key adjectives
+- Skip ultra-common words (est, et, in, ad, qui, quae, quod, is, ea, id, hic, ille, sum)
+- questionType: always "latin_to_english" (meaning only, no grammar questions)
+- question: "What does '[word]' mean?"
+- answer: the English meaning
 - latinWord = dictionary form (nominative singular / infinitive)
-- Include the sourceSentenceId for each item
+- meaning = clear English definition
+- Include sourceSentenceId
 
 PHRASES (1-2 meaningful chunks per sentence):
-- 2-4 word prepositional phrases ("in partes tres", "ab Aquitanis")
-- Verb phrases with objects ("bellum gerunt", "coniurationem fecit")
-- Idiomatic expressions
-- Include the sourceSentenceId for each item
+- 2-4 word prepositional phrases, verb phrases, idiomatic expressions
+- Include sourceSentenceId
 
 SENTENCES:
 ${sentenceList}
 
-Return JSON with vocab[] and phrases[] arrays. Each item must have sourceSentenceId.`;
+Return JSON with vocab[] and phrases[] arrays.`;
 }
 
 async function processBatch(

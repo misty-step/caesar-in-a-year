@@ -17,7 +17,7 @@ import path from 'path';
 export interface EnrichedVocab {
   latinWord: string;
   meaning: string;
-  questionType: 'latin_to_english' | 'form_identification';
+  questionType: 'latin_to_english'; // Meaning-focused only
   question: string;
   answer: string;
   sourceSentenceId: string;

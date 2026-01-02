@@ -83,7 +83,7 @@ export default defineSchema({
     userId: v.string(),
     latinWord: v.string(),
     meaning: v.string(),
-    questionType: v.string(), // 'latin_to_english' | 'form_identification' | 'context_fill'
+    questionType: v.string(), // Always 'latin_to_english' (meaning-focused)
     question: v.string(),
     answer: v.string(),
     sourceSentenceId: v.string(), // Which sentence triggered this card

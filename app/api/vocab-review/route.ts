@@ -6,7 +6,8 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { advanceSession } from '@/lib/session/advance';
 import { normalizeSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
-import { GradeStatus, type SessionItem } from '@/lib/data/types';
+import { GradeStatus, type SessionItem, type VocabCard } from '@/lib/data/types';
+import { gradeVocab } from '@/lib/ai/gradeVocab';
 
 export const runtime = 'nodejs';
 
@@ -76,14 +77,12 @@ export async function POST(req: Request) {
     const itemIndex = body?.itemIndex;
     const vocabCardId = body?.vocabCardId;
     const userInput = body?.userInput;
-    const isCorrect = body?.isCorrect;
 
     if (
       typeof sessionId !== 'string' ||
       typeof itemIndex !== 'number' ||
       typeof vocabCardId !== 'string' ||
-      typeof userInput !== 'string' ||
-      typeof isCorrect !== 'boolean'
+      typeof userInput !== 'string'
     ) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
@@ -115,40 +114,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid session item' }, { status: 400 });
     }
 
-    // 3. Get vocab card and update FSRS state
+    // 3. Get vocab card data for AI grading
     const vocabCard = await fetchQuery(
       api.vocab.get,
       { userId, cardId: vocabCardId as Id<'vocabCards'> },
       options
     );
 
-    if (vocabCard) {
-      const now = new Date();
-      const gradeStatus = isCorrect ? GradeStatus.CORRECT : GradeStatus.INCORRECT;
-      const currentCard = reconstructCard(vocabCard);
-      const newCard = scheduleReview(currentCard, gradeStatus, now);
-
-      await fetchMutation(
-        api.vocab.recordReview,
-        {
-          userId,
-          cardId: vocabCardId as Id<'vocabCards'>,
-          gradingStatus: gradeStatus,
-          state: stateToString(newCard.state),
-          stability: newCard.stability,
-          difficulty: newCard.difficulty,
-          elapsedDays: newCard.elapsed_days,
-          scheduledDays: newCard.scheduled_days,
-          learningSteps: newCard.learning_steps,
-          reps: newCard.reps,
-          lapses: newCard.lapses,
-          nextReviewAt: newCard.due.getTime(),
-        },
-        options
-      );
+    if (!vocabCard) {
+      return NextResponse.json({ error: 'Vocab card not found' }, { status: 404 });
     }
 
-    // 4. Advance session
+    // 4. Call AI grader
+    const vocab = item.vocab as VocabCard;
+    const gradingResult = await gradeVocab({
+      latinWord: vocab.latinWord,
+      meaning: vocab.meaning,
+      question: vocab.question,
+      userAnswer: userInput,
+    });
+
+    // 5. Update FSRS state
+    const now = new Date();
+    const currentCard = reconstructCard(vocabCard);
+    const newCard = scheduleReview(currentCard, gradingResult.status, now);
+
+    await fetchMutation(
+      api.vocab.recordReview,
+      {
+        userId,
+        cardId: vocabCardId as Id<'vocabCards'>,
+        gradingStatus: gradingResult.status,
+        state: stateToString(newCard.state),
+        stability: newCard.stability,
+        difficulty: newCard.difficulty,
+        elapsedDays: newCard.elapsed_days,
+        scheduledDays: newCard.scheduled_days,
+        learningSteps: newCard.learning_steps,
+        reps: newCard.reps,
+        lapses: newCard.lapses,
+        nextReviewAt: newCard.due.getTime(),
+      },
+      options
+    );
+
+    // 6. Advance session
     const advanced = advanceSession({
       id: session.sessionId,
       userId: session.userId,
@@ -173,6 +183,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       nextIndex: advanced.nextIndex,
       status: advanced.status,
+      grading: gradingResult,
     });
   } catch (error) {
     console.error('Error in POST /api/vocab-review', error);
