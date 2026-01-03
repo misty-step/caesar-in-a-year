@@ -65,6 +65,9 @@ export async function loadEnrichedCorpus(): Promise<void> {
     phrasesBySentence = new Map();
 
     for (const v of corpus.vocab) {
+      // Skip legacy grammar questions - only meaning-focused cards
+      if (v.questionType !== 'latin_to_english') continue;
+
       const existing = vocabBySentence.get(v.sourceSentenceId) ?? [];
       existing.push(v);
       vocabBySentence.set(v.sourceSentenceId, existing);
