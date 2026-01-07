@@ -86,6 +86,7 @@ export const getDue = query({
     const cards = await ctx.db
       .query("vocabCards")
       .withIndex("by_user_due", (q) => q.eq("userId", userId).lte("nextReviewAt", now))
+      .filter((q) => q.eq(q.field("questionType"), "latin_to_english"))
       .take(limit);
 
     return cards.map(c => ({
