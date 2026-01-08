@@ -1,41 +1,72 @@
 import { LatinText } from '@/components/UI/LatinText';
+import type { JourneyProgress } from '@/lib/data/types';
 
 /** View model for dashboard stats display */
 export type UserProgressVM = {
-  currentDay: number;
   totalXp: number;
   streak: number;
   unlockedPhase: number;
+  lastSessionAt?: number; // Unix ms - for detecting "just completed" state
 };
 
 interface StatsProps {
   progress: UserProgressVM;
+  iter: JourneyProgress;
   reviewCount: number;
   readingTitle: string;
+  justCompleted?: boolean;
 }
 
-export function Stats({ progress, reviewCount, readingTitle }: StatsProps) {
+function ScheduleIndicator({ delta }: { delta: number }) {
+  if (delta === 0) {
+    return (
+      <span className="text-laurel-600 font-medium">
+        ✓ On track
+      </span>
+    );
+  }
+  if (delta > 0) {
+    return (
+      <span className="text-laurel-600 font-medium">
+        ↑ {delta} {delta === 1 ? 'day' : 'days'} ahead
+      </span>
+    );
+  }
+  return (
+    <span className="text-terracotta-600 font-medium">
+      ↓ {Math.abs(delta)} {Math.abs(delta) === 1 ? 'day' : 'days'} behind
+    </span>
+  );
+}
+
+export function Stats({ progress, iter, reviewCount, readingTitle, justCompleted }: StatsProps) {
   return (
     <section className="grid gap-4 md:grid-cols-3">
       <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col justify-between">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <span className="text-xs font-bold uppercase tracking-widest text-roman-500">
-            <LatinText latin="Progressus Hodiernus" english="Current Progress" />
+            <LatinText latin="Iter Tuum" english="Your Journey" />
           </span>
           <h2 className="text-2xl font-serif text-roman-900">
-            <LatinText latin={`Dies ${progress.currentDay} ex CCCLXV`} english={`Day ${progress.currentDay} of 365`} />
+            Day {iter.contentDay} of 365
           </h2>
-          <p className="text-sm text-roman-600">
-            <LatinText latin="Phasis I: Fundamenta" english="Phase 1: Foundations" />
-          </p>
+          {iter.daysActive > 0 && (
+            <div className="space-y-1">
+              <p className="text-sm text-roman-600">
+                {iter.daysActive} {iter.daysActive === 1 ? 'day' : 'days'} active
+              </p>
+              <p className="text-xs">
+                <ScheduleIndicator delta={iter.scheduleDelta} />
+              </p>
+            </div>
+          )}
         </div>
-        <p className="mt-4 text-xs text-roman-500">
-          <LatinText latin="Gradatim procedimus." english="We advance step by step." />
-        </p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col items-center justify-center">
-        <div className="text-4xl font-serif text-pompeii-600 mb-1">{progress.streak}</div>
+      <div className={`bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col items-center justify-center ${justCompleted ? 'ring-2 ring-pompeii-400 ring-offset-2' : ''}`}>
+        <div className={`text-4xl font-serif text-pompeii-600 mb-1 ${justCompleted ? 'animate-bounce' : ''}`}>
+          {progress.streak}
+        </div>
         <span className="text-xs uppercase text-roman-400 font-bold">
           <LatinText latin="Series Dierum" english="Day Streak" />
         </span>

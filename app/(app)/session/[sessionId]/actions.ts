@@ -1,13 +1,16 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
+import { fetchMutation } from 'convex/nextjs';
+import { api } from '@/convex/_generated/api';
 import { createDataAdapter } from '@/lib/data/adapter';
 import { normalizeSessionId } from '@/lib/session/id';
 import { gradeTranslation } from '@/lib/ai/gradeTranslation';
 import { gradeGist } from '@/lib/ai/gradeGist';
+import { shouldGenerateVocabDrills, generateVocabDrills } from '@/lib/ai/generateVocabDrills';
 import { advanceSession } from '@/lib/session/advance';
 import { computeStreak } from '@/lib/progress/streak';
-import { GradeStatus, type GradingResult, type SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type GradingResult, type SessionStatus, type AttemptHistoryEntry } from '@/lib/data/types';
 
 export type SubmitReviewInput = {
   sessionId: string;
@@ -17,8 +20,10 @@ export type SubmitReviewInput = {
 
 export type SubmitReviewResult = {
   result: GradingResult;
+  userInput: string; // Echo back for display in feedback UI
   nextIndex: number;
   status: SessionStatus;
+  attemptHistory?: AttemptHistoryEntry[]; // Previous attempts on this sentence
 };
 
 /**
@@ -64,8 +69,18 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
     throw new Error('Out of sync');
   }
 
+  // VOCAB_DRILL and PHRASE_DRILL items are handled via separate API endpoints
+  if (item.type === 'VOCAB_DRILL') {
+    throw new Error('VOCAB_DRILL items should use /api/vocab-review endpoint');
+  }
+
+  if (item.type === 'PHRASE_DRILL') {
+    throw new Error('PHRASE_DRILL items should use /api/phrase-review endpoint');
+  }
+
   // Grade based on item type and AI availability
   let result: GradingResult;
+  let attemptHistory: Awaited<ReturnType<typeof data.getAttemptHistory>> | undefined;
 
   if (!aiAllowed) {
     // Rate limited or AI unavailable → fallback result
@@ -78,11 +93,19 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
       correction: reference,
     };
   } else if (item.type === 'REVIEW') {
+    // Fetch attempt history for history-aware grading
+    try {
+      attemptHistory = await data.getAttemptHistory(userId, item.sentence.id, 5);
+    } catch (e) {
+      console.error('Failed to fetch attempt history (continuing):', e);
+    }
+
     result = await gradeTranslation({
       latin: item.sentence.latin,
       userTranslation: userInput,
       reference: item.sentence.referenceTranslation,
       context: item.sentence.context,
+      attemptHistory,
     });
   } else {
     // NEW_READING → use gist grader
@@ -97,6 +120,7 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
   // Record attempt (best-effort, don't block session)
   try {
     await data.recordAttempt({
+      userId,
       sessionId: session.id,
       itemId: item.type === 'REVIEW' ? item.sentence.id : item.reading.id,
       type: item.type,
@@ -115,6 +139,58 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
     } catch (e) {
       console.error('Failed to record review for FSRS (continuing):', e);
     }
+
+    // Generate vocab drills for persistent struggling (best-effort)
+    if (token && shouldGenerateVocabDrills(result, attemptHistory)) {
+      try {
+        const drills = await generateVocabDrills({
+          latin: item.sentence.latin,
+          sentenceId: item.sentence.id,
+          gradingResult: result,
+          attemptHistory,
+        });
+
+        // Save all drills to Convex in parallel
+        await Promise.all(
+          drills.map(drill =>
+            fetchMutation(
+              api.vocab.create,
+              {
+                userId,
+                latinWord: drill.latinWord,
+                meaning: drill.meaning,
+                questionType: drill.questionType,
+                question: drill.question,
+                answer: drill.answer,
+                sourceSentenceId: drill.sourceSentenceId,
+              },
+              { token }
+            )
+          )
+        );
+
+        if (drills.length > 0) {
+          console.log(`[Vocab] Generated ${drills.length} vocab drills for user ${userId.slice(0, 8)}...`);
+        }
+      } catch (e) {
+        console.error('Failed to generate/save vocab drills (continuing):', e);
+      }
+    }
+  } else if (item.type === 'NEW_READING') {
+    // Record reviews for each sentence in the reading passage (best-effort)
+    // This ensures passage sentences are counted in progress metrics and scheduled for future review
+    if (item.reading.sentenceIds && item.reading.sentenceIds.length > 0) {
+      try {
+        await Promise.all(
+          item.reading.sentenceIds.map(sentenceId =>
+            data.recordReview(userId, sentenceId, result)
+          )
+        );
+        console.log(`[Progress] Recorded ${item.reading.sentenceIds.length} sentence reviews from reading passage`);
+      } catch (e) {
+        console.error('Failed to record reading passage reviews (continuing):', e);
+      }
+    }
   }
 
   const advanced = advanceSession(session);
@@ -127,18 +203,21 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
   });
 
   // Update user progress on session completion (best-effort)
-  if (updated.status === 'complete' && tzOffsetMin === undefined) {
-    console.warn('Session complete but tzOffsetMin missing; skipping streak/XP update');
-  }
-  if (updated.status === 'complete' && tzOffsetMin !== undefined) {
+  if (updated.status === 'complete') {
     try {
+      // Use provided tzOffsetMin or fallback to UTC (0) to prevent silent failures
+      const effectiveTzOffset = tzOffsetMin ?? 0;
+      if (tzOffsetMin === undefined) {
+        console.warn('tzOffsetMin missing, using UTC fallback for streak calculation');
+      }
+
       const progress = await data.getUserProgress(userId);
       const nowMs = Date.now();
       const streakResult = computeStreak({
         prevStreak: progress?.streak ?? 0,
         prevLastSessionAtMs: progress?.lastSessionAt ?? 0,
         nowMs,
-        tzOffsetMin,
+        tzOffsetMin: effectiveTzOffset,
       });
 
       await data.upsertUserProgress({
@@ -155,8 +234,10 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
 
   return {
     result,
+    userInput,
     nextIndex: updated.currentIndex,
     status: updated.status,
+    attemptHistory,
   };
 }
 

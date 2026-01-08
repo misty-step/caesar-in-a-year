@@ -1,8 +1,10 @@
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import type {
   Attempt,
+  AttemptHistoryEntry,
   ContentSeed,
   DataAdapter,
+  ProgressMetrics,
   Sentence,
   Session,
   SessionStatus,
@@ -44,6 +46,8 @@ export function createDataAdapter(token?: string): DataAdapter {
 const staticContent: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
+  vocab: [],
+  phrases: [],
 };
 
 // Corpus file path (relative to project root)
@@ -95,6 +99,8 @@ async function getMemoryContent(): Promise<ContentSeed> {
     cachedContent = {
       review: corpusSentences.slice(0, 3), // First 3 sentences for review
       reading: DAILY_READING,
+      vocab: [], // No vocab in dev mode
+      phrases: [], // No phrases in dev mode
     };
   } else {
     cachedContent = staticContent;
@@ -128,7 +134,7 @@ const memoryAdapter: DataAdapter = {
     progressStore.set(progress.userId, progress);
   },
 
-  async getContent(_userId: string): Promise<ContentSeed> {
+  async getContent(_userId: string, _daysActive?: number): Promise<ContentSeed> {
     return getMemoryContent();
   },
 
@@ -136,8 +142,10 @@ const memoryAdapter: DataAdapter = {
     const now = new Date().toISOString();
     const id = generateSessionId();
 
+    // In dev mode, default to beginner (day 1)
+    const daysActive = 1;
     const content = await getMemoryContent();
-    const seededItems = items.length ? items : buildSessionItems(content);
+    const seededItems = items.length ? items : buildSessionItems(content, daysActive);
 
     const session: Session = {
       id,
@@ -196,6 +204,25 @@ const memoryAdapter: DataAdapter = {
     attemptStore.set(attempt.sessionId, existing);
   },
 
+  async getAttemptHistory(userId: string, sentenceId: string, limit = 10): Promise<AttemptHistoryEntry[]> {
+    // In-memory: search all sessions for matching attempts
+    const allAttempts: AttemptHistoryEntry[] = [];
+    for (const [, attempts] of attemptStore) {
+      for (const a of attempts) {
+        if (a.userId === userId && a.itemId === sentenceId) {
+          allAttempts.push({
+            sentenceId: a.itemId,
+            userInput: a.userInput,
+            gradingStatus: a.gradingResult.status,
+            errorTypes: a.gradingResult.analysis?.errors.map(e => e.type) ?? [],
+            createdAt: new Date(a.createdAt).getTime(),
+          });
+        }
+      }
+    }
+    return allAttempts.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+  },
+
   async getDueReviews(): Promise<ReviewSentence[]> {
     return [];
   },
@@ -220,5 +247,23 @@ const memoryAdapter: DataAdapter = {
       progressStore.set(userId, { ...existing, maxDifficulty: newDifficulty });
     }
     return { maxDifficulty: newDifficulty };
+  },
+
+  async getProgressMetrics(userId: string, _tzOffsetMin?: number): Promise<ProgressMetrics> {
+    const progress = progressStore.get(userId);
+    return {
+      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
+      iter: {
+        sentencesEncountered: 0,
+        totalSentences: 100,
+        percentComplete: 0,
+        contentDay: 1,
+        daysActive: 0,
+        scheduleDelta: 0,
+      },
+      activity: [],
+      xp: { total: progress?.totalXp ?? 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
+      streak: progress?.streak ?? 0,
+    };
   },
 };

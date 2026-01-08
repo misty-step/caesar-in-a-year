@@ -22,6 +22,25 @@ const config: Config = {
           500: '#b84232',
           600: '#963426',
         },
+        // Status colors - Roman thematic
+        laurel: {
+          50: '#fdfcf3',   // light gold bg
+          100: '#f9f5e3',
+          500: '#C9B037',  // laurel gold
+          700: '#8a7726',  // dark gold
+        },
+        terracotta: {
+          50: '#fdf6f4',   // light terracotta bg
+          100: '#fae8e3',
+          500: '#E2725B',  // terracotta
+          700: '#b85a47',  // dark terracotta
+        },
+        iron: {
+          50: '#f5f5f5',   // light grey bg
+          100: '#e8e8e9',
+          500: '#48494B',  // iron grey
+          700: '#2d2e30',  // dark iron
+        },
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],

@@ -36,6 +36,19 @@ export default defineSchema({
     .index("by_session_id", ["sessionId"])
     .index("by_user", ["userId"]),
 
+  // Per-attempt history (for interaction tracking and history-aware AI)
+  attempts: defineTable({
+    userId: v.string(),
+    sentenceId: v.string(),
+    sessionId: v.string(),
+    userInput: v.string(),
+    gradingStatus: v.string(), // CORRECT | PARTIAL | INCORRECT
+    errorTypes: v.array(v.string()), // denormalized error types for queries
+    createdAt: v.number(), // Unix ms
+  })
+    .index("by_user_sentence", ["userId", "sentenceId"])
+    .index("by_sentence_created", ["sentenceId", "createdAt"]),
+
   // Per-sentence SRS state (FSRS algorithm)
   sentenceReviews: defineTable({
     userId: v.string(),
@@ -64,4 +77,62 @@ export default defineSchema({
     .index("by_user_due", ["userId", "nextReviewAt"])
     .index("by_user_sentence", ["userId", "sentenceId"])
     .index("by_user_state_difficulty", ["userId", "state", "sentenceDifficulty"]),
+
+  // Vocabulary cards for adaptive learning (generated from repeated errors)
+  vocabCards: defineTable({
+    userId: v.string(),
+    latinWord: v.string(),
+    meaning: v.string(),
+    questionType: v.string(), // Always 'latin_to_english' (meaning-focused)
+    question: v.string(),
+    answer: v.string(),
+    sourceSentenceId: v.string(), // Which sentence triggered this card
+
+    // FSRS fields (same pattern as sentenceReviews)
+    state: v.union(
+      v.literal("new"),
+      v.literal("learning"),
+      v.literal("review"),
+      v.literal("relearning")
+    ),
+    stability: v.number(),
+    difficulty: v.number(),
+    elapsedDays: v.number(),
+    scheduledDays: v.number(),
+    learningSteps: v.number(),
+    reps: v.number(),
+    lapses: v.number(),
+    lastReview: v.optional(v.number()),
+    nextReviewAt: v.number(),
+  })
+    .index("by_user_due", ["userId", "nextReviewAt"])
+    .index("by_user_word", ["userId", "latinWord"]),
+
+  // Phrase cards for chunk translation (2-4 word phrases)
+  phraseCards: defineTable({
+    userId: v.string(),
+    latin: v.string(),           // 2-4 word chunk
+    english: v.string(),         // Translation
+    sourceSentenceId: v.string(),
+    context: v.optional(v.string()), // Optional surrounding sentence
+
+    // FSRS fields
+    state: v.union(
+      v.literal("new"),
+      v.literal("learning"),
+      v.literal("review"),
+      v.literal("relearning")
+    ),
+    stability: v.number(),
+    difficulty: v.number(),
+    elapsedDays: v.number(),
+    scheduledDays: v.number(),
+    learningSteps: v.number(),
+    reps: v.number(),
+    lapses: v.number(),
+    lastReview: v.optional(v.number()),
+    nextReviewAt: v.number(),
+  })
+    .index("by_user_due", ["userId", "nextReviewAt"])
+    .index("by_user_phrase", ["userId", "latin"]),
 });

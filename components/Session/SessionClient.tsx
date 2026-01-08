@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ProgressBar } from '@/components/UI/ProgressBar';
 import { ReviewStep } from '@/components/Session/ReviewStep';
 import { ReadingStep } from '@/components/Session/ReadingStep';
+import { VocabDrillStep } from '@/components/Session/VocabDrillStep';
+import { PhraseDrillStep } from '@/components/Session/PhraseDrillStep';
 
 interface SessionClientProps {
   sessionId: string;
@@ -54,10 +56,26 @@ export const SessionClient: React.FC<SessionClientProps> = ({
           itemIndex={currentIndex}
           onAdvance={handleAdvance}
         />
-      ) : (
+      ) : item.type === 'NEW_READING' ? (
         <ReadingStep
           key={item.reading.id}
           reading={item.reading}
+          sessionId={sessionId}
+          itemIndex={currentIndex}
+          onAdvance={handleAdvance}
+        />
+      ) : item.type === 'VOCAB_DRILL' ? (
+        <VocabDrillStep
+          key={item.vocab.id}
+          vocab={item.vocab}
+          sessionId={sessionId}
+          itemIndex={currentIndex}
+          onAdvance={handleAdvance}
+        />
+      ) : (
+        <PhraseDrillStep
+          key={item.phrase.id}
+          phrase={item.phrase}
           sessionId={sessionId}
           itemIndex={currentIndex}
           onAdvance={handleAdvance}

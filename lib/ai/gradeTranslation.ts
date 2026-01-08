@@ -1,12 +1,8 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { GradeStatus, type GradingResult } from "@/lib/data/types";
+import { Type } from "@google/genai";
+import { GradeStatus, type GradingResult, type AttemptHistoryEntry } from "@/lib/data/types";
+import { gradeWithAI } from "./grading-utils";
 
-const MODEL_NAME = "gemini-3-flash-preview";
-const TIMEOUT_MS = 20000; // 20s - covers Gemini cold start latency
-const RETRY_BACKOFF_MS = 500;
-const MAX_ATTEMPTS = 2;
-
-// Structured output schema for Gemini
+// Structured output schema - optimized for speed
 const gradingSchema = {
   type: Type.OBJECT,
   properties: {
@@ -14,40 +10,44 @@ const gradingSchema = {
       type: Type.STRING,
       enum: [GradeStatus.CORRECT, GradeStatus.PARTIAL, GradeStatus.INCORRECT],
     },
-    feedback: {
-      type: Type.STRING,
-    },
-    correction: {
-      type: Type.STRING,
+    feedback: { type: Type.STRING },
+    correction: { type: Type.STRING },
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        userTranslationLiteral: { type: Type.STRING },
+        errors: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              type: {
+                type: Type.STRING,
+                enum: ['grammar', 'vocabulary', 'word_order', 'omission', 'other'],
+              },
+              latinSegment: { type: Type.STRING },
+              explanation: { type: Type.STRING },
+            },
+            required: ['type', 'explanation'],
+          },
+        },
+        glossary: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              meaning: { type: Type.STRING },
+            },
+            required: ['word', 'meaning'],
+          },
+        },
+      },
+      required: ['errors'],
     },
   },
   required: ["status", "feedback"],
 };
-
-// Circuit breaker state (in-memory for this instance)
-let consecutiveFailures = 0;
-const FAILURE_THRESHOLD = 5;
-const OPEN_CIRCUIT_RESET_MS = 60000;
-let lastFailureTime = 0;
-
-function isCircuitOpen(): boolean {
-  if (consecutiveFailures >= FAILURE_THRESHOLD) {
-    if (Date.now() - lastFailureTime > OPEN_CIRCUIT_RESET_MS) {
-      return false; // Half-open: try again
-    }
-    return true;
-  }
-  return false;
-}
-
-function recordSuccess() {
-  consecutiveFailures = 0;
-}
-
-function recordFailure() {
-  consecutiveFailures++;
-  lastFailureTime = Date.now();
-}
 
 /**
  * Grade a user's Latin translation using Gemini AI.
@@ -60,6 +60,7 @@ export async function gradeTranslation(input: {
   userTranslation: string;
   reference: string;
   context?: string;
+  attemptHistory?: AttemptHistoryEntry[];
 }): Promise<GradingResult> {
   // Input validation
   if (!input.userTranslation?.trim()) {
@@ -76,70 +77,33 @@ export async function gradeTranslation(input: {
     };
   }
 
-  // Circuit breaker check
-  if (isCircuitOpen()) {
-    console.warn("Circuit breaker open - skipping AI call");
-    return getFallbackResult(input.reference);
-  }
+  const prompt = constructPrompt(input);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY is not set");
-    return getFallbackResult(input.reference);
-  }
-
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = constructPrompt(input);
-
-    // Retry loop with backoff
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      try {
-        const responsePromise = ai.models.generateContent({
-          model: MODEL_NAME,
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: gradingSchema,
-            temperature: 0.3,
-          },
-        });
-
-        // Timeout wrapper
-        const response = await Promise.race([
-          responsePromise,
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), TIMEOUT_MS)
-          ),
-        ]);
-
-        const text = response.text;
-        if (!text) throw new Error("Empty response from AI");
-
-        const result = JSON.parse(text) as GradingResult;
-        recordSuccess();
-        return result;
-      } catch (e) {
-        if (attempt === MAX_ATTEMPTS - 1) throw e;
-        await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
-      }
-    }
-
-    throw new Error("Failed after retries");
-  } catch (error) {
-    console.error("Grading failed:", error);
-    recordFailure();
-    return getFallbackResult(input.reference);
-  }
+  return gradeWithAI({
+    prompt,
+    schema: gradingSchema,
+    fallbackMessage:
+      "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.",
+    fallbackCorrection: input.reference,
+  });
 }
 
-function getFallbackResult(reference: string): GradingResult {
-  return {
-    status: GradeStatus.PARTIAL,
-    feedback:
-      "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.",
-    correction: reference,
-  };
+function formatHistoryForPrompt(history: AttemptHistoryEntry[]): string {
+  if (!history || history.length === 0) return "";
+
+  const lines = history.map((h, i) => {
+    const date = new Date(h.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const errors = h.errorTypes.length > 0 ? ` [${h.errorTypes.join(', ')}]` : '';
+    return `${history.length - i}. ${date}: ${h.gradingStatus}${errors}`;
+  });
+
+  return `\nHISTORY (${history.length} prior attempts):\n${lines.join('\n')}`;
+}
+
+function getEscalationLevel(attemptCount: number): string {
+  if (attemptCount === 0) return "";
+  if (attemptCount === 1) return "\n→ 2nd attempt: reference prior mistake, be slightly more detailed.";
+  return `\n→ Attempt #${attemptCount + 1}: thorough explanations, step-by-step grammar, memory aids, be encouraging.`;
 }
 
 function constructPrompt(input: {
@@ -147,21 +111,26 @@ function constructPrompt(input: {
   userTranslation: string;
   reference: string;
   context?: string;
+  attemptHistory?: AttemptHistoryEntry[];
 }): string {
-  return `
-You are a supportive but rigorous Latin tutor.
-Analyze the student's translation of a Latin sentence.
+  const historySection = formatHistoryForPrompt(input.attemptHistory ?? []);
+  const escalationSection = getEscalationLevel(input.attemptHistory?.length ?? 0);
 
-Latin: "${input.latin}"
-Reference: "${input.reference}"
-Context: ${input.context || "None"}
+  return `Latin tutor grading Caesar translation.
 
-Student Input: "${input.userTranslation}"
+LATIN: "${input.latin}"
+REFERENCE: "${input.reference}"
+STUDENT: "${input.userTranslation}"
+${input.context ? `CONTEXT: ${input.context}` : ''}${historySection}
 
-Task:
-1. Determine if the student understood the core meaning (Subject, Object, Verb).
-2. Be forgiving of synonyms.
-3. Be strict on grammar relationships.
-4. Return JSON with status (CORRECT, PARTIAL, INCORRECT), helpful feedback, and optional correction.
-`;
+CRITERIA:
+• CORRECT: Core meaning correct (S-V-O relationships), minor wording OK
+• PARTIAL: Some understanding, key elements wrong/missing
+• INCORRECT: Fundamental misunderstanding${escalationSection}
+
+OUTPUT:
+• feedback: 1-2 sentences, encouraging
+• If not CORRECT: explain what student's translation means vs Latin
+• errors[]: type (grammar|vocabulary|word_order|omission|other), latinSegment, explanation
+• glossary[]: every Latin word → meaning (individual words only)`;
 }

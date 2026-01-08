@@ -1,11 +1,15 @@
 import { fetchQuery, fetchMutation } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
+import { provisionCardsForSentences } from './provisionCards';
 import {
   Attempt,
+  AttemptHistoryEntry,
   ContentSeed,
   DataAdapter,
   GradingResult,
+  PhraseCard,
+  ProgressMetrics,
   ReadingPassage,
   ReviewSentence,
   ReviewStats,
@@ -14,6 +18,7 @@ import {
   SessionItem,
   SessionStatus,
   UserProgress,
+  VocabCard,
 } from './types';
 import { buildSessionItems } from '@/lib/session/builder';
 import { generateSessionId } from '@/lib/session/id';
@@ -24,6 +29,8 @@ const DEFAULT_MAX_DIFFICULTY = 10;
 const FALLBACK_CONTENT: ContentSeed = {
   review: REVIEW_SENTENCES,
   reading: DAILY_READING,
+  vocab: [],
+  phrases: [],
 };
 
 // State enum ↔ string helpers for Convex persistence
@@ -104,6 +111,7 @@ function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
     id: `reading-${first.sentenceId}`,
     title: `De Bello Gallico ${parts.slice(1, 3).join('.')}`,
     latinText: sentences.map((s) => s.latin),
+    sentenceIds: sentences.map((s) => s.sentenceId),
     glossary: {},
     gistQuestion: 'Translate this passage into natural English.',
     referenceGist: sentences.map((s) => s.referenceTranslation).join(' '),
@@ -166,16 +174,24 @@ export class ConvexAdapter implements DataAdapter {
     await fetchMutation(api.userProgress.upsert, progress, this.options);
   }
 
-  async getContent(userId: string): Promise<ContentSeed> {
+  async getContent(userId: string, daysActive?: number): Promise<ContentSeed> {
+    // Import config to determine fetch limits based on user progress
+    const { getSessionConfig } = await import('@/lib/session/config');
+    const config = getSessionConfig(daysActive ?? 1);
+
     try {
       // 1. Get user progress (or default)
       const progress = await this.getUserProgress(userId);
       const maxDifficulty = progress?.maxDifficulty ?? DEFAULT_MAX_DIFFICULTY;
 
-      // 2. Get due reviews (FSRS-scheduled)
-      const dueReviews = await this.getDueReviews(userId, 5);
+      // 2. Get due reviews (FSRS-scheduled) - fetch more than needed for flexibility
+      const dueReviews = await this.getDueReviews(userId, config.reviewCount + 2);
 
-      // 3. Get candidate sentences at/below difficulty
+      // 3. Get due vocab and phrase cards (FSRS-scheduled)
+      const dueVocab = await this.getDueVocab(userId, config.vocabCount);
+      const duePhrases = await this.getDuePhrases(userId, config.phraseCount);
+
+      // 4. Get candidate sentences at/below difficulty
       const candidates = await fetchQuery(
         api.sentences.getByDifficulty,
         { maxDifficulty },
@@ -186,27 +202,31 @@ export class ConvexAdapter implements DataAdapter {
         return {
           review: dueReviews.length > 0 ? dueReviews : FALLBACK_CONTENT.review,
           reading: FALLBACK_CONTENT.reading,
+          vocab: dueVocab,
+          phrases: duePhrases,
         };
       }
 
-      // 4. Get seen sentence IDs
+      // 5. Get seen sentence IDs
       const seenIds = new Set(
         await fetchQuery(api.reviews.getSentenceIds, { userId }, this.options)
       );
 
-      // 5. Filter unseen, sort by difficulty (easiest first), take 2
+      // 6. Filter unseen, sort by difficulty (easiest first), take config amount
       const unseen = candidates
         .filter((s) => !seenIds.has(s.sentenceId))
         .sort((a, b) => a.difficulty - b.difficulty)
-        .slice(0, 2);
+        .slice(0, config.newSentenceCount);
 
-      // 6. Build response
+      // 7. Build response
       const reviewContent = dueReviews.length > 0 ? dueReviews : candidates.slice(0, 3).map(mapSentence);
 
       if (unseen.length > 0) {
         return {
           review: reviewContent,
           reading: mapToReading(unseen),
+          vocab: dueVocab,
+          phrases: duePhrases,
         };
       }
 
@@ -214,18 +234,46 @@ export class ConvexAdapter implements DataAdapter {
       return {
         review: reviewContent,
         reading: FALLBACK_CONTENT.reading,
+        vocab: dueVocab,
+        phrases: duePhrases,
       };
     } catch {
       return FALLBACK_CONTENT;
     }
   }
 
+  async getDueVocab(userId: string, limit?: number): Promise<VocabCard[]> {
+    const results = await fetchQuery(api.vocab.getDue, { userId, limit }, this.options);
+    return results as VocabCard[];
+  }
+
+  async getDuePhrases(userId: string, limit?: number): Promise<PhraseCard[]> {
+    const results = await fetchQuery(api.phrases.getDue, { userId, limit }, this.options);
+    return results as PhraseCard[];
+  }
+
   async createSession(userId: string, items: SessionItem[]): Promise<Session> {
     const now = new Date().toISOString();
     const sessionId = generateSessionId();
 
-    const content = await this.getContent(userId);
-    const seededItems = items.length ? items : buildSessionItems(content);
+    // Get daysActive from progress metrics for dynamic session composition
+    const metrics = await this.getProgressMetrics(userId);
+    const daysActive = metrics.iter.daysActive;
+
+    const content = await this.getContent(userId, daysActive);
+    const seededItems = items.length ? items : buildSessionItems(content, daysActive);
+
+    // Provision vocab/phrase cards for new sentences (fire-and-forget)
+    // Cards created now become available for review in subsequent sessions
+    if (content.reading.sentenceIds.length > 0) {
+      provisionCardsForSentences(userId, content.reading.sentenceIds, { token: this.token })
+        .then(result => {
+          if (result.vocabCreated > 0 || result.phrasesCreated > 0) {
+            console.log(`[Session:Provision] Created ${result.vocabCreated} vocab, ${result.phrasesCreated} phrases`);
+          }
+        })
+        .catch(err => console.error('[Session:Provision] Failed:', err));
+    }
 
     logger.mutation('sessions.create', { sessionId, userId: userId.slice(0, 8) + '...', itemCount: seededItems.length });
 
@@ -325,9 +373,38 @@ export class ConvexAdapter implements DataAdapter {
     };
   }
 
-  // Phase 1: attempts not persisted
-  async recordAttempt(_attempt: Attempt): Promise<void> {
-    return;
+  async recordAttempt(attempt: Attempt): Promise<void> {
+    // Extract error types from grading result
+    const errorTypes = attempt.gradingResult.analysis?.errors.map(e => e.type) ?? [];
+
+    await fetchMutation(
+      api.attempts.record,
+      {
+        userId: attempt.userId,
+        sentenceId: attempt.itemId,
+        sessionId: attempt.sessionId,
+        userInput: attempt.userInput,
+        gradingStatus: attempt.gradingResult.status,
+        errorTypes,
+      },
+      this.options
+    );
+  }
+
+  async getAttemptHistory(userId: string, sentenceId: string, limit?: number): Promise<AttemptHistoryEntry[]> {
+    const results = await fetchQuery(
+      api.attempts.getHistory,
+      { userId, sentenceId, limit },
+      this.options
+    );
+
+    return results.map(r => ({
+      sentenceId: r.sentenceId,
+      userInput: r.userInput,
+      gradingStatus: r.gradingStatus,
+      errorTypes: r.errorTypes,
+      createdAt: r.createdAt,
+    }));
   }
 
   async getDueReviews(userId: string, limit?: number): Promise<ReviewSentence[]> {
@@ -371,5 +448,9 @@ export class ConvexAdapter implements DataAdapter {
 
   async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
     return fetchMutation(api.userProgress.incrementDifficulty, { userId, increment }, this.options);
+  }
+
+  async getProgressMetrics(userId: string, tzOffsetMin?: number): Promise<ProgressMetrics> {
+    return fetchQuery(api.progress.getMetrics, { userId, tzOffsetMin }, this.options) as Promise<ProgressMetrics>;
   }
 }

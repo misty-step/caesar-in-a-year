@@ -1,20 +1,22 @@
 import { auth } from '@clerk/nextjs/server';
-import Link from 'next/link';
 
 import { createDataAdapter } from '@/lib/data/adapter';
-import type { ContentSeed, UserProgress as DataUserProgress } from '@/lib/data/types';
+import type { ContentSeed, ProgressMetrics, UserProgress as DataUserProgress } from '@/lib/data/types';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats, type UserProgressVM } from '@/components/dashboard/Stats';
-import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
-import { Button } from '@/components/UI/Button';
+import { JustCompletedBanner } from '@/components/dashboard/JustCompletedBanner';
+import { SessionCard } from '@/components/dashboard/SessionCard';
+import { LegionStatus } from '@/components/dashboard/LegionStatus';
+import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
+import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
+import { XPDisplay } from '@/components/dashboard/XPDisplay';
 
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgressVM;
-  maxDifficulty: number;
-  masteredCount: number;
+  metrics: ProgressMetrics;
   summary: {
     reviewCount: number;
     readingTitle: string;
@@ -22,26 +24,26 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
 }> {
   const data = createDataAdapter(token ?? undefined);
 
-  const [rawProgress, content] = await Promise.all([
+  // TODO: Read timezone from cookie for proper local date display
+  // For now, default to UTC (offset 0). User sessions will still be
+  // attributed to the correct day relative to UTC.
+  const tzOffsetMin = 0;
+
+  const [rawProgress, content, metrics] = await Promise.all([
     data.getUserProgress(userId),
     data.getContent(userId),
+    data.getProgressMetrics(userId, tzOffsetMin),
   ]);
-
-  const maxDifficulty = rawProgress?.maxDifficulty ?? 10;
-
-  // Fetch mastery count for current level
-  const masteredCount = await data.getMasteredAtLevel(userId, maxDifficulty);
 
   const progress = mapProgress(rawProgress);
   const summary = mapContentToSummary(content);
 
-  return { progress, maxDifficulty, masteredCount, summary };
+  return { progress, metrics, summary };
 }
 
 function mapProgress(progress: DataUserProgress | null): UserProgressVM {
   if (!progress) {
     return {
-      currentDay: 1,
       streak: 0,
       totalXp: 0,
       unlockedPhase: 1,
@@ -49,10 +51,10 @@ function mapProgress(progress: DataUserProgress | null): UserProgressVM {
   }
 
   return {
-    currentDay: Math.max(1, progress.maxDifficulty),
     streak: progress.streak,
     totalXp: progress.totalXp,
     unlockedPhase: progress.maxDifficulty,
+    lastSessionAt: progress.lastSessionAt,
   };
 }
 
@@ -72,35 +74,33 @@ export default async function DashboardPage() {
   }
 
   const token = await getToken({ template: 'convex' });
-  const { progress, maxDifficulty, masteredCount, summary } = await getDashboardData(userId, token);
+  const { progress, metrics, summary } = await getDashboardData(userId, token);
+
+  // Detect if user just completed a session (within last 60 seconds)
+  const justCompleted = progress.lastSessionAt
+    ? Date.now() - progress.lastSessionAt < 60_000
+    : false;
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-10">
+      <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <Hero />
 
-        <Stats progress={progress} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} />
+        {justCompleted && <JustCompletedBanner />}
 
-        <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
-              Session
-            </p>
-            <h2 className="text-xl font-serif font-semibold text-roman-900">
-              Ready for today&apos;s guided reading?
-            </h2>
-            <p className="text-sm text-roman-700">
-              You&apos;ll review key sentences, then tackle a short passage with glossary support.
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <Link href="/session/new">
-              <Button className="w-full sm:w-auto text-base px-8 py-3" labelLatin="Incipe Sessionem" labelEnglish="Start Session" />
-            </Link>
-          </div>
-        </section>
+        <Stats progress={progress} iter={metrics.iter} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
 
-        <MasteryProgress masteredCount={masteredCount} readingLevel={maxDifficulty} />
+        <SessionCard justCompleted={justCompleted} />
+
+        {/* New Progress Visualization */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <LegionStatus legion={metrics.legion} />
+          <XPDisplay xp={metrics.xp} />
+        </div>
+
+        <JourneyProgress iter={metrics.iter} />
+
+        <ActivityHeatmap activity={metrics.activity} streak={metrics.streak} />
       </div>
     </main>
   );
