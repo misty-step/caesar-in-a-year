@@ -172,10 +172,12 @@ Generate 1-2 vocab drills (meaning only, no grammar questions).
 
 FORMAT:
 - questionType: always "latin_to_english"
-- question: "What does '[word]' mean?"
-- answer: the English meaning
 - latinWord: dictionary form (infinitive for verbs, nominative for nouns)
+- question: MUST be exactly "What does '[latinWord]' mean?" using the latinWord value
+- answer: the English meaning
 - meaning: clear, simple definition
+
+CRITICAL: The question MUST use the exact latinWord. No etymology breakdowns, no alternate spellings, no "combination of X and Y". Just "What does '[latinWord]' mean?"
 
 Focus on words that caused the most confusion.
 `;

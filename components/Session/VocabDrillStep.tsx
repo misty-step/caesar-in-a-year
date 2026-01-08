@@ -82,15 +82,29 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
   const isCorrect = feedback?.grading.status === GradeStatus.CORRECT;
   const isPartial = feedback?.grading.status === GradeStatus.PARTIAL;
 
+  // Extract quoted word from question to show form context when it differs from latinWord
+  const extractQuotedWord = (question: string): string | null => {
+    const match = question.match(/['']([^'']+)['']/);
+    return match ? match[1] : null;
+  };
+  const quotedForm = extractQuotedWord(vocab.question);
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, '').replace(/\.\.\./g, '');
+  const showFormSubtitle = quotedForm && normalize(quotedForm) !== normalize(vocab.latinWord);
+
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-2">
         <span className="text-xs font-bold tracking-widest text-roman-500 uppercase">
           <LatinText latin="Vocabulum" english="Vocabulary" />
         </span>
         <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">
-          {vocab.latinWord}
+          {showFormSubtitle ? quotedForm : vocab.latinWord}
         </h2>
+        {showFormSubtitle && (
+          <p className="text-sm text-roman-500">
+            ({vocab.latinWord})
+          </p>
+        )}
       </div>
 
       {!feedback ? (
