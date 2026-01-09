@@ -54,7 +54,7 @@ export const AttemptHistory: React.FC<AttemptHistoryProps> = ({ history }) => {
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full text-left group"
       >
-        <span className="text-xs font-bold tracking-widest text-roman-500 uppercase">
+        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
           <LatinText latin="Historiae Tuae" english="Your History" />
         </span>
         <span className="flex items-center gap-2 text-sm text-roman-600">

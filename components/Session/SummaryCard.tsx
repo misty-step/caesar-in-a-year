@@ -9,9 +9,9 @@ export function SummaryCard({ session }: SummaryCardProps) {
   const totalItems = session.items.length;
 
   return (
-    <section className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-roman-200 p-8 space-y-4">
+    <section className="max-w-2xl mx-auto bg-marble rounded-xl border border-roman-200 p-8 space-y-4 animate-fade-in">
       <div className="space-y-1">
-        <span className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+        <span className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           <LatinText latin="Summarium Sessionis" english="Session Summary" />
         </span>
         <h1 className="text-3xl font-serif text-roman-900">

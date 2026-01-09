@@ -83,7 +83,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-4">
-        <span className="text-xs font-bold tracking-widest text-roman-500 uppercase">
+        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
           <LatinText latin="Locutio" english="Phrase" />
         </span>
         <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">
@@ -161,7 +161,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
 
           {/* User's answer */}
           <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
             <p className="text-roman-800 italic">"{feedback.userInput}"</p>
@@ -169,7 +169,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
 
           {/* Correct answer */}
           <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-wide font-bold">
+            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>
             <p className="font-medium text-roman-800">{phrase.english}</p>

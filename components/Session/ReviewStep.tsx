@@ -188,7 +188,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-4">
-        <span className="text-xs font-bold tracking-widest text-roman-500 uppercase">
+        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
           <LatinText latin="Recognitio" english="Review" />
         </span>
         {feedback ? renderInteractiveLatin() : (
@@ -245,7 +245,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
 
           {/* User Translation - Clean with subtle left accent */}
           <div>
-            <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
+            <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
               <LatinText latin="Tua Interpretatio" english="Your Translation" />
             </p>
             <p className="text-lg text-roman-800 italic border-l-2 border-roman-300 pl-4">
@@ -256,7 +256,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           {/* Reference Translation - Status-colored accent */}
           {feedback.result.correction && (
             <div>
-              <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
+              <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
                 <LatinText latin="Sensus Verus" english="Correct Translation" />
               </p>
               <p className={`text-lg text-roman-900 border-l-2 pl-4 ${getAccentColor(feedback.result.status)}`}>
@@ -274,7 +274,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           {/* Detailed errors - collapsible */}
           {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
             <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
-              <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-wide font-bold list-none flex items-center gap-2">
+              <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
                 <svg
                   className="w-4 h-4 transition-transform group-open:rotate-90"
                   fill="none"

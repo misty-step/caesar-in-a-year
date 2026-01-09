@@ -185,15 +185,15 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
   );
 
   return (
-    <div className="max-w-3xl mx-auto space-y-10 animate-fade-in pb-20">
+    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in pb-20">
       <div className="text-center">
-        <span className="text-xs font-bold tracking-widest text-roman-500 uppercase">
+        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
           <LatinText latin="Lectio Nova" english="New Reading" />
         </span>
         <h2 className="text-2xl font-serif text-roman-900 mt-2">{reading.title}</h2>
       </div>
 
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-roman-200 relative">
+      <div className="bg-marble p-8 rounded-xl border border-roman-200 relative">
         {renderPassage()}
 
         {/* Glossary popup */}
@@ -265,7 +265,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
 
             {/* User's answer - Clean with subtle left accent */}
             <div>
-              <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
+              <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
                 <LatinText latin="Tua Responsio" english="Your Answer" />
               </p>
               <p className="text-lg text-roman-800 italic border-l-2 border-roman-300 pl-4">
@@ -276,7 +276,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
             {/* Reference gist - Status-colored accent */}
             {feedback.result.correction && (
               <div>
-                <p className="text-xs uppercase tracking-wide font-bold text-roman-500 mb-2">
+                <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
                   <LatinText latin="Summa Vera" english="Correct Understanding" />
                 </p>
                 <p className={`text-lg text-roman-900 border-l-2 pl-4 ${getAccentColor(feedback.result.status)}`}>
@@ -294,7 +294,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
             {/* Detailed errors - collapsible */}
             {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
               <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
-                <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-wide font-bold list-none flex items-center gap-2">
+                <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
                   <svg
                     className="w-4 h-4 transition-transform group-open:rotate-90"
                     fill="none"
