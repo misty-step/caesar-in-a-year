@@ -47,9 +47,9 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
   });
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-4">
+    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           <LatinText latin="Studium Cotidianum" english="Daily Study" />
         </p>
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
 
       {/* Month labels */}
       <div className="relative">
-        <div className="flex gap-0.5 text-[10px] text-roman-400 mb-1 ml-6">
+        <div className="flex gap-0.5 text-xs text-roman-400 mb-1 ml-6">
           {monthLabels.map(({ month, colStart }, i) => (
             <span
               key={`${month}-${i}`}
@@ -78,7 +78,7 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
       {/* Grid */}
       <div className="flex gap-0.5 overflow-x-auto pt-4">
         {/* Day labels */}
-        <div className="flex flex-col gap-0.5 text-[10px] text-roman-400 pr-1">
+        <div className="flex flex-col gap-0.5 text-xs text-roman-400 pr-1">
           <span className="h-[10px]">M</span>
           <span className="h-[10px]"></span>
           <span className="h-[10px]">W</span>
@@ -120,7 +120,7 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
       )}
 
       {/* Legend */}
-      <div className="flex items-center justify-end gap-2 text-[10px] text-roman-400">
+      <div className="flex items-center justify-end gap-2 text-xs text-roman-400">
         <span>Less</span>
         <div className="flex gap-0.5">
           {[0, 2, 5, 10, 15].map((n, i) => (

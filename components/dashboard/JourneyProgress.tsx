@@ -9,9 +9,9 @@ export function JourneyProgress({ iter }: JourneyProgressProps) {
   const { sentencesEncountered, totalSentences, percentComplete } = iter;
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-4">
+    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
       <div className="flex justify-between items-baseline">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           <LatinText latin="Iter per Caesarem" english="Journey through Caesar" />
         </p>
         <p className="text-lg font-serif text-pompeii-600">

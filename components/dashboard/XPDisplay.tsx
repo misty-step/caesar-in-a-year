@@ -12,10 +12,10 @@ export function XPDisplay({ xp }: XPDisplayProps) {
     : 100;
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-4">
+    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+          <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
             <LatinText latin="Gradus" english="Level" />
           </p>
           <p className="text-3xl font-serif text-roman-900">{level}</p>
@@ -43,7 +43,7 @@ export function XPDisplay({ xp }: XPDisplayProps) {
             style={{ width: `${levelProgress}%` }}
           />
         </div>
-        <p className="text-[10px] text-roman-400 text-right">
+        <p className="text-xs text-roman-400 text-right">
           {toNextLevel > 0 ? (
             <LatinText
               latin={`${toNextLevel} ad proximum`}

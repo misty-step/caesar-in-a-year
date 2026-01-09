@@ -13,28 +13,28 @@ export default function NotFound() {
             <h2 className="text-3xl font-serif font-bold text-roman-900 tracking-tight">
               Iter perdidisti?
             </h2>
-            <p className="mt-2 text-sm text-roman-500 uppercase tracking-widest font-semibold">
+            <p className="mt-2 text-sm text-roman-500 uppercase tracking-eyebrow font-semibold">
               Page Not Found
             </p>
           </div>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-roman-200 relative overflow-hidden">
+        <div className="bg-marble p-6 rounded-xl border border-roman-200 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pompeii-500 to-pompeii-600"></div>
           <p className="text-roman-600 mb-6 leading-relaxed">
             "Mehercule! It seems the road you are looking for has not yet been paved by the legions. It may have been lost to time, or perhaps never existed at all."
           </p>
           
           <div className="flex flex-col gap-3">
-            <Link 
+            <Link
               href="/"
-              className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pompeii-600 hover:bg-pompeii-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pompeii-500 transition-all duration-200"
+              className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-pompeii-600 hover:bg-pompeii-500 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pompeii-500 transition-all duration-200"
             >
               Return to Rome (Home)
             </Link>
             <Link
               href="/dashboard"
-              className="w-full inline-flex justify-center items-center px-4 py-3 border border-roman-300 text-sm font-medium rounded-md text-roman-700 bg-white hover:bg-roman-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-roman-500 transition-all duration-200"
+              className="w-full inline-flex justify-center items-center px-4 py-3 border border-roman-300 text-sm font-medium rounded-lg text-roman-700 bg-marble hover:bg-roman-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-roman-500 transition-all duration-200"
             >
               Go to Dashboard
             </Link>
