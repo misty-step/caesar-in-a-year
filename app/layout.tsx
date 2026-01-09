@@ -1,10 +1,29 @@
 import type { Metadata } from 'next';
-import { Instrument_Sans, Crimson_Pro } from 'next/font/google';
+import { Inter, Cinzel, Crimson_Pro } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
 
-const instrumentSans = Instrument_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
-const crimson = Crimson_Pro({ subsets: ['latin'], variable: '--font-serif', display: 'swap' });
+// Display: Monumental, carved headlines - like Roman inscriptions
+const cinzel = Cinzel({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+// Serif: Elegant Latin text
+const crimson = Crimson_Pro({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap'
+});
+
+// Sans: Modern SaaS UI
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap'
+});
 
 export const metadata: Metadata = {
   title: 'Caesar in a Year',
@@ -13,8 +32,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${instrumentSans.variable} ${crimson.variable}`}>
-      <body>
+    <html lang="en" className={`${cinzel.variable} ${crimson.variable} ${inter.variable}`}>
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
