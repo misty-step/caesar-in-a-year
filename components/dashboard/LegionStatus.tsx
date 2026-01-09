@@ -6,10 +6,10 @@ interface LegionStatusProps {
 }
 
 const TIERS = [
-  { key: 'tirones' as const, label: 'New', color: 'bg-roman-300' },
-  { key: 'milites' as const, label: 'Learning', color: 'bg-yellow-400' },
-  { key: 'veterani' as const, label: 'Familiar', color: 'bg-orange-500' },
-  { key: 'decuriones' as const, label: 'Mastered', color: 'bg-pompeii-600' },
+  { key: 'tirones' as const, label: 'Tirones', sublabel: 'Recruits', color: 'bg-roman-300' },
+  { key: 'milites' as const, label: 'Milites', sublabel: 'Soldiers', color: 'bg-laurel-500' },
+  { key: 'veterani' as const, label: 'Veterani', sublabel: 'Veterans', color: 'bg-terracotta-500' },
+  { key: 'decuriones' as const, label: 'Decuriones', sublabel: 'Officers', color: 'bg-tyrian-500' },
 ];
 
 export function LegionStatus({ legion }: LegionStatusProps) {
@@ -17,9 +17,9 @@ export function LegionStatus({ legion }: LegionStatusProps) {
 
   if (total === 0) {
     return (
-      <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-4">
+      <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
         <div className="space-y-1">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+          <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
             <LatinText latin="Legio Tua" english="Your Legion" />
           </p>
           <p className="text-sm text-roman-600">
@@ -34,9 +34,9 @@ export function LegionStatus({ legion }: LegionStatusProps) {
   }
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-4">
+    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
       <div className="flex justify-between items-baseline">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           <LatinText latin="Legio Tua" english="Your Legion" />
         </p>
         <p className="text-sm text-roman-600">
@@ -63,11 +63,12 @@ export function LegionStatus({ legion }: LegionStatusProps) {
 
       {/* Legend */}
       <div className="grid grid-cols-2 gap-2 text-xs">
-        {TIERS.map(({ key, label, color }) => (
+        {TIERS.map(({ key, label, sublabel, color }) => (
           <div key={key} className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-sm ${color}`} />
-            <span className="text-roman-700">{label}</span>
-            <span className="text-roman-500 ml-auto">{legion[key]}</span>
+            <span className="text-roman-700 font-medium">{label}</span>
+            <span className="text-roman-400 text-[10px]">({sublabel})</span>
+            <span className="text-roman-500 ml-auto tabular-nums">{legion[key]}</span>
           </div>
         ))}
       </div>

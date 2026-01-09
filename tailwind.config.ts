@@ -18,9 +18,16 @@ const config: Config = {
           700: '#5e4b3a',
           900: '#3a2d24',
         },
+        marble: '#FCFAF9', // Near-white for active cards
         pompeii: {
           500: '#b84232',
           600: '#963426',
+        },
+        tyrian: {
+          50: '#f9f5f7',
+          100: '#f0e8ec',
+          500: '#66023C', // Tyrian purple for mastery states
+          700: '#4a1a2c',
         },
         // Status colors - Roman thematic
         laurel: {
@@ -43,8 +50,26 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         serif: ['var(--font-serif)', 'Crimson Pro', 'serif'],
+      },
+      letterSpacing: {
+        eyebrow: '0.2em',
+      },
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'bounce-in': {
+          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '50%': { transform: 'scale(1.02)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.3s ease-out',
+        'bounce-in': 'bounce-in 0.4s ease-out',
       },
     },
   },

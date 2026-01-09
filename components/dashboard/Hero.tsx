@@ -2,8 +2,8 @@ import { LatinText } from '@/components/UI/LatinText';
 
 export function Hero() {
   return (
-    <section className="space-y-4 text-center sm:text-left">
-      <p className="text-xs uppercase tracking-[0.2em] text-roman-500 font-semibold">
+    <section className="space-y-4 text-center sm:text-left animate-fade-in">
+      <p className="text-xs uppercase tracking-eyebrow text-roman-500 font-semibold">
         Caesar in a Year
       </p>
       <h1 className="text-4xl sm:text-5xl font-serif font-semibold text-roman-900">

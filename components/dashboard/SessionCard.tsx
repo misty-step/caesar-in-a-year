@@ -8,9 +8,9 @@ interface SessionCardProps {
 
 export function SessionCard({ justCompleted }: SessionCardProps) {
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <section className="bg-marble rounded-xl border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="space-y-1">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-roman-500">
+        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           Session
         </p>
         <h2 className="text-xl font-serif font-semibold text-roman-900">

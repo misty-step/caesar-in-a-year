@@ -42,9 +42,9 @@ function ScheduleIndicator({ delta }: { delta: number }) {
 export function Stats({ progress, iter, reviewCount, readingTitle, justCompleted }: StatsProps) {
   return (
     <section className="grid gap-4 md:grid-cols-3">
-      <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col justify-between">
+      <div className="bg-marble rounded-xl border border-roman-200 p-6 flex flex-col justify-between">
         <div className="space-y-3">
-          <span className="text-xs font-bold uppercase tracking-widest text-roman-500">
+          <span className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
             <LatinText latin="Iter Tuum" english="Your Journey" />
           </span>
           <h2 className="text-2xl font-serif text-roman-900">
@@ -63,17 +63,17 @@ export function Stats({ progress, iter, reviewCount, readingTitle, justCompleted
         </div>
       </div>
 
-      <div className={`bg-white rounded-xl shadow-sm border border-roman-200 p-6 flex flex-col items-center justify-center ${justCompleted ? 'ring-2 ring-pompeii-400 ring-offset-2' : ''}`}>
-        <div className={`text-4xl font-serif text-pompeii-600 mb-1 ${justCompleted ? 'animate-bounce' : ''}`}>
+      <div className={`bg-marble rounded-xl border border-roman-200 p-6 flex flex-col items-center justify-center ${justCompleted ? 'ring-2 ring-pompeii-400 ring-offset-2' : ''}`}>
+        <div className={`text-4xl font-serif text-pompeii-600 mb-1 ${justCompleted ? 'animate-bounce-in' : ''}`}>
           {progress.streak}
         </div>
-        <span className="text-xs uppercase text-roman-400 font-bold">
+        <span className="text-xs uppercase text-roman-400 font-semibold tracking-eyebrow">
           <LatinText latin="Series Dierum" english="Day Streak" />
         </span>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-roman-200 p-6 space-y-2">
-        <span className="text-xs font-bold uppercase tracking-widest text-roman-500">
+      <div className="bg-marble rounded-xl border border-roman-200 p-6 space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
           <LatinText latin="Quid Hodie Legis?" english="What do you read today?" />
         </span>
         <p className="text-sm font-medium text-roman-900">{readingTitle}</p>
