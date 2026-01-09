@@ -13,10 +13,11 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-roman-50 text-roman-900 relative overflow-hidden">
-      {/* Decorative laurel border - subtle visual identity */}
+      {/* Decorative laurel borders - subtle visual identity */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-laurel-500/30 to-transparent" />
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-laurel-500/20 to-transparent" />
 
-      <div className="mx-auto max-w-4xl px-6 py-20 space-y-16 animate-fade-in">
+      <div className="mx-auto max-w-4xl px-6 py-16 sm:py-20 space-y-12 animate-fade-in">
         {/* Hero section */}
         <div className="space-y-6">
           <h1 className="text-4xl sm:text-5xl font-serif font-semibold leading-tight">
