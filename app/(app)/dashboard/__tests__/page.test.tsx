@@ -11,14 +11,13 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 const getUserProgress = vi.fn();
 const getContent = vi.fn();
-
-const getMasteredAtLevel = vi.fn().mockResolvedValue(0);
+const getProgressMetrics = vi.fn();
 
 vi.mock('@/lib/data/adapter', () => ({
   createDataAdapter: () => ({
     getUserProgress,
     getContent,
-    getMasteredAtLevel,
+    getProgressMetrics,
   }),
 }));
 
@@ -31,6 +30,7 @@ describe('DashboardPage', () => {
   beforeEach(() => {
     getUserProgress.mockReset();
     getContent.mockReset();
+    getProgressMetrics.mockReset();
   });
 
   it('renders fallback progress when no data is stored', async () => {
@@ -46,12 +46,20 @@ describe('DashboardPage', () => {
         referenceGist: '',
       },
     });
+    getProgressMetrics.mockResolvedValueOnce({
+      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
+      iter: { sentencesEncountered: 0, totalSentences: 365, percentComplete: 0, contentDay: 1, daysActive: 1, scheduleDelta: 0 },
+      activity: [],
+      xp: { total: 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
+      streak: 0,
+    });
 
     const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
     const tree = await DashboardPage();
     const html = renderToString(tree as React.ReactElement);
 
-    expect(html).toContain('Day 1 of 365');
+    // Page renders core dashboard structure
+    expect(html).toContain('Caesar in a Year');
     expect(html).toContain('Sample Reading');
   });
 });

@@ -52,7 +52,7 @@ export default async function SummaryPage(props: SummaryPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-roman-50 text-roman-900">
+    <main className="min-h-screen bg-parchment text-ink">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <SummaryClient session={session} levelUpParam={searchParams.levelUp} />
 

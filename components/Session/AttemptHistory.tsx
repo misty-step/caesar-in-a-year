@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import type { AttemptHistoryEntry } from '@/lib/data/types';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 
 interface AttemptHistoryProps {
   history: AttemptHistoryEntry[];
@@ -17,7 +18,7 @@ function getStatusColor(status: string): string {
     case 'INCORRECT':
       return 'bg-iron-500';
     default:
-      return 'bg-roman-400';
+      return 'bg-slate-400';
   }
 }
 
@@ -49,15 +50,15 @@ export const AttemptHistory: React.FC<AttemptHistoryProps> = ({ history }) => {
   const attemptCount = history.length;
 
   return (
-    <div className="border-t border-roman-200 pt-4 mt-4">
+    <div className="border-t border-slate-200 pt-4 mt-4">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full text-left group"
       >
-        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
+        <Label as="span">
           <LatinText latin="Historiae Tuae" english="Your History" />
-        </span>
-        <span className="flex items-center gap-2 text-sm text-roman-600">
+        </Label>
+        <span className="flex items-center gap-2 text-sm text-ink-light">
           <span className="font-medium">
             {attemptCount} {attemptCount === 1 ? 'attempt' : 'attempts'}
           </span>
@@ -79,26 +80,26 @@ export const AttemptHistory: React.FC<AttemptHistoryProps> = ({ history }) => {
             return (
               <div
                 key={`${attempt.sentenceId}-${attempt.createdAt}`}
-                className="flex items-center gap-3 p-2 rounded-lg bg-roman-50 border border-roman-100"
+                className="flex items-center gap-3 p-2 rounded-card bg-slate-50 border border-slate-100"
               >
                 {/* Attempt number */}
-                <span className="text-xs font-bold text-roman-400 w-6 text-center">
+                <span className="text-xs font-bold text-ink-faint w-6 text-center">
                   #{history.length - index}
                 </span>
 
                 {/* Status badge */}
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white ${getStatusColor(attempt.gradingStatus)}`}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-page text-xs font-medium text-white ${getStatusColor(attempt.gradingStatus)}`}
                 >
                   <LatinText latin={label.latin} english={label.english} />
                 </span>
 
                 {/* Date */}
-                <span className="text-xs text-roman-500">{formatDate(attempt.createdAt)}</span>
+                <span className="text-xs text-ink-muted">{formatDate(attempt.createdAt)}</span>
 
                 {/* Error types (if any) */}
                 {attempt.errorTypes.length > 0 && (
-                  <span className="text-xs text-roman-400 flex-1 truncate">
+                  <span className="text-xs text-ink-faint flex-1 truncate">
                     {attempt.errorTypes.slice(0, 2).join(', ')}
                     {attempt.errorTypes.length > 2 && ` +${attempt.errorTypes.length - 2}`}
                   </span>

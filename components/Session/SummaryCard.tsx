@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import { Button } from '@/components/UI/Button';
 import type { Session } from '@/lib/data/types';
 
@@ -32,35 +33,35 @@ export function SummaryCard({ session }: SummaryCardProps) {
   const estimatedXP = totalItems * 10;
 
   return (
-    <section className="max-w-2xl mx-auto bg-marble rounded-xl border border-roman-200 p-8 space-y-6 animate-fade-in">
+    <section className="max-w-2xl mx-auto bg-parchment rounded-card border border-slate-200 p-8 space-y-6 animate-fade-in">
       {/* Celebration header */}
       <div className="flex flex-col items-center text-center space-y-4">
         <LaurelIcon />
         <div className="space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+          <Label>
             <LatinText latin="Summarium Sessionis" english="Session Summary" />
-          </span>
-          <h1 className="text-3xl font-serif text-roman-900">
+          </Label>
+          <h1 className="text-3xl font-serif text-ink">
             <LatinText latin="Bene fecisti!" english="Well done!" />
           </h1>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex justify-center gap-8 py-4 border-y border-roman-200">
+      <div className="flex justify-center gap-8 py-4 border-y border-slate-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-roman-900">{totalItems}</p>
-          <p className="text-xs text-roman-500">
+          <p className="text-2xl font-bold text-ink">{totalItems}</p>
+          <p className="text-xs text-ink-muted">
             <LatinText latin="Segmenta" english="Segments" />
           </p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-laurel-600">+{estimatedXP}</p>
-          <p className="text-xs text-roman-500">XP</p>
+          <p className="text-xs text-ink-muted">XP</p>
         </div>
       </div>
 
-      <p className="text-sm text-roman-600 text-center">
+      <p className="text-sm text-ink-light text-center">
         <LatinText
           latin="Crastinus dies iterum novam lectionem afferet."
           english="Tomorrow brings another small step toward reading Caesar in the original."

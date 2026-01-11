@@ -82,7 +82,7 @@ export default async function DashboardPage() {
     : false;
 
   return (
-    <main className="min-h-screen bg-roman-50 text-roman-900">
+    <main className="min-h-screen bg-parchment text-ink">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <Hero />
 
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
 
         <SessionCard justCompleted={justCompleted} />
 
-        {/* New Progress Visualization */}
+        {/* Progress Visualization */}
         <div className="grid gap-6 md:grid-cols-2">
           <LegionStatus legion={metrics.legion} />
           <XPDisplay xp={metrics.xp} />

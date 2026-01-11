@@ -5,6 +5,7 @@ import { GradeStatus, type VocabCard, type SessionStatus } from '@/lib/data/type
 import { type SimpleGradingResult } from '@/lib/ai/grading-utils';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
 
 interface VocabDrillStepProps {
@@ -94,14 +95,14 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
-        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
+        <Label>
           <LatinText latin="Vocabulum" english="Vocabulary" />
-        </span>
-        <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">
+        </Label>
+        <h2 className="text-3xl md:text-4xl font-serif text-ink leading-tight">
           {showFormSubtitle ? quotedForm : vocab.latinWord}
         </h2>
         {showFormSubtitle && (
-          <p className="text-sm text-roman-500">
+          <p className="text-sm text-ink-muted">
             ({vocab.latinWord})
           </p>
         )}
@@ -112,10 +113,10 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           <GradingLoader />
         ) : (
           <div className="space-y-4">
-            <div className="bg-roman-100 rounded-lg p-4">
-              <p className="font-medium text-roman-900">{vocab.question}</p>
+            <div className="bg-slate-100 rounded-card p-4">
+              <p className="font-medium text-ink">{vocab.question}</p>
             </div>
-            <label className="block text-sm font-medium text-roman-700">
+            <label className="block text-sm font-medium text-ink-light">
               <LatinText latin={label.latin} english={label.english} />
             </label>
             <input
@@ -123,8 +124,8 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 text-lg font-sans"
-              placeholder="Scribe responsum..."
+              className="w-full p-4 border border-slate-300 rounded-card shadow-soft focus:ring-2 focus:ring-tyrian-500 focus:border-tyrian-500 text-lg font-sans bg-white"
+              placeholder="Write your answer..."
               autoFocus
             />
             <div className="flex justify-end">
@@ -139,7 +140,7 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
         )
       ) : (
         <div
-          className={`rounded-lg p-6 border-l-4 space-y-5 ${
+          className={`rounded-card p-6 border-l-4 space-y-5 ${
             isCorrect
               ? 'bg-laurel-50 border-laurel-500'
               : isPartial
@@ -169,36 +170,36 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           </div>
 
           {/* AI Feedback */}
-          <div className="text-roman-800">
+          <div className="text-ink">
             {feedback.grading.feedback}
           </div>
 
           {/* User's answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-card p-4 space-y-1">
+            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
-            <p className="text-roman-800 italic">"{feedback.userInput}"</p>
+            <p className="text-ink italic">"{feedback.userInput}"</p>
           </div>
 
           {/* Correct answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-card p-4 space-y-1">
+            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>
-            <p className="font-medium text-roman-800">{vocab.answer}</p>
+            <p className="font-medium text-ink">{vocab.answer}</p>
           </div>
 
           {/* Hint if provided */}
           {feedback.grading.hint && (
-            <div className="bg-pompeii-50 rounded-lg p-4 text-sm text-pompeii-800">
+            <div className="bg-tyrian-50 rounded-card p-4 text-sm text-tyrian-800">
               <span className="font-bold">Hint: </span>
               {feedback.grading.hint}
             </div>
           )}
 
           {/* Word meaning reminder */}
-          <div className="text-sm text-roman-700">
+          <div className="text-sm text-ink-light">
             <span className="font-bold">{vocab.latinWord}</span> = {vocab.meaning}
           </div>
 

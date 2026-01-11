@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { gradeTranslation } from '../gradeTranslation';
 import { GradeStatus } from '@/lib/data/types';
 
 // Use vi.hoisted to ensure mocks are initialized before vi.mock factory runs
@@ -27,9 +26,11 @@ vi.mock('@google/genai', () => {
 describe('gradeTranslation', () => {
   const originalEnv = process.env;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key' };
     vi.clearAllMocks();
+    // Reset module cache to clear cached Gemini client between tests
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -37,6 +38,7 @@ describe('gradeTranslation', () => {
   });
 
   it('returns success result from AI', async () => {
+    const { gradeTranslation } = await import('../gradeTranslation');
     const mockResponse = {
       status: GradeStatus.CORRECT,
       feedback: 'Good job!',
@@ -59,14 +61,12 @@ describe('gradeTranslation', () => {
   });
 
   it('handles timeout gracefully (returns fallback)', async () => {
-    // First attempt: Timeout
-    mockGenerateContent.mockImplementationOnce(async () => {
-      await new Promise(resolve => setTimeout(resolve, 6000));
-      return { text: '{}' };
-    });
+    const { gradeTranslation } = await import('../gradeTranslation');
 
-    // Second attempt: Error
-    mockGenerateContent.mockRejectedValueOnce(new Error("API Error"));
+    // All attempts fail (3 total with retry)
+    mockGenerateContent.mockImplementation(async () => {
+      throw new Error("Timeout");
+    });
 
     const result = await gradeTranslation({
       latin: 'Salve',
@@ -80,6 +80,7 @@ describe('gradeTranslation', () => {
 
   it('returns fallback if API key is missing', async () => {
     process.env.GEMINI_API_KEY = '';
+    const { gradeTranslation } = await import('../gradeTranslation');
 
     const result = await gradeTranslation({
       latin: 'Salve',
@@ -88,17 +89,18 @@ describe('gradeTranslation', () => {
     });
 
     expect(result.status).toBe(GradeStatus.PARTIAL);
-    // The class constructor is not called if API key is missing
   });
 
   it('guards against empty input', async () => {
-      const result = await gradeTranslation({
-          latin: 'Salve',
-          userTranslation: '',
-          reference: 'Hello'
-      });
+    const { gradeTranslation } = await import('../gradeTranslation');
 
-      expect(result.status).toBe(GradeStatus.INCORRECT);
-      expect(result.feedback).toContain("provide a translation");
+    const result = await gradeTranslation({
+      latin: 'Salve',
+      userTranslation: '',
+      reference: 'Hello'
+    });
+
+    expect(result.status).toBe(GradeStatus.INCORRECT);
+    expect(result.feedback).toContain("provide a translation");
   });
 });

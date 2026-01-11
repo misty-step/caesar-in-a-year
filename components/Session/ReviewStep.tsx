@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { GradeStatus, type Sentence, type GradingResult, type SessionStatus, type AttemptHistoryEntry, type ErrorType } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
 import { AttemptHistory } from './AttemptHistory';
 import { ErrorTypeIcon } from '@/components/UI/ErrorTypeIcon';
@@ -105,7 +106,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
   const renderInteractiveLatin = () => {
     const words = sentence.latin.split(/(\s+)/);
     return (
-      <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">
+      <h2 className="text-3xl md:text-4xl font-serif text-ink leading-tight">
         {words.map((word, i) => {
           if (/^\s+$/.test(word)) return <span key={i}>{word}</span>;
           const cleaned = cleanWord(word);
@@ -115,8 +116,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
             <span
               key={i}
               onClick={() => handleWordClick(word)}
-              className={`${hasGloss ? 'cursor-pointer hover:text-pompeii-600 transition-colors' : ''} ${
-                isSelected ? 'text-pompeii-600 underline decoration-pompeii-400' : ''
+              className={`${hasGloss ? 'cursor-pointer hover:text-tyrian-600 transition-colors' : ''} ${
+                isSelected ? 'text-tyrian-600 underline decoration-tyrian-400' : ''
               }`}
             >
               {word}
@@ -127,10 +128,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
     );
   };
 
-  const getStatusTextColor = (status: GradeStatus) => {
+  const getStatusColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'text-laurel-700';
+        return 'text-verdigris-700';
       case GradeStatus.PARTIAL:
         return 'text-terracotta-700';
       default:
@@ -138,192 +139,182 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
     }
   };
 
-  const getAccentColor = (status: GradeStatus) => {
+  const getMarginColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'border-laurel-500';
+        return 'border-verdigris-500 bg-verdigris-50';
       case GradeStatus.PARTIAL:
-        return 'border-terracotta-500';
+        return 'border-sienna-500 bg-sienna-50';
       default:
-        return 'border-iron-500';
+        return 'border-iron-500 bg-iron-50';
     }
   };
 
-  // Status icon component - Roman themed
+  // Status icon - stamp animation on correct for tactile feedback
   const StatusIcon = ({ status }: { status: GradeStatus }) => {
-    const baseClass = "w-8 h-8";
+    const baseClass = "w-6 h-6";
     switch (status) {
       case GradeStatus.CORRECT:
-        // Laurel wreath
         return (
-          <svg className={`${baseClass} text-laurel-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 3c-1.5 2-2 4-2 6s.5 4 2 6c1.5-2 2-4 2-6s-.5-4-2-6z" />
-            <path d="M6 6c1 2 3 3 5 3M18 6c-1 2-3 3-5 3" />
-            <path d="M4 10c1.5 1.5 3.5 2 6 2M20 10c-1.5 1.5-3.5 2-6 2" />
-            <path d="M3 15c2 1 4.5 1.5 7 1M21 15c-2 1-4.5 1.5-7 1" />
-            <path d="M5 19c2 .5 4.5.5 7 0M19 19c-2 .5-4.5.5-7 0" />
+          <svg className={`${baseClass} text-verdigris-600 animate-stamp`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         );
       case GradeStatus.PARTIAL:
-        // Balance scales
         return (
-          <svg className={`${baseClass} text-terracotta-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 3v18" />
-            <path d="M5 7l7-2 7 2" />
-            <path d="M3 13l4-6 4 6a4 4 0 01-8 0z" />
-            <path d="M13 13l4-6 4 6a4 4 0 01-8 0z" />
+          <svg className={`${baseClass} text-terracotta-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         );
       default:
-        // Hollow circle (miss)
         return (
-          <svg className={`${baseClass} text-iron-500`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M9 9l6 6M15 9l-6 6" />
+          <svg className={`${baseClass} text-iron-500`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         );
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
-      <div className="text-center space-y-4">
-        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
-          <LatinText latin="Recognitio" english="Review" />
-        </span>
-        {feedback ? renderInteractiveLatin() : (
-          <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">{sentence.latin}</h2>
+    <div className="max-w-3xl mx-auto animate-fade-in">
+      {/* Main content with margin for annotations */}
+      <div className="relative">
+        {/* Latin text - center stage */}
+        <div className="text-center space-y-4 mb-8">
+          <Label>
+            <LatinText latin="Recognitio" english="Review" />
+          </Label>
+          {feedback ? renderInteractiveLatin() : (
+            <h2 className="text-3xl md:text-4xl font-serif text-ink leading-tight">{sentence.latin}</h2>
+          )}
+        </div>
+
+        {/* Glossary popup */}
+        {selectedWord && glossary[selectedWord] && (
+          <div className="bg-ink text-white p-3 rounded-card text-sm shadow-lg text-center animate-bounce-in mb-6">
+            <span className="font-medium">{selectedWord}</span>: {glossary[selectedWord]}
+          </div>
+        )}
+
+        {!feedback ? (
+          isSubmitting ? (
+            <GradingLoader />
+          ) : (
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-ink-light">
+                <LatinText latin="Quid hoc significat?" english="What does this mean?" />
+              </label>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                className="w-full p-4 border border-slate-300 rounded-card shadow-soft focus:ring-2 focus:ring-tyrian-500 focus:border-tyrian-500 text-lg font-sans min-h-[120px] bg-white"
+                placeholder="Write your translation..."
+                autoFocus
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!input.trim()}
+                  labelLatin="Confirma Sensum"
+                  labelEnglish="Check Meaning"
+                />
+              </div>
+            </div>
+          )
+        ) : (
+          <div className="space-y-6 animate-fade-in">
+            {/* Scriptorium-style margin feedback */}
+            <div className={`border-l-4 ${getMarginColor(feedback.result.status)} p-4 rounded-r-card`}>
+              <div className="flex items-center gap-2 mb-3">
+                <StatusIcon status={feedback.result.status} />
+                <span className={`text-lg font-serif font-medium ${getStatusColor(feedback.result.status)}`}>
+                  <LatinText
+                    latin={feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
+                           feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
+                    english={feedback.result.status === GradeStatus.CORRECT ? 'Excellent!' :
+                             feedback.result.status === GradeStatus.PARTIAL ? 'Almost.' : 'Not enough.'}
+                  />
+                </span>
+              </div>
+
+              {/* Your translation - like a student's writing */}
+              <div className="mb-4">
+                <p className="text-xs text-ink-muted uppercase tracking-eyebrow mb-1">Your translation</p>
+                <p className="text-ink italic font-serif">"{feedback.userInput}"</p>
+              </div>
+
+              {/* Correction - like a tutor's note in the margin */}
+              {feedback.result.correction && (
+                <div className="mb-4">
+                  <p className="text-xs text-sienna-600 uppercase tracking-eyebrow mb-1">Correction</p>
+                  <p className="text-ink font-serif">"{feedback.result.correction}"</p>
+                </div>
+              )}
+
+              {/* Feedback prose */}
+              <p className="text-ink-light text-sm leading-relaxed">{feedback.result.feedback}</p>
+            </div>
+
+            {/* Detailed errors - collapsible */}
+            {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
+              <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
+                <summary className="cursor-pointer text-xs text-ink-muted uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 transition-transform group-open:rotate-90"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <LatinText latin="Errores Specifici" english="Specific Errors" />
+                  <span className="text-ink-faint">({feedback.result.analysis.errors.length})</span>
+                </summary>
+                <ul className="mt-3 space-y-2">
+                  {feedback.result.analysis.errors.map((error, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm bg-slate-50 rounded-card p-3">
+                      <span className="text-sienna-600 shrink-0 mt-0.5">
+                        <ErrorTypeIcon type={error.type as ErrorType} className="w-5 h-5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold uppercase text-ink-muted">{error.type.replace('_', ' ')}</span>
+                          {error.latinSegment && (
+                            <span className="font-serif font-medium text-ink">"{error.latinSegment}"</span>
+                          )}
+                        </div>
+                        <span className="text-ink-light">{error.explanation}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {/* Glossary hint */}
+            {Object.keys(glossary).length > 0 && (
+              <p className="text-xs text-ink-muted italic">
+                Tap words in the Latin above to see their meanings.
+              </p>
+            )}
+
+            {/* Attempt history */}
+            {feedback.attemptHistory && feedback.attemptHistory.length > 0 && (
+              <AttemptHistory history={feedback.attemptHistory} />
+            )}
+
+            <div className="pt-4 flex justify-end">
+              <Button onClick={handleContinue} labelLatin="Perge" labelEnglish="Continue" />
+            </div>
+          </div>
         )}
       </div>
-
-      {/* Glossary popup */}
-      {selectedWord && glossary[selectedWord] && (
-        <div className="bg-roman-900 text-white p-3 rounded-lg text-sm shadow-lg text-center animate-bounce-in">
-          <span className="font-medium">{selectedWord}</span>: {glossary[selectedWord]}
-        </div>
-      )}
-
-      {!feedback ? (
-        isSubmitting ? (
-          <GradingLoader />
-        ) : (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-roman-700">
-              <LatinText latin="Quid hoc significat?" english="What does this mean?" />
-            </label>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 text-lg font-sans min-h-[120px]"
-              placeholder="Scribe interpretationem tuam..."
-              autoFocus
-            />
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubmit}
-                disabled={!input.trim()}
-                labelLatin="Confirma Sensum"
-                labelEnglish="Check Meaning"
-              />
-            </div>
-          </div>
-        )
-      ) : (
-        <div className="space-y-6 animate-fade-in">
-          {/* Status Badge - Inline with icon */}
-          <div className="flex items-center gap-3">
-            <StatusIcon status={feedback.result.status} />
-            <span className={`text-xl font-serif font-bold ${getStatusTextColor(feedback.result.status)}`}>
-              <LatinText
-                latin={feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
-                       feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
-                english={feedback.result.status === GradeStatus.CORRECT ? 'Excellent!' :
-                         feedback.result.status === GradeStatus.PARTIAL ? 'Almost.' : 'Not enough.'}
-              />
-            </span>
-          </div>
-
-          {/* User Translation - Clean with subtle left accent */}
-          <div>
-            <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
-              <LatinText latin="Tua Interpretatio" english="Your Translation" />
-            </p>
-            <p className="text-lg text-roman-800 italic border-l-2 border-roman-300 pl-4">
-              "{feedback.userInput}"
-            </p>
-          </div>
-
-          {/* Reference Translation - Status-colored accent */}
-          {feedback.result.correction && (
-            <div>
-              <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
-                <LatinText latin="Sensus Verus" english="Correct Translation" />
-              </p>
-              <p className={`text-lg text-roman-900 border-l-2 pl-4 ${getAccentColor(feedback.result.status)}`}>
-                "{feedback.result.correction}"
-              </p>
-            </div>
-          )}
-
-          {/* Separator */}
-          <div className="border-t border-roman-200" />
-
-          {/* Feedback - Full width prose */}
-          <p className="text-roman-800">{feedback.result.feedback}</p>
-
-          {/* Detailed errors - collapsible */}
-          {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
-            <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
-              <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 transition-transform group-open:rotate-90"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                <LatinText latin="Errores Specifici" english="Specific Errors" />
-                <span className="text-roman-400">({feedback.result.analysis.errors.length})</span>
-              </summary>
-              <ul className="mt-3 space-y-2">
-                {feedback.result.analysis.errors.map((error, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm bg-roman-50 rounded-lg p-3">
-                    <span className="text-pompeii-600 shrink-0 mt-0.5">
-                      <ErrorTypeIcon type={error.type as ErrorType} className="w-5 h-5" />
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold uppercase text-roman-500">{error.type.replace('_', ' ')}</span>
-                        {error.latinSegment && (
-                          <span className="font-serif font-medium text-roman-900">"{error.latinSegment}"</span>
-                        )}
-                      </div>
-                      <span className="text-roman-700">{error.explanation}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          {/* Glossary hint */}
-          {Object.keys(glossary).length > 0 && (
-            <p className="text-xs text-roman-500 italic">
-              Tap words in the Latin above to see their meanings.
-            </p>
-          )}
-
-          {/* Attempt history */}
-          {feedback.attemptHistory && feedback.attemptHistory.length > 0 && (
-            <AttemptHistory history={feedback.attemptHistory} />
-          )}
-
-          <div className="pt-4 flex justify-end">
-            <Button onClick={handleContinue} labelLatin="Perge" labelEnglish="Continue" />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

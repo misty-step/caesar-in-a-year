@@ -1,4 +1,5 @@
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import type { JourneyProgress as JourneyProgressType } from '@/lib/data/types';
 
 interface JourneyProgressProps {
@@ -9,19 +10,19 @@ export function JourneyProgress({ iter }: JourneyProgressProps) {
   const { sentencesEncountered, totalSentences, percentComplete } = iter;
 
   return (
-    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
+    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
       <div className="flex justify-between items-baseline">
-        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+        <Label>
           <LatinText latin="Iter per Caesarem" english="Journey through Caesar" />
-        </p>
-        <p className="text-lg font-serif text-pompeii-600">
+        </Label>
+        <p className="text-lg font-serif text-tyrian-500">
           {percentComplete}%
         </p>
       </div>
 
       {/* Progress bar */}
       <div
-        className="w-full bg-roman-100 h-3 rounded-full overflow-hidden"
+        className="w-full bg-slate-100 h-3 rounded-card overflow-hidden"
         role="progressbar"
         aria-valuenow={percentComplete}
         aria-valuemin={0}
@@ -29,12 +30,12 @@ export function JourneyProgress({ iter }: JourneyProgressProps) {
         aria-label="Progress through De Bello Gallico"
       >
         <div
-          className="bg-gradient-to-r from-pompeii-400 to-pompeii-600 h-full transition-all duration-500 ease-out"
+          className="bg-gradient-to-r from-tyrian-400 to-tyrian-600 h-full transition-all duration-500 ease-out"
           style={{ width: `${percentComplete}%` }}
         />
       </div>
 
-      <div className="flex justify-between text-xs text-roman-500">
+      <div className="flex justify-between text-xs text-ink-muted">
         <span>
           <LatinText
             latin={`${sentencesEncountered} sententiae visae`}

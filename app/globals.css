@@ -4,15 +4,15 @@
 
 :root {
   color-scheme: light;
-  --roman-50: #f9f7f5;
-  --roman-100: #efebe6;
-  --roman-200: #e0d8cf;
-  --roman-300: #cabbad;
-  --roman-500: #8c735a;
-  --roman-700: #5e4b3a;
-  --roman-900: #3a2d24;
-  --pompeii-500: #b84232;
-  --pompeii-600: #963426;
+
+  /* The Scriptorium palette */
+  --parchment: #f8f6f1;
+  --ink: #1a1a1a;
+  --ink-muted: #737373;
+  --tyrian: #66023C;
+  --sienna: #8b2500;
+  --bronze: #C5A059;
+  --verdigris: #00E0C6;
 }
 
 * {
@@ -22,9 +22,6 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--roman-50);
-  color: var(--roman-900);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
 body {
@@ -38,4 +35,34 @@ a {
 
 button {
   font: inherit;
+}
+
+/* Editorial selection color */
+::selection {
+  background-color: rgba(102, 2, 60, 0.15);
+  color: inherit;
+}
+
+/* Smooth focus transitions */
+*:focus-visible {
+  outline: 2px solid var(--tyrian);
+  outline-offset: 2px;
+}
+
+/* Label utility - the eyebrow pattern */
+@layer components {
+  .label {
+    @apply text-xs font-semibold uppercase tracking-eyebrow text-ink-muted;
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

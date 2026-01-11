@@ -1,4 +1,5 @@
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 
 const MASTERY_GOAL = 20;
 
@@ -13,35 +14,35 @@ export function MasteryProgress({ masteredCount, readingLevel }: MasteryProgress
   const isMaxLevel = readingLevel >= 100;
 
   return (
-    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
+    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+        <Label>
           <LatinText latin="Gradus Lectionis" english="Reading Level" />
-        </p>
-        <p className="text-2xl font-serif text-roman-900">
+        </Label>
+        <p className="text-2xl font-serif text-ink">
           {readingLevel}/100
         </p>
       </div>
 
       {isMaxLevel ? (
-        <p className="text-sm text-pompeii-600">
+        <p className="text-sm text-tyrian-600">
           <LatinText latin="Omnia patebunt!" english="All content unlocked!" />
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="flex justify-between text-sm text-roman-700">
+          <div className="flex justify-between text-sm text-ink-light">
             <span>
               <LatinText
                 latin={`Perfectae: ${displayCount}/${MASTERY_GOAL}`}
                 english={`Mastered: ${displayCount}/${MASTERY_GOAL}`}
               />
             </span>
-            <span className="text-roman-500">
+            <span className="text-ink-muted">
               <LatinText latin="ad proximum gradum" english="to next level" />
             </span>
           </div>
           <div
-            className="w-full bg-roman-200 h-2 rounded-full overflow-hidden"
+            className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"
             role="progressbar"
             aria-valuenow={displayCount}
             aria-valuemin={0}
@@ -49,11 +50,11 @@ export function MasteryProgress({ masteredCount, readingLevel }: MasteryProgress
             aria-label="Progress toward next level"
           >
             <div
-              className="bg-pompeii-600 h-full transition-all duration-500 ease-out"
+              className="bg-bronze-500 h-full transition-all duration-500 ease-out"
               style={{ width: `${percentage}%` }}
             />
           </div>
-          <p className="text-xs text-roman-500">
+          <p className="text-xs text-ink-muted">
             <LatinText
               latin="Viginti sententias perfice ut gradum augeas."
               english="Master 20 sentences to advance to the next level."

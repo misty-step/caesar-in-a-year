@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GradeStatus, type ReadingPassage, type GradingResult, type SessionStatus } from '@/lib/data/types';
+import { GradeStatus, type ReadingPassage, type GradingResult, type SessionStatus, type ErrorType } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
+import { ErrorTypeIcon } from '@/components/UI/ErrorTypeIcon';
 
 interface ReadingStepProps {
   reading: ReadingPassage;
@@ -108,45 +110,37 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
     }
   };
 
-  const getAccentColor = (status: GradeStatus) => {
+  const getMarginColor = (status: GradeStatus) => {
     switch (status) {
       case GradeStatus.CORRECT:
-        return 'border-laurel-500';
+        return 'border-laurel-500 bg-laurel-50';
       case GradeStatus.PARTIAL:
-        return 'border-terracotta-500';
+        return 'border-sienna-500 bg-sienna-50';
       default:
-        return 'border-iron-500';
+        return 'border-iron-500 bg-iron-50';
     }
   };
 
-  // Status icon component - Roman themed
+  // Status icon - simplified
   const StatusIcon = ({ status }: { status: GradeStatus }) => {
-    const baseClass = "w-8 h-8";
+    const baseClass = "w-6 h-6";
     switch (status) {
       case GradeStatus.CORRECT:
         return (
-          <svg className={`${baseClass} text-laurel-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 3c-1.5 2-2 4-2 6s.5 4 2 6c1.5-2 2-4 2-6s-.5-4-2-6z" />
-            <path d="M6 6c1 2 3 3 5 3M18 6c-1 2-3 3-5 3" />
-            <path d="M4 10c1.5 1.5 3.5 2 6 2M20 10c-1.5 1.5-3.5 2-6 2" />
-            <path d="M3 15c2 1 4.5 1.5 7 1M21 15c-2 1-4.5 1.5-7 1" />
-            <path d="M5 19c2 .5 4.5.5 7 0M19 19c-2 .5-4.5.5-7 0" />
+          <svg className={`${baseClass} text-laurel-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         );
       case GradeStatus.PARTIAL:
         return (
-          <svg className={`${baseClass} text-terracotta-600`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 3v18" />
-            <path d="M5 7l7-2 7 2" />
-            <path d="M3 13l4-6 4 6a4 4 0 01-8 0z" />
-            <path d="M13 13l4-6 4 6a4 4 0 01-8 0z" />
+          <svg className={`${baseClass} text-terracotta-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         );
       default:
         return (
-          <svg className={`${baseClass} text-iron-500`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M9 9l6 6M15 9l-6 6" />
+          <svg className={`${baseClass} text-iron-500`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         );
     }
@@ -154,7 +148,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
 
   // Render passage with interactive words
   const renderPassage = () => (
-    <div className="space-y-4 font-serif text-2xl md:text-3xl leading-relaxed text-roman-900">
+    <div className="space-y-4 font-serif text-2xl md:text-3xl leading-relaxed text-ink">
       {reading.latinText.map((line, i) => (
         <p key={i}>
           {line.split(' ').map((word, wI) => {
@@ -169,9 +163,9 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                   hasGloss ? 'cursor-pointer' : ''
                 } ${
                   isSelected
-                    ? 'bg-pompeii-600 text-white'
+                    ? 'bg-tyrian-600 text-white'
                     : hasGloss
-                    ? 'hover:bg-roman-100 border-b border-dotted border-roman-300'
+                    ? 'hover:bg-slate-100 border-b border-dotted border-slate-400'
                     : ''
                 }`}
               >
@@ -185,21 +179,23 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
   );
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in pb-20">
-      <div className="text-center">
-        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
+    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-20">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <Label>
           <LatinText latin="Lectio Nova" english="New Reading" />
-        </span>
-        <h2 className="text-2xl font-serif text-roman-900 mt-2">{reading.title}</h2>
+        </Label>
+        <h2 className="text-2xl md:text-3xl font-serif text-ink">{reading.title}</h2>
       </div>
 
-      <div className="bg-marble p-8 rounded-xl border border-roman-200 relative">
+      {/* Passage card */}
+      <div className="bg-parchment p-8 rounded-card border border-slate-200 relative">
         {renderPassage()}
 
         {/* Glossary popup */}
         {selectedWord && activeGlossary[selectedWord] && (
-          <div className="absolute bottom-4 left-8 right-8 bg-roman-900 text-white p-3 rounded-lg text-sm shadow-lg text-center animate-bounce-in">
-            <span className="font-bold italic mr-2">{selectedWord}:</span>
+          <div className="absolute bottom-4 left-8 right-8 bg-ink text-white p-3 rounded-card text-sm shadow-lg text-center animate-bounce-in">
+            <span className="font-medium italic mr-2">{selectedWord}:</span>
             {activeGlossary[selectedWord]}
           </div>
         )}
@@ -207,7 +203,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
 
       {/* Glossary hint after feedback */}
       {feedback && Object.keys(aiGlossary).length > 0 && (
-        <p className="text-xs text-roman-500 italic text-center">
+        <p className="text-xs text-ink-muted italic text-center">
           Tap words in the Latin above to see their meanings.
         </p>
       )}
@@ -219,25 +215,24 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
           ) : (
             <>
               <div className="flex items-center space-x-2">
-                <span className="bg-roman-200 text-roman-700 text-xs font-bold px-2 py-1 rounded">
+                <span className="bg-slate-200 text-ink-light text-xs font-bold px-2 py-1 rounded-page">
                   <LatinText latin="Pensum" english="Task" />
                 </span>
-                <p className="font-medium text-roman-900">{reading.gistQuestion}</p>
+                <p className="font-medium text-ink">{reading.gistQuestion}</p>
               </div>
-              <div className="relative">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 font-sans h-32"
-                  placeholder=""
-                  aria-label="Your summary"
-                />
-                {!input && (
-                  <div className="absolute top-4 left-4 pointer-events-none text-roman-400">
-                    <LatinText latin="Explica summam hic..." english="Explain the gist here..." />
-                  </div>
-                )}
-              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                className="w-full p-4 border border-slate-300 rounded-card shadow-soft focus:ring-2 focus:ring-tyrian-500 focus:border-tyrian-500 font-sans min-h-[120px] bg-white"
+                placeholder="Explain the gist here..."
+                aria-label="Your summary"
+              />
               <div className="flex justify-end">
                 <Button
                   onClick={handleSubmit}
@@ -250,51 +245,42 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
           )
         ) : (
           <div className="space-y-6 animate-fade-in">
-            {/* Status Badge - Inline with icon */}
-            <div className="flex items-center gap-3">
-              <StatusIcon status={feedback.result.status} />
-              <span className={`text-xl font-serif font-bold ${getStatusTextColor(feedback.result.status)}`}>
-                <LatinText
-                  latin={feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
-                         feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
-                  english={feedback.result.status === GradeStatus.CORRECT ? 'Excellent!' :
-                           feedback.result.status === GradeStatus.PARTIAL ? 'Almost.' : 'Not enough.'}
-                />
-              </span>
-            </div>
-
-            {/* User's answer - Clean with subtle left accent */}
-            <div>
-              <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
-                <LatinText latin="Tua Responsio" english="Your Answer" />
-              </p>
-              <p className="text-lg text-roman-800 italic border-l-2 border-roman-300 pl-4">
-                "{feedback.userInput}"
-              </p>
-            </div>
-
-            {/* Reference gist - Status-colored accent */}
-            {feedback.result.correction && (
-              <div>
-                <p className="text-xs uppercase tracking-eyebrow font-semibold text-roman-500 mb-2">
-                  <LatinText latin="Summa Vera" english="Correct Understanding" />
-                </p>
-                <p className={`text-lg text-roman-900 border-l-2 pl-4 ${getAccentColor(feedback.result.status)}`}>
-                  "{feedback.result.correction}"
-                </p>
+            {/* Scriptorium-style margin feedback */}
+            <div className={`border-l-4 ${getMarginColor(feedback.result.status)} p-4 rounded-r-card`}>
+              <div className="flex items-center gap-2 mb-3">
+                <StatusIcon status={feedback.result.status} />
+                <span className={`text-lg font-serif font-medium ${getStatusTextColor(feedback.result.status)}`}>
+                  <LatinText
+                    latin={feedback.result.status === GradeStatus.CORRECT ? 'Optime!' :
+                           feedback.result.status === GradeStatus.PARTIAL ? 'Paene.' : 'Non satis.'}
+                    english={feedback.result.status === GradeStatus.CORRECT ? 'Excellent!' :
+                             feedback.result.status === GradeStatus.PARTIAL ? 'Almost.' : 'Not enough.'}
+                  />
+                </span>
               </div>
-            )}
 
-            {/* Separator */}
-            <div className="border-t border-roman-200" />
+              {/* Your summary */}
+              <div className="mb-4">
+                <p className="text-xs text-ink-muted uppercase tracking-eyebrow mb-1">Your summary</p>
+                <p className="text-ink italic font-serif">"{feedback.userInput}"</p>
+              </div>
 
-            {/* Feedback - Full width prose */}
-            <p className="text-roman-800">{feedback.result.feedback}</p>
+              {/* Correction */}
+              {feedback.result.correction && (
+                <div className="mb-4">
+                  <p className="text-xs text-sienna-600 uppercase tracking-eyebrow mb-1">Correct understanding</p>
+                  <p className="text-ink font-serif">"{feedback.result.correction}"</p>
+                </div>
+              )}
+
+              {/* Feedback prose */}
+              <p className="text-ink-light text-sm leading-relaxed">{feedback.result.feedback}</p>
+            </div>
 
             {/* Detailed errors - collapsible */}
             {feedback.result.analysis?.errors && feedback.result.analysis.errors.length > 0 && (
               <details className="group" open={feedback.result.status !== GradeStatus.CORRECT}>
-                <summary className="cursor-pointer text-xs text-roman-500 uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
+                <summary className="cursor-pointer text-xs text-ink-muted uppercase tracking-eyebrow font-semibold list-none flex items-center gap-2">
                   <svg
                     className="w-4 h-4 transition-transform group-open:rotate-90"
                     fill="none"
@@ -304,18 +290,22 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                   <LatinText latin="Errores Specifici" english="Specific Errors" />
-                  <span className="text-roman-400">({feedback.result.analysis.errors.length})</span>
+                  <span className="text-ink-faint">({feedback.result.analysis.errors.length})</span>
                 </summary>
                 <ul className="mt-3 space-y-2">
                   {feedback.result.analysis.errors.map((error, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm bg-roman-50 rounded-lg p-3">
-                      <span className="text-pompeii-500 font-bold shrink-0">✗</span>
-                      <div>
-                        {error.latinSegment && (
-                          <span className="font-medium text-roman-900">"{error.latinSegment}"</span>
-                        )}
-                        <span className="text-roman-700"> — {error.explanation}</span>
-                        <span className="text-xs text-roman-500 ml-2">({error.type})</span>
+                    <li key={i} className="flex items-start gap-3 text-sm bg-slate-50 rounded-card p-3">
+                      <span className="text-sienna-600 shrink-0 mt-0.5">
+                        <ErrorTypeIcon type={error.type as ErrorType} className="w-5 h-5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold uppercase text-ink-muted">{error.type.replace('_', ' ')}</span>
+                          {error.latinSegment && (
+                            <span className="font-serif font-medium text-ink">"{error.latinSegment}"</span>
+                          )}
+                        </div>
+                        <span className="text-ink-light">{error.explanation}</span>
                       </div>
                     </li>
                   ))}
@@ -332,4 +322,3 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
     </div>
   );
 };
-

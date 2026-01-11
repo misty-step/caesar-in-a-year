@@ -5,6 +5,7 @@ import { GradeStatus, type PhraseCard, type SessionStatus } from '@/lib/data/typ
 import { type SimpleGradingResult } from '@/lib/ai/grading-utils';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
 
 interface PhraseDrillStepProps {
@@ -83,14 +84,14 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       <div className="text-center space-y-4">
-        <span className="text-xs font-semibold tracking-eyebrow text-roman-500 uppercase">
+        <Label>
           <LatinText latin="Locutio" english="Phrase" />
-        </span>
-        <h2 className="text-3xl md:text-4xl font-serif text-roman-900 leading-tight">
+        </Label>
+        <h2 className="text-3xl md:text-4xl font-serif text-ink leading-tight">
           {phrase.latin}
         </h2>
         {phrase.context && (
-          <p className="text-sm text-roman-500 italic">
+          <p className="text-sm text-ink-muted italic">
             {phrase.context}
           </p>
         )}
@@ -101,7 +102,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
           <GradingLoader />
         ) : (
           <div className="space-y-4">
-            <label className="block text-sm font-medium text-roman-700">
+            <label className="block text-sm font-medium text-ink-light">
               <LatinText latin="Verte in Anglicum" english="Translate to English" />
             </label>
             <input
@@ -109,7 +110,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="w-full p-4 border-roman-300 rounded-lg shadow-sm focus:ring-pompeii-500 focus:border-pompeii-500 text-lg font-sans"
+              className="w-full p-4 border border-slate-300 rounded-card shadow-soft focus:ring-2 focus:ring-tyrian-500 focus:border-tyrian-500 text-lg font-sans bg-white"
               placeholder="Type your translation..."
               autoFocus
             />
@@ -125,7 +126,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
         )
       ) : (
         <div
-          className={`rounded-lg p-6 border-l-4 space-y-5 ${
+          className={`rounded-card p-6 border-l-4 space-y-5 ${
             isCorrect
               ? 'bg-laurel-50 border-laurel-500'
               : isPartial
@@ -155,36 +156,36 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
           </div>
 
           {/* AI Feedback */}
-          <div className="text-roman-800">
+          <div className="text-ink">
             {feedback.grading.feedback}
           </div>
 
           {/* User's answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-card p-4 space-y-1">
+            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
-            <p className="text-roman-800 italic">"{feedback.userInput}"</p>
+            <p className="text-ink italic">"{feedback.userInput}"</p>
           </div>
 
           {/* Correct answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
-            <p className="text-xs text-roman-500 uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-card p-4 space-y-1">
+            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>
-            <p className="font-medium text-roman-800">{phrase.english}</p>
+            <p className="font-medium text-ink">{phrase.english}</p>
           </div>
 
           {/* Hint if provided */}
           {feedback.grading.hint && (
-            <div className="bg-pompeii-50 rounded-lg p-4 text-sm text-pompeii-800">
+            <div className="bg-tyrian-50 rounded-card p-4 text-sm text-tyrian-800">
               <span className="font-bold">Hint: </span>
               {feedback.grading.hint}
             </div>
           )}
 
           {/* Latin phrase reminder */}
-          <div className="text-sm text-roman-700">
+          <div className="text-sm text-ink-light">
             <span className="font-bold">{phrase.latin}</span> = {phrase.english}
           </div>
 

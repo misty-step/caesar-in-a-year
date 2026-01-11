@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 
 interface SessionCardProps {
   justCompleted?: boolean;
@@ -8,19 +9,19 @@ interface SessionCardProps {
 
 export function SessionCard({ justCompleted }: SessionCardProps) {
   return (
-    <section className="bg-marble rounded-xl border border-roman-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <section className="bg-parchment rounded-card border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+        <Label>
           Session
-        </p>
-        <h2 className="text-xl font-serif font-semibold text-roman-900">
+        </Label>
+        <h2 className="text-xl font-serif font-semibold text-ink">
           {justCompleted ? (
             <LatinText latin="Hodie perfecisti!" english="You finished today!" />
           ) : (
             <LatinText latin="Paratus es ad lectionem?" english="Ready for today's guided reading?" />
           )}
         </h2>
-        <p className="text-sm text-roman-700">
+        <p className="text-sm text-ink-light">
           {justCompleted ? (
             <LatinText
               latin="Iterum exercere potes, si vis."

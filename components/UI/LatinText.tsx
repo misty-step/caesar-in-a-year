@@ -90,7 +90,7 @@ export const LatinText: React.FC<LatinTextProps> = ({
     >
       <span
         className={`transition-all duration-300 border-b border-dotted ${
-          inverted ? 'border-white/30 group-hover:border-white/80' : 'border-roman-300 group-hover:border-pompeii-500'
+          inverted ? 'border-white/30 group-hover:border-white/80' : 'border-slate-300 group-hover:border-tyrian-500'
         }`}
       >
         {latin}
@@ -98,15 +98,15 @@ export const LatinText: React.FC<LatinTextProps> = ({
 
       <span
         className={`
-          absolute left-1/2 -translate-x-1/2 bottom-full mb-2 
-          px-3 py-1.5 bg-roman-900 text-white text-xs font-sans rounded shadow-lg whitespace-nowrap z-50 pointer-events-none
+          absolute left-1/2 -translate-x-1/2 bottom-full mb-2
+          px-3 py-1.5 bg-ink text-white text-xs font-sans rounded-card shadow-lg whitespace-nowrap z-50 pointer-events-none
           transition-all duration-300 ease-out origin-bottom
           ${isHovered ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'}
         `}
         style={{ maxWidth: '200px', whiteSpace: 'normal', textAlign: 'center', width: 'max-content' }}
       >
         {english}
-        <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-roman-900"></span>
+        <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink"></span>
       </span>
     </Tag>
   );

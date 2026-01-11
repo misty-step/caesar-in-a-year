@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import type { ActivityDay } from '@/lib/data/types';
 
 interface ActivityHeatmapProps {
@@ -15,20 +16,21 @@ interface HoveredState {
 }
 
 function getIntensity(count: number): string {
-  if (count === 0) return 'bg-roman-100';           // Empty - warm gray
-  if (count <= 2) return 'bg-terracotta-100';       // Light terracotta
-  if (count <= 5) return 'bg-terracotta-500';       // Medium terracotta
-  if (count <= 10) return 'bg-terracotta-700';      // Dark terracotta
-  return 'bg-pompeii-600';                          // Deep Pompeii red
+  if (count === 0) return 'bg-slate-100';
+  if (count <= 2) return 'bg-tyrian-100';
+  if (count <= 5) return 'bg-tyrian-300';
+  if (count <= 10) return 'bg-tyrian-500';
+  return 'bg-tyrian-700';
 }
 
 function formatDisplayDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00'); // Parse as local time
+  const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
   const [hovered, setHovered] = useState<HoveredState | null>(null);
+
   // Group by week (7 days per column)
   const weeks: ActivityDay[][] = [];
   for (let i = 0; i < activity.length; i += 7) {
@@ -47,14 +49,14 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
   });
 
   return (
-    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
+    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+        <Label>
           <LatinText latin="Studium Cotidianum" english="Daily Study" />
-        </p>
+        </Label>
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-serif text-pompeii-600">{streak}</span>
-          <span className="text-xs text-roman-500">
+          <span className="text-2xl font-serif text-tyrian-500">{streak}</span>
+          <span className="text-xs text-ink-muted">
             <LatinText latin="dies" english="day streak" />
           </span>
         </div>
@@ -62,12 +64,12 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
 
       {/* Month labels */}
       <div className="relative">
-        <div className="flex gap-0.5 text-xs text-roman-400 mb-1 ml-6">
+        <div className="flex gap-0.5 text-xs text-ink-faint mb-1 ml-6">
           {monthLabels.map(({ month, colStart }, i) => (
             <span
               key={`${month}-${i}`}
               className="absolute"
-              style={{ left: `${colStart * 12 + 24}px` }}
+              style={{ left: `${colStart * 14 + 24}px` }}
             >
               {month}
             </span>
@@ -75,28 +77,31 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="flex gap-0.5 overflow-x-auto pt-4">
+      {/* Grid - larger touch targets for mobile */}
+      <div className="flex gap-1 overflow-x-auto pt-4">
         {/* Day labels */}
-        <div className="flex flex-col gap-0.5 text-xs text-roman-400 pr-1">
-          <span className="h-[10px]">M</span>
-          <span className="h-[10px]"></span>
-          <span className="h-[10px]">W</span>
-          <span className="h-[10px]"></span>
-          <span className="h-[10px]">F</span>
-          <span className="h-[10px]"></span>
-          <span className="h-[10px]"></span>
+        <div className="flex flex-col gap-1 text-xs text-ink-faint pr-1">
+          <span className="h-3">M</span>
+          <span className="h-3"></span>
+          <span className="h-3">W</span>
+          <span className="h-3"></span>
+          <span className="h-3">F</span>
+          <span className="h-3"></span>
+          <span className="h-3"></span>
         </div>
 
         {/* Weeks */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-0.5">
+          <div key={wi} className="flex flex-col gap-1">
             {week.map((day) => (
-              <div
+              <button
                 key={day.date}
-                className={`w-[10px] h-[10px] rounded-[2px] ${getIntensity(day.count)} transition-transform hover:scale-125 cursor-pointer`}
+                className={`w-3 h-3 rounded-page ${getIntensity(day.count)} transition-transform hover:scale-125 focus:scale-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-tyrian-500 touch-manipulation`}
                 onMouseEnter={(e) => setHovered({ day, rect: e.currentTarget.getBoundingClientRect() })}
                 onMouseLeave={() => setHovered(null)}
+                onFocus={(e) => setHovered({ day, rect: e.currentTarget.getBoundingClientRect() })}
+                onBlur={() => setHovered(null)}
+                aria-label={`${formatDisplayDate(day.date)}: ${day.count} reviews`}
               />
             ))}
           </div>
@@ -106,25 +111,25 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
       {/* Hover tooltip */}
       {hovered && (
         <div
-          className="fixed z-50 bg-roman-900 text-white px-3 py-2 rounded-lg text-sm shadow-lg pointer-events-none animate-fade-in"
+          className="fixed z-50 bg-ink text-white px-3 py-2 rounded-card text-sm shadow-lg pointer-events-none animate-fade-in"
           style={{
-            top: hovered.rect.top - 52,
-            left: hovered.rect.left + hovered.rect.width / 2 - 60,
+            top: Math.max(8, hovered.rect.top - 52),
+            left: Math.max(8, Math.min(hovered.rect.left + hovered.rect.width / 2 - 60, window.innerWidth - 128)),
           }}
         >
           <p className="font-medium">{formatDisplayDate(hovered.day.date)}</p>
-          <p className="text-roman-300">
+          <p className="text-slate-300">
             {hovered.day.count} {hovered.day.count === 1 ? 'review' : 'reviews'}
           </p>
         </div>
       )}
 
       {/* Legend */}
-      <div className="flex items-center justify-end gap-2 text-xs text-roman-400">
+      <div className="flex items-center justify-end gap-2 text-xs text-ink-faint">
         <span>Less</span>
-        <div className="flex gap-0.5">
+        <div className="flex gap-1">
           {[0, 2, 5, 10, 15].map((n, i) => (
-            <div key={i} className={`w-[10px] h-[10px] rounded-[2px] ${getIntensity(n)}`} />
+            <div key={i} className={`w-3 h-3 rounded-page ${getIntensity(n)}`} />
           ))}
         </div>
         <span>More</span>

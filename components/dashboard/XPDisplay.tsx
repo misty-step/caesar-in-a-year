@@ -1,4 +1,5 @@
 import { LatinText } from '@/components/UI/LatinText';
+import { Label } from '@/components/UI/Label';
 import type { XPProgress } from '@/lib/data/types';
 
 interface XPDisplayProps {
@@ -12,26 +13,26 @@ export function XPDisplay({ xp }: XPDisplayProps) {
     : 100;
 
   return (
-    <section className="bg-marble rounded-xl border border-roman-200 p-6 space-y-4">
+    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-eyebrow text-roman-500">
+          <Label>
             <LatinText latin="Gradus" english="Level" />
-          </p>
-          <p className="text-3xl font-serif text-roman-900">{level}</p>
+          </Label>
+          <p className="text-3xl font-serif text-ink">{level}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-roman-500">
+          <p className="text-xs text-ink-muted">
             <LatinText latin="Puncta Totalia" english="Total XP" />
           </p>
-          <p className="text-lg font-medium text-pompeii-600">{total.toLocaleString()}</p>
+          <p className="text-lg font-medium text-bronze-600 tabular-nums">{total.toLocaleString()}</p>
         </div>
       </div>
 
       {/* XP progress to next level */}
       <div className="space-y-1">
         <div
-          className="w-full bg-roman-100 h-2 rounded-full overflow-hidden"
+          className="w-full bg-slate-100 h-2 rounded-card overflow-hidden"
           role="progressbar"
           aria-valuenow={currentLevelXp}
           aria-valuemin={0}
@@ -39,11 +40,11 @@ export function XPDisplay({ xp }: XPDisplayProps) {
           aria-label="Progress to next level"
         >
           <div
-            className="bg-pompeii-500 h-full transition-all duration-500 ease-out"
+            className="bg-bronze-500 h-full transition-all duration-500 ease-out"
             style={{ width: `${levelProgress}%` }}
           />
         </div>
-        <p className="text-xs text-roman-400 text-right">
+        <p className="text-xs text-ink-faint text-right">
           {toNextLevel > 0 ? (
             <LatinText
               latin={`${toNextLevel} ad proximum`}

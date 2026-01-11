@@ -28,6 +28,7 @@ dist-ssr
 
 # AI planning documents (ephemeral)
 history/
+.polish-sessions/
 
 # Environment variables
 .env*

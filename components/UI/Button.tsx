@@ -23,13 +23,13 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyle =
-    'inline-flex items-center justify-center px-6 py-3 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200';
+    'inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-card focus:outline-none focus-visible:ring-2 focus-visible:ring-tyrian-500 focus-visible:ring-offset-2 transition-all duration-200';
 
   const variants = {
-    primary: 'border-transparent text-white bg-pompeii-600 hover:bg-pompeii-500 focus:ring-pompeii-500',
-    secondary: 'border-transparent text-roman-900 bg-roman-300 hover:bg-roman-200 focus:ring-roman-500',
-    outline: 'border-roman-300 text-roman-700 bg-transparent hover:bg-roman-50 focus:ring-roman-500',
-    ghost: 'border-transparent text-roman-500 hover:text-roman-700 bg-transparent shadow-none',
+    primary: 'text-white bg-tyrian-500 hover:bg-tyrian-600 active:scale-[0.98]',
+    secondary: 'text-ink bg-slate-100 hover:bg-slate-200 active:scale-[0.98]',
+    outline: 'border border-slate-300 text-ink-light bg-transparent hover:bg-slate-50 active:scale-[0.98]',
+    ghost: 'text-ink-muted hover:text-ink bg-transparent',
   };
 
   return (
@@ -64,4 +64,3 @@ export const Button: React.FC<ButtonProps> = ({
     </button>
   );
 };
-

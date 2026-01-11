@@ -11,7 +11,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         position="top-center"
         toastOptions={{
           classNames: {
-            toast: 'font-serif bg-roman-50 border border-roman-200 text-roman-900',
+            toast: 'font-serif bg-slate-50 border border-slate-200 text-ink',
           },
         }}
       />
