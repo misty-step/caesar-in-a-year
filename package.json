@@ -22,10 +22,10 @@
     "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.8.1",
+    "@clerk/nextjs": "^6.36.7",
     "@google/genai": "^1.0.0",
     "convex": "^1.30.0",
-    "next": "^16.0.0",
+    "next": "^16.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sonner": "^2.0.7",
