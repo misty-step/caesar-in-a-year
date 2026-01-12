@@ -1,5 +1,7 @@
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
+import { Card } from '@/components/UI/Card';
+import { ProgressBar } from '@/components/UI/ProgressBar';
 
 const MASTERY_GOAL = 20;
 
@@ -8,53 +10,50 @@ interface MasteryProgressProps {
   readingLevel: number;
 }
 
+/**
+ * Reading level and mastery progress toward next level.
+ *
+ * Uses Card for surface, ProgressBar with achievement color.
+ */
 export function MasteryProgress({ masteredCount, readingLevel }: MasteryProgressProps) {
   const displayCount = Math.min(masteredCount, MASTERY_GOAL);
-  const percentage = (displayCount / MASTERY_GOAL) * 100;
   const isMaxLevel = readingLevel >= 100;
 
   return (
-    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
+    <Card as="section" elevation="flat" padding="md" className="space-y-4">
       <div className="space-y-1">
         <Label>
           <LatinText latin="Gradus Lectionis" english="Reading Level" />
         </Label>
-        <p className="text-2xl font-serif text-ink">
+        <p className="text-2xl font-serif text-text-primary">
           {readingLevel}/100
         </p>
       </div>
 
       {isMaxLevel ? (
-        <p className="text-sm text-tyrian-600">
+        <p className="text-sm text-accent">
           <LatinText latin="Omnia patebunt!" english="All content unlocked!" />
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="flex justify-between text-sm text-ink-light">
+          <div className="flex justify-between text-sm text-text-secondary">
             <span>
               <LatinText
                 latin={`Perfectae: ${displayCount}/${MASTERY_GOAL}`}
                 english={`Mastered: ${displayCount}/${MASTERY_GOAL}`}
               />
             </span>
-            <span className="text-ink-muted">
+            <span className="text-text-muted">
               <LatinText latin="ad proximum gradum" english="to next level" />
             </span>
           </div>
-          <div
-            className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuenow={displayCount}
-            aria-valuemin={0}
-            aria-valuemax={MASTERY_GOAL}
-            aria-label="Progress toward next level"
-          >
-            <div
-              className="bg-bronze-500 h-full transition-all duration-500 ease-out"
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-xs text-ink-muted">
+          <ProgressBar
+            current={displayCount}
+            total={MASTERY_GOAL}
+            color="achievement"
+            ariaLabel="Progress toward next level"
+          />
+          <p className="text-xs text-text-muted">
             <LatinText
               latin="Viginti sententias perfice ut gradum augeas."
               english="Master 20 sentences to advance to the next level."
@@ -62,6 +61,6 @@ export function MasteryProgress({ masteredCount, readingLevel }: MasteryProgress
           </p>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
