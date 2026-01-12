@@ -82,7 +82,7 @@ export default async function DashboardPage() {
     : false;
 
   return (
-    <main className="min-h-screen bg-parchment text-ink">
+    <main className="min-h-dvh bg-background text-text-primary">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <Hero />
 
