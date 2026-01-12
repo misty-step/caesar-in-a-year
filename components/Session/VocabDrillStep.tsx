@@ -7,6 +7,7 @@ import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
+import { cn } from '@/lib/design';
 
 interface VocabDrillStepProps {
   vocab: VocabCard;
@@ -20,6 +21,14 @@ interface FeedbackState {
   userInput: string;
 }
 
+/**
+ * Vocabulary drill step for word meaning practice.
+ *
+ * Uses semantic tokens:
+ * - text-success/warning for status feedback
+ * - bg-success-faint/warning-faint for feedback cards
+ * - bg-surface for question cards
+ */
 export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
   vocab,
   sessionId,
@@ -98,11 +107,11 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
         <Label>
           <LatinText latin="Vocabulum" english="Vocabulary" />
         </Label>
-        <h2 className="text-3xl md:text-4xl font-serif text-ink leading-tight">
+        <h2 className="text-3xl md:text-4xl font-serif text-text-primary leading-tight">
           {showFormSubtitle ? quotedForm : vocab.latinWord}
         </h2>
         {showFormSubtitle && (
-          <p className="text-sm text-ink-muted">
+          <p className="text-sm text-text-muted">
             ({vocab.latinWord})
           </p>
         )}
@@ -113,10 +122,10 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           <GradingLoader />
         ) : (
           <div className="space-y-4">
-            <div className="bg-slate-100 rounded-card p-4">
-              <p className="font-medium text-ink">{vocab.question}</p>
+            <div className="bg-surface rounded-lg p-4">
+              <p className="font-medium text-text-primary">{vocab.question}</p>
             </div>
-            <label className="block text-sm font-medium text-ink-light">
+            <label className="block text-sm font-medium text-text-secondary">
               <LatinText latin={label.latin} english={label.english} />
             </label>
             <input
@@ -124,7 +133,11 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="w-full p-4 border border-slate-300 rounded-card shadow-soft focus:ring-2 focus:ring-tyrian-500 focus:border-tyrian-500 text-lg font-sans bg-white"
+              className={cn(
+                'w-full p-4 border border-border rounded-lg shadow-sm',
+                'focus:ring-2 focus:ring-accent focus:border-accent',
+                'text-lg font-sans bg-white'
+              )}
               placeholder="Write your answer..."
               autoFocus
             />
@@ -140,24 +153,26 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
         )
       ) : (
         <div
-          className={`rounded-card p-6 border-l-4 space-y-5 ${
+          className={cn(
+            'rounded-lg p-6 border-l-4 space-y-5',
             isCorrect
-              ? 'bg-laurel-50 border-laurel-500'
+              ? 'bg-success-faint border-success'
               : isPartial
-                ? 'bg-amber-50 border-amber-500'
-                : 'bg-iron-50 border-iron-500'
-          }`}
+                ? 'bg-warning-faint border-warning'
+                : 'bg-surface border-text-muted'
+          )}
         >
           {/* Status header */}
           <div className="flex items-center space-x-2">
             <span
-              className={`text-lg font-bold ${
+              className={cn(
+                'text-lg font-bold',
                 isCorrect
-                  ? 'text-laurel-700'
+                  ? 'text-success'
                   : isPartial
-                    ? 'text-amber-700'
-                    : 'text-iron-700'
-              }`}
+                    ? 'text-warning'
+                    : 'text-text-muted'
+              )}
             >
               {isCorrect ? (
                 <LatinText latin="Recte!" english="Correct!" />
@@ -170,36 +185,36 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           </div>
 
           {/* AI Feedback */}
-          <div className="text-ink">
+          <div className="text-text-primary">
             {feedback.grading.feedback}
           </div>
 
           {/* User's answer */}
-          <div className="bg-white/50 rounded-card p-4 space-y-1">
-            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+            <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
-            <p className="text-ink italic">"{feedback.userInput}"</p>
+            <p className="text-text-primary italic">"{feedback.userInput}"</p>
           </div>
 
           {/* Correct answer */}
-          <div className="bg-white/50 rounded-card p-4 space-y-1">
-            <p className="text-xs text-ink-muted uppercase tracking-eyebrow font-semibold">
+          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+            <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>
-            <p className="font-medium text-ink">{vocab.answer}</p>
+            <p className="font-medium text-text-primary">{vocab.answer}</p>
           </div>
 
           {/* Hint if provided */}
           {feedback.grading.hint && (
-            <div className="bg-tyrian-50 rounded-card p-4 text-sm text-tyrian-800">
+            <div className="bg-accent-faint rounded-lg p-4 text-sm text-accent">
               <span className="font-bold">Hint: </span>
               {feedback.grading.hint}
             </div>
           )}
 
           {/* Word meaning reminder */}
-          <div className="text-sm text-ink-light">
+          <div className="text-sm text-text-secondary">
             <span className="font-bold">{vocab.latinWord}</span> = {vocab.meaning}
           </div>
 
