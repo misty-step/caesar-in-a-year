@@ -2,30 +2,189 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+   KINETIC CODEX DESIGN SYSTEM
+   Layered token architecture for the living manuscript aesthetic
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Layer 1: Primitives (DNA)
+   Raw values. Components should never reference these directly.
+   ----------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
 
-  /* The Scriptorium palette */
-  --parchment: #f8f6f1;
-  --ink: #1a1a1a;
-  --ink-muted: #737373;
-  --tyrian: #66023C;
-  --sienna: #8b2500;
-  --bronze: #C5A059;
+  /* Core Palette */
+  --vellum: #F0EBE3;
+  --vellum-warm: #F5F0E8;
+  --vellum-cool: #EBE6DE;
+
+  --iron-gall: #2B2B2B;
+  --iron-gall-light: #4A4A4A;
+  --iron-gall-muted: #6B6B6B;
+  --iron-gall-faint: #8B8B8B;
+
+  --rubric: #D64045;
+  --rubric-deep: #B83338;
+  --rubric-light: #E65C60;
+  --rubric-faint: rgba(214, 64, 69, 0.1);
+
+  /* Status Colors */
+  --laurel: #22c55e;
+  --laurel-light: #4ade80;
+  --laurel-faint: rgba(34, 197, 94, 0.1);
+
+  --terracotta: #f97316;
+  --terracotta-light: #fb923c;
+  --terracotta-faint: rgba(249, 115, 22, 0.1);
+
   --verdigris: #00E0C6;
+  --verdigris-light: #2dd4bf;
+  --verdigris-faint: rgba(0, 224, 198, 0.1);
+
+  --bronze: #C5A059;
+  --bronze-light: #d4b56a;
+  --bronze-faint: rgba(197, 160, 89, 0.1);
+
+  /* Neutrals */
+  --border: #D4D0C8;
+  --border-subtle: #E5E1D9;
+
+  /* Motion Primitives */
+  --ease-ink: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-instant: 75ms;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
 }
 
+/* -----------------------------------------------------------------------------
+   Layer 2: Semantics (Interface)
+   What components actually use. Maps intent to primitives.
+   ----------------------------------------------------------------------------- */
+:root {
+  /* Backgrounds */
+  --color-background: var(--vellum);
+  --color-surface: var(--vellum-warm);
+  --color-surface-hover: var(--vellum-cool);
+
+  /* Text */
+  --color-text-primary: var(--iron-gall);
+  --color-text-secondary: var(--iron-gall-light);
+  --color-text-muted: var(--iron-gall-muted);
+  --color-text-faint: var(--iron-gall-faint);
+  --color-text-inverse: var(--vellum);
+
+  /* Interactive (Rubric) */
+  --color-accent: var(--rubric);
+  --color-accent-hover: var(--rubric-deep);
+  --color-accent-light: var(--rubric-light);
+  --color-accent-faint: var(--rubric-faint);
+
+  /* Focus */
+  --color-focus-ring: var(--rubric);
+
+  /* Borders */
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+
+  /* Status */
+  --color-success: var(--laurel);
+  --color-success-light: var(--laurel-light);
+  --color-success-faint: var(--laurel-faint);
+
+  --color-warning: var(--terracotta);
+  --color-warning-light: var(--terracotta-light);
+  --color-warning-faint: var(--terracotta-faint);
+
+  --color-celebration: var(--verdigris);
+  --color-celebration-light: var(--verdigris-light);
+  --color-celebration-faint: var(--verdigris-faint);
+
+  --color-achievement: var(--bronze);
+  --color-achievement-light: var(--bronze-light);
+  --color-achievement-faint: var(--bronze-faint);
+}
+
+/* -----------------------------------------------------------------------------
+   Layer 3: Tailwind @theme Bridge
+   Makes CSS variables available as first-class Tailwind utilities.
+   Enables: bg-background, text-accent, border-border, etc.
+   ----------------------------------------------------------------------------- */
+@theme {
+  /* Backgrounds */
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+
+  /* Text */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-text-inverse: var(--color-text-inverse);
+
+  /* Interactive */
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-faint: var(--color-accent-faint);
+
+  /* Focus */
+  --color-focus-ring: var(--color-focus-ring);
+
+  /* Borders */
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+
+  /* Status */
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-success-faint: var(--color-success-faint);
+
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-warning-faint: var(--color-warning-faint);
+
+  --color-celebration: var(--color-celebration);
+  --color-celebration-light: var(--color-celebration-light);
+  --color-celebration-faint: var(--color-celebration-faint);
+
+  --color-achievement: var(--color-achievement);
+  --color-achievement-light: var(--color-achievement-light);
+  --color-achievement-faint: var(--color-achievement-faint);
+
+  /* Motion */
+  --ease-ink: var(--ease-ink);
+  --ease-spring: var(--ease-spring);
+  --ease-out-expo: var(--ease-out-expo);
+  --duration-instant: var(--duration-instant);
+  --duration-fast: var(--duration-fast);
+  --duration-normal: var(--duration-normal);
+  --duration-slow: var(--duration-slow);
+}
+
+/* -----------------------------------------------------------------------------
+   Layer 4: Base Styles
+   Global defaults that establish Kinetic Codex as the baseline.
+   ----------------------------------------------------------------------------- */
 * {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
 }
 
 body {
   min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-serif);
 }
 
 a {
@@ -37,26 +196,178 @@ button {
   font: inherit;
 }
 
-/* Editorial selection color */
+/* Editorial selection color - rubric tint */
 ::selection {
-  background-color: rgba(102, 2, 60, 0.15);
+  background-color: var(--color-accent-faint);
   color: inherit;
 }
 
-/* Smooth focus transitions */
+/* -----------------------------------------------------------------------------
+   Layer 5: Motion Defaults
+   All interactive elements get ink-flow transitions by default.
+   ----------------------------------------------------------------------------- */
+button,
+a,
+[role='button'],
+input,
+textarea,
+select {
+  transition: all var(--duration-fast) var(--ease-ink);
+}
+
+/* -----------------------------------------------------------------------------
+   Layer 6: Focus Styles
+   Consistent rubric-colored focus rings.
+   ----------------------------------------------------------------------------- */
 *:focus-visible {
-  outline: 2px solid var(--tyrian);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
-/* Label utility - the eyebrow pattern */
+/* -----------------------------------------------------------------------------
+   Layer 7: Component Utilities
+   Reusable patterns as Tailwind components.
+   ----------------------------------------------------------------------------- */
 @layer components {
+  /* Eyebrow/Label pattern */
   .label {
-    @apply text-xs font-semibold uppercase tracking-eyebrow text-ink-muted;
+    @apply text-xs font-semibold uppercase tracking-[0.15em] text-text-muted;
+  }
+
+  /* Rubric term - interactive Latin vocabulary */
+  .rubric-term {
+    color: var(--color-accent);
+    cursor: pointer;
+    position: relative;
+    display: inline-block;
+    transition: all var(--duration-normal) var(--ease-ink);
+  }
+
+  .rubric-term:hover {
+    transform: scale(1.02);
+    text-shadow: 0 0 8px var(--color-accent-faint);
+  }
+
+  .rubric-term::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--color-accent);
+    transition: width var(--duration-normal) var(--ease-ink);
+  }
+
+  .rubric-term:hover::after {
+    width: 100%;
   }
 }
 
-/* Respect reduced motion preference */
+/* -----------------------------------------------------------------------------
+   Layer 8: Keyframe Animations
+   Ink-physics inspired motion library.
+   ----------------------------------------------------------------------------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tactile stamp - for correct answers */
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Ink reveal - text appearing like fresh ink */
+@keyframes ink-reveal {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+/* Ink flow - progress bar fill */
+@keyframes ink-flow {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* Rubric pulse - subtle glow for interactive terms */
+@keyframes rubric-pulse {
+  0%,
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    text-shadow: 0 0 12px var(--color-accent-faint);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Layer 9: Accessibility
+   Respect user motion preferences.
+   ----------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
