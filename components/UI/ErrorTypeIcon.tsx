@@ -1,10 +1,18 @@
 import React from 'react';
 import type { ErrorType } from '@/lib/data/types';
+import { cn } from '@/lib/design';
 
 interface ErrorTypeIconProps {
   type: ErrorType;
   className?: string;
 }
+
+/**
+ * Error type icons with Roman/scholarly visual style.
+ *
+ * Uses currentColor for stroke, inheriting from parent text color.
+ * Semantic tokens should be applied via className.
+ */
 
 // SVG icons for each error type - thematic Roman/scholarly style
 const icons: Record<ErrorType, React.ReactNode> = {
@@ -80,9 +88,12 @@ const labels: Record<ErrorType, string> = {
   other: 'Other',
 };
 
-export const ErrorTypeIcon: React.FC<ErrorTypeIconProps> = ({ type, className = 'w-4 h-4' }) => {
+export const ErrorTypeIcon: React.FC<ErrorTypeIconProps> = ({
+  type,
+  className,
+}) => {
   return (
-    <span className={className} title={labels[type]} aria-label={labels[type]}>
+    <span className={cn('size-4', className)} title={labels[type]} aria-label={labels[type]}>
       {icons[type]}
     </span>
   );
