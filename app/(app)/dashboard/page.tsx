@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 
 import { createDataAdapter } from '@/lib/data/adapter';
 import type { ContentSeed, ProgressMetrics, UserProgress as DataUserProgress } from '@/lib/data/types';
+import { getCurrentStreak } from '@/lib/progress/streak';
 
 import { Hero } from '@/components/dashboard/Hero';
 import { Stats, type UserProgressVM } from '@/components/dashboard/Stats';
@@ -35,13 +36,13 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
     data.getProgressMetrics(userId, tzOffsetMin),
   ]);
 
-  const progress = mapProgress(rawProgress);
+  const progress = mapProgress(rawProgress, tzOffsetMin);
   const summary = mapContentToSummary(content);
 
   return { progress, metrics, summary };
 }
 
-function mapProgress(progress: DataUserProgress | null): UserProgressVM {
+function mapProgress(progress: DataUserProgress | null, tzOffsetMin: number): UserProgressVM {
   if (!progress) {
     return {
       streak: 0,
@@ -50,8 +51,15 @@ function mapProgress(progress: DataUserProgress | null): UserProgressVM {
     };
   }
 
-  return {
+  const effectiveStreak = getCurrentStreak({
     streak: progress.streak,
+    lastSessionAtMs: progress.lastSessionAt,
+    nowMs: Date.now(),
+    tzOffsetMin,
+  });
+
+  return {
+    streak: effectiveStreak,
     totalXp: progress.totalXp,
     unlockedPhase: progress.maxDifficulty,
     lastSessionAt: progress.lastSessionAt,

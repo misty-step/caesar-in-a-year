@@ -80,3 +80,28 @@ export function computeStreak(params: StreakInput): StreakResult {
     didIncrement: true,
   };
 }
+
+/**
+ * Get current effective streak value for display.
+ * Returns 0 if streak has decayed (no activity for >1 day).
+ */
+export function getCurrentStreak(params: {
+  streak: number;
+  lastSessionAtMs: number;
+  nowMs: number;
+  tzOffsetMin: number;
+}): number {
+  const { streak, lastSessionAtMs, nowMs, tzOffsetMin } = params;
+
+  if (lastSessionAtMs === 0) return 0;
+
+  const lastDay = localDayIndex(lastSessionAtMs, tzOffsetMin);
+  const nowDay = localDayIndex(nowMs, tzOffsetMin);
+  const dayDiff = nowDay - lastDay;
+
+  // Streak is valid if last session was today or yesterday
+  if (dayDiff <= 1) return streak;
+
+  // Streak has decayed
+  return 0;
+}
