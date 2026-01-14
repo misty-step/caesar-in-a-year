@@ -18,11 +18,11 @@ interface HoveredState {
 }
 
 function getIntensity(count: number): string {
-  if (count === 0) return 'bg-border';
-  if (count <= 2) return 'bg-accent-faint';
-  if (count <= 5) return 'bg-accent-light/50';
-  if (count <= 10) return 'bg-accent';
-  return 'bg-accent-hover';
+  if (count === 0) return 'bg-heatmap-0';
+  if (count <= 2) return 'bg-heatmap-1';
+  if (count <= 5) return 'bg-heatmap-2';
+  if (count <= 10) return 'bg-heatmap-3';
+  return 'bg-heatmap-4';
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -33,7 +33,8 @@ function formatDisplayDate(dateStr: string): string {
 /**
  * Activity heatmap showing daily study patterns.
  *
- * Uses semantic tokens for intensity levels (accent scale).
+ * Uses heatmap-specific tokens (heatmap-0 through heatmap-4) for
+ * intensity levels with proper contrast stepping.
  */
 export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
   const [hovered, setHovered] = useState<HoveredState | null>(null);
@@ -44,15 +45,21 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
     weeks.push(activity.slice(i, i + 7));
   }
 
-  // Get month labels from activity data
+  // Get month labels with collision prevention
   const monthLabels: { month: string; colStart: number }[] = [];
   let lastMonth = '';
+  let lastCol = -4; // Allow first label
+
   activity.forEach((day, i) => {
     const month = new Date(day.date).toLocaleDateString('en-US', { month: 'short' });
-    if (month !== lastMonth) {
-      monthLabels.push({ month, colStart: Math.floor(i / 7) });
-      lastMonth = month;
+    const col = Math.floor(i / 7);
+
+    // Only add label if month changed AND at least 3 columns from last label
+    if (month !== lastMonth && col - lastCol >= 3) {
+      monthLabels.push({ month, colStart: col });
+      lastCol = col;
     }
+    lastMonth = month;
   });
 
   return (
@@ -76,7 +83,7 @@ export function ActivityHeatmap({ activity, streak }: ActivityHeatmapProps) {
             <span
               key={`${month}-${i}`}
               className="absolute"
-              style={{ left: `${colStart * 14 + 24}px` }}
+              style={{ left: `${colStart * 16 + 24}px` }}
             >
               {month}
             </span>

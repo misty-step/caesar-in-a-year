@@ -75,6 +75,15 @@ const config: Config = {
           faint: 'var(--color-achievement-faint)',
         },
 
+        // Heatmap (Data Visualization)
+        heatmap: {
+          0: 'var(--color-heatmap-0)',
+          1: 'var(--color-heatmap-1)',
+          2: 'var(--color-heatmap-2)',
+          3: 'var(--color-heatmap-3)',
+          4: 'var(--color-heatmap-4)',
+        },
+
         // =================================================================
         // LEGACY COLORS (Backward Compatibility)
         // Keep existing component code working during migration
