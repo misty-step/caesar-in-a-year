@@ -25,6 +25,10 @@ interface FeedbackState {
 /**
  * Reading step for comprehension exercises.
  *
+ * State machine: INPUT -> SUBMITTING -> FEEDBACK -> [advance]
+ * Glossary source: static reading.glossary before feedback, AI-derived after.
+ * See docs/architecture/session-flow.md for full state diagram.
+ *
  * Uses semantic tokens throughout:
  * - Card component for passage container
  * - text-text-primary/secondary/muted for text hierarchy

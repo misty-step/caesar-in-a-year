@@ -5,8 +5,9 @@
  * - Rating mapping from GradeStatus
  * - Scheduling function that handles new cards
  *
- * We use 3 ratings only: Again (forgot), Hard (struggled), Good (recalled).
- * Never Easy — quiz-based grading has no "effortless recall" signal.
+ * Card state machine: New -> Learning -> Review (with Relearning on Again).
+ * Rating mapping: INCORRECT=Again, PARTIAL=Hard, CORRECT=Good (never Easy).
+ * See docs/architecture/session-flow.md for full diagram.
  */
 
 import { fsrs, createEmptyCard, Rating, State, type Card, type RecordLogItem } from 'ts-fsrs';

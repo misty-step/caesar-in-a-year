@@ -27,6 +27,12 @@ Set in `.env.local`:
 
 ## Architecture
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module map, data flow, and entry points.
+
+**State Diagrams** (Mermaid):
+- `docs/architecture/session-flow.md` — Step component states, FSRS, streak, circuit breaker
+- `docs/architecture/grading-flow.md` — AI grading data flow, error paths, best-effort ops
+
 ### Session Flow
 App Router manages views via route segments:
 1. `/dashboard` → User stats, "Start Session" button

@@ -26,6 +26,10 @@ interface FeedbackState {
 /**
  * Review step for translating Latin sentences.
  *
+ * State machine: INPUT -> SUBMITTING -> FEEDBACK -> [advance]
+ * Error handling: API failure produces fallback FEEDBACK with advancePayload=null.
+ * See docs/architecture/session-flow.md for full state diagram.
+ *
  * Uses semantic tokens throughout:
  * - text-text-primary/secondary/muted for text hierarchy
  * - text-celebration/warning for status colors

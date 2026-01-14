@@ -1,6 +1,10 @@
 /**
  * Pure streak computation logic.
  * Uses user-provided timezone offset to determine local day.
+ *
+ * State machine: NO_STREAK -> STREAK_1 -> STREAK_N -> DECAYED -> STREAK_1
+ * Rules: same day = unchanged, next day = increment, gap > 1 = reset to 1.
+ * See docs/architecture/session-flow.md for full diagram.
  */
 
 const DAY_MS = 86_400_000;
