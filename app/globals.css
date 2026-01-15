@@ -270,7 +270,7 @@ select {
 @layer components {
   /* Eyebrow/Label pattern */
   .label {
-    @apply text-xs font-semibold uppercase tracking-[0.15em] text-text-muted;
+    @apply text-xs font-semibold uppercase tracking-eyebrow text-text-muted;
   }
 
   /* Rubric term - interactive Latin vocabulary */

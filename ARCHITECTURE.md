@@ -115,7 +115,7 @@ Mermaid diagrams for visual understanding:
 
 ## Design Decisions
 
-See [`docs/adr/`](docs/adr/) for architectural decision records (8 ADRs).
+See [`docs/adr/`](docs/adr/) for architectural decision records (10 ADRs).
 
 Key invariants:
 - **All grading happens server-side** (API keys, rate limiting)

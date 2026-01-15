@@ -245,7 +245,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                 className={cn(
                   'w-full p-4 border border-border rounded-lg shadow-sm',
                   'focus:ring-2 focus:ring-accent focus:border-accent',
-                  'font-sans min-h-[120px] bg-white'
+                  'font-sans min-h-[120px] bg-surface'
                 )}
                 placeholder="Explain the gist here..."
                 aria-label="Your summary"

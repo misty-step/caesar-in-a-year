@@ -42,7 +42,7 @@ fi
 # Check for raw ink colors (should use text-text-primary/secondary/muted)
 echo ""
 echo "=== Raw ink colors (use text-text-primary, text-text-secondary, etc) ==="
-if grep -rn --include="*.tsx" --include="*.ts" -E 'text-ink(?!-)' app/ components/ lib/ 2>/dev/null; then
+if grep -rn --include="*.tsx" --include="*.ts" -E '\btext-ink\b' app/ components/ lib/ 2>/dev/null; then
   VIOLATIONS=1
 fi
 if grep -rn --include="*.tsx" --include="*.ts" -E 'text-ink-(light|muted|faint)' app/ components/ lib/ 2>/dev/null; then

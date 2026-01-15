@@ -121,7 +121,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
               className={cn(
                 'w-full p-4 border border-border rounded-lg shadow-sm',
                 'focus:ring-2 focus:ring-accent focus:border-accent',
-                'text-lg font-sans bg-white'
+                'text-lg font-sans bg-surface'
               )}
               placeholder="Type your translation..."
               autoFocus
@@ -139,7 +139,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
       ) : (
         <div
           className={cn(
-            'rounded-lg p-6 border-l-4 space-y-5',
+            'rounded-card p-6 border-l-4 space-y-5',
             isCorrect
               ? 'bg-success-faint border-success'
               : isPartial
@@ -175,7 +175,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
           </div>
 
           {/* User's answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+          <div className="bg-surface/50 rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
@@ -183,7 +183,7 @@ export const PhraseDrillStep: React.FC<PhraseDrillStepProps> = ({
           </div>
 
           {/* Correct answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+          <div className="bg-surface/50 rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>

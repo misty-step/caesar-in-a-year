@@ -136,7 +136,7 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
               className={cn(
                 'w-full p-4 border border-border rounded-lg shadow-sm',
                 'focus:ring-2 focus:ring-accent focus:border-accent',
-                'text-lg font-sans bg-white'
+                'text-lg font-sans bg-surface'
               )}
               placeholder="Write your answer..."
               autoFocus
@@ -190,7 +190,7 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           </div>
 
           {/* User's answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+          <div className="bg-surface/50 rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Tua Responsio" english="Your Answer" />
             </p>
@@ -198,7 +198,7 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
           </div>
 
           {/* Correct answer */}
-          <div className="bg-white/50 rounded-lg p-4 space-y-1">
+          <div className="bg-surface/50 rounded-lg p-4 space-y-1">
             <p className="text-xs text-text-muted uppercase tracking-[0.15em] font-semibold">
               <LatinText latin="Responsio Vera" english="Correct Answer" />
             </p>

@@ -50,7 +50,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   ariaLabel = 'Progress',
   className,
 }) => {
-  const percentage = Math.min(Math.round((current / total) * 100), 100);
+  const percentage = total > 0 ? Math.min(Math.round((current / total) * 100), 100) : 0;
 
   return (
     <div className={cn('space-y-1', className)}>

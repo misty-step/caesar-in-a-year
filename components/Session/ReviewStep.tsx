@@ -231,7 +231,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
                 className={cn(
                   'w-full p-4 border border-border rounded-lg shadow-sm',
                   'focus:ring-2 focus:ring-accent focus:border-accent',
-                  'text-lg font-sans min-h-[120px] bg-white'
+                  'text-lg font-sans min-h-[120px] bg-surface'
                 )}
                 placeholder="Write your translation..."
                 autoFocus

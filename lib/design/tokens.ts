@@ -40,7 +40,7 @@ export const primitives = {
 
   verdigris: '#00E0C6', // Electric accent - patina on bronze
   verdigrisLight: '#2dd4bf',
-  verdigisFaint: 'rgba(0, 224, 198, 0.1)',
+  verdigrisFaint: 'rgba(0, 224, 198, 0.1)',
 
   bronze: '#C5A059', // Achievement - Roman medals
   bronzeLight: '#d4b56a',
@@ -98,7 +98,7 @@ export const semantics = {
 
   colorCelebration: primitives.verdigris,
   colorCelebrationLight: primitives.verdigrisLight,
-  colorCelebrationFaint: primitives.verdigisFaint,
+  colorCelebrationFaint: primitives.verdigrisFaint,
 
   colorAchievement: primitives.bronze,
   colorAchievementLight: primitives.bronzeLight,
