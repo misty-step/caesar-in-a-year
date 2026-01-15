@@ -1,41 +1,41 @@
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
+import { Card } from '@/components/UI/Card';
+import { ProgressBar } from '@/components/UI/ProgressBar';
 import type { JourneyProgress as JourneyProgressType } from '@/lib/data/types';
 
 interface JourneyProgressProps {
   iter: JourneyProgressType;
 }
 
+/**
+ * Journey progress card showing overall completion through De Bello Gallico.
+ *
+ * Uses Card for surface, ProgressBar for visual progress.
+ */
 export function JourneyProgress({ iter }: JourneyProgressProps) {
   const { sentencesEncountered, totalSentences, percentComplete } = iter;
 
   return (
-    <section className="bg-parchment rounded-card border border-slate-200 p-6 space-y-4">
+    <Card as="section" elevation="flat" padding="md" className="space-y-4">
       <div className="flex justify-between items-baseline">
         <Label>
           <LatinText latin="Iter per Caesarem" english="Journey through Caesar" />
         </Label>
-        <p className="text-lg font-serif text-tyrian-500">
+        <p className="text-lg font-serif text-accent">
           {percentComplete}%
         </p>
       </div>
 
-      {/* Progress bar */}
-      <div
-        className="w-full bg-slate-100 h-3 rounded-card overflow-hidden"
-        role="progressbar"
-        aria-valuenow={percentComplete}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Progress through De Bello Gallico"
-      >
-        <div
-          className="bg-gradient-to-r from-tyrian-400 to-tyrian-600 h-full transition-all duration-500 ease-out"
-          style={{ width: `${percentComplete}%` }}
-        />
-      </div>
+      <ProgressBar
+        current={percentComplete}
+        total={100}
+        color="gradient"
+        ariaLabel="Progress through De Bello Gallico"
+        className="h-3"
+      />
 
-      <div className="flex justify-between text-xs text-ink-muted">
+      <div className="flex justify-between text-xs text-text-muted">
         <span>
           <LatinText
             latin={`${sentencesEncountered} sententiae visae`}
@@ -49,6 +49,6 @@ export function JourneyProgress({ iter }: JourneyProgressProps) {
           />
         </span>
       </div>
-    </section>
+    </Card>
   );
 }

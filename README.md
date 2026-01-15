@@ -119,4 +119,4 @@ Corpus (static) → Difficulty Filter (user level) → Session Builder → FSRS 
 | `lib/data/convexAdapter.ts` | Convex persistence layer |
 | `convex/reviews.ts` | FSRS state mutations |
 
-See `BACKLOG.md` for current work items.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed module responsibilities and data flow.

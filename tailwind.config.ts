@@ -1,5 +1,13 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * Kinetic Codex Tailwind Configuration
+ *
+ * This config extends Tailwind with semantic design tokens.
+ * Primary tokens are defined in globals.css via @theme directive.
+ * This file provides additional utilities and backward compatibility.
+ */
+
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,68 +17,118 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // "The Scriptorium" palette - Editorial Roman
-        // A digital manuscript desk, not a game launcher
+        // =================================================================
+        // SEMANTIC COLORS (Primary Interface)
+        // These map to CSS variables defined in globals.css
+        // =================================================================
 
-        // Backgrounds - aged paper, not sterile white
+        // Backgrounds
+        background: 'var(--color-background)',
+        surface: {
+          DEFAULT: 'var(--color-surface)',
+          hover: 'var(--color-surface-hover)',
+        },
+
+        // Text
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
+        'text-muted': 'var(--color-text-muted)',
+        'text-faint': 'var(--color-text-faint)',
+        'text-inverse': 'var(--color-text-inverse)',
+
+        // Interactive (Rubric)
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          hover: 'var(--color-accent-hover)',
+          light: 'var(--color-accent-light)',
+          faint: 'var(--color-accent-faint)',
+        },
+
+        // Borders
+        border: {
+          DEFAULT: 'var(--color-border)',
+          subtle: 'var(--color-border-subtle)',
+        },
+
+        // Focus
+        'focus-ring': 'var(--color-focus-ring)',
+
+        // Status
+        success: {
+          DEFAULT: 'var(--color-success)',
+          light: 'var(--color-success-light)',
+          faint: 'var(--color-success-faint)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          light: 'var(--color-warning-light)',
+          faint: 'var(--color-warning-faint)',
+        },
+        celebration: {
+          DEFAULT: 'var(--color-celebration)',
+          light: 'var(--color-celebration-light)',
+          faint: 'var(--color-celebration-faint)',
+        },
+        achievement: {
+          DEFAULT: 'var(--color-achievement)',
+          light: 'var(--color-achievement-light)',
+          faint: 'var(--color-achievement-faint)',
+        },
+
+        // Heatmap (Data Visualization)
+        heatmap: {
+          0: 'var(--color-heatmap-0)',
+          1: 'var(--color-heatmap-1)',
+          2: 'var(--color-heatmap-2)',
+          3: 'var(--color-heatmap-3)',
+          4: 'var(--color-heatmap-4)',
+        },
+
+        // =================================================================
+        // LEGACY COLORS (Backward Compatibility)
+        // Keep existing component code working during migration
+        // TODO: Remove after full migration to semantic tokens
+        // =================================================================
+
+        // Map old names to new semantic tokens
         parchment: {
-          DEFAULT: '#f8f6f1',
-          warm: '#faf8f4',
-          cool: '#f5f4f0',
+          DEFAULT: 'var(--color-background)',
+          warm: 'var(--color-surface)',
+          cool: 'var(--color-surface-hover)',
         },
-        obsidian: '#0a0a0a',
-
-        // Primary - Tyrian Purple (imperial authority)
-        tyrian: {
-          50: '#fdf4f8',
-          100: '#fae8f0',
-          200: '#f5d0e1',
-          400: '#a84878',
-          500: '#66023C', // Imperial purple - the color of senators
-          600: '#520230',
-          700: '#3d0124',
-        },
-
-        // Accent - Sienna (margin corrections, tutor's ink)
-        sienna: {
-          50: '#fdf6f3',
-          100: '#fae9e2',
-          400: '#c66a4a',
-          500: '#8b2500', // Burnt sienna - manuscript corrections
-          600: '#6e1d00',
-          700: '#511500',
-        },
-
-        // Secondary - Bronze Gold (achievement, completion)
-        bronze: {
-          50: '#fdfaf3',
-          100: '#f9f0db',
-          400: '#d4b56a',
-          500: '#C5A059',
-          600: '#a8863d',
-          700: '#8a6c2f',
-        },
-
-        // Electric accent - Verdigris (celebrations, correct answers)
-        // Sparse usage: only on success moments
-        verdigris: {
-          50: '#ecfdfb',
-          100: '#d1faf5',
-          400: '#2dd4bf',
-          500: '#00E0C6',
-          600: '#0891b2',
-          700: '#0e7490',
-        },
-
-        // Ink - Carbon blacks for text
         ink: {
-          DEFAULT: '#1a1a1a',
-          light: '#404040',
-          muted: '#737373',
-          faint: '#a3a3a3',
+          DEFAULT: 'var(--color-text-primary)',
+          light: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
+          faint: 'var(--color-text-faint)',
         },
-
-        // Neutral - Slate scale (unified, no aliases)
+        // Tyrian → Accent (Rubric)
+        tyrian: {
+          500: 'var(--color-accent)',
+          600: 'var(--color-accent-hover)',
+        },
+        // Status colors (keep names for compatibility)
+        laurel: {
+          DEFAULT: 'var(--color-success)',
+          500: 'var(--color-success)',
+          400: 'var(--color-success-light)',
+        },
+        terracotta: {
+          DEFAULT: 'var(--color-warning)',
+          500: 'var(--color-warning)',
+          400: 'var(--color-warning-light)',
+        },
+        verdigris: {
+          DEFAULT: 'var(--color-celebration)',
+          500: 'var(--color-celebration)',
+          400: 'var(--color-celebration-light)',
+        },
+        bronze: {
+          DEFAULT: 'var(--color-achievement)',
+          500: 'var(--color-achievement)',
+          400: 'var(--color-achievement-light)',
+        },
+        // Slate scale (neutral fallback)
         slate: {
           50: '#fafafa',
           100: '#f5f5f5',
@@ -84,108 +142,94 @@ const config: Config = {
           900: '#171717',
           950: '#0a0a0a',
         },
-
-        // Status colors - clear and bold
-        laurel: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-        },
-        terracotta: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c',
-        },
-        iron: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-        },
       },
+
       fontFamily: {
-        // Display: Fraunces - warm, distinctive, scholarly without Hollywood kitsch
+        // Kinetic Codex Typography
         display: ['var(--font-display)', 'Fraunces', 'serif'],
-        // Serif: Crimson Pro - elegant Latin text
         serif: ['var(--font-serif)', 'Crimson Pro', 'serif'],
-        // Sans: Geist - Swiss precision for UI
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
+
       fontSize: {
-        // Editorial type scale - chiseled, tight tracking
-        'display-xl': ['4.5rem', { lineHeight: '1.05', letterSpacing: '-0.04em', fontWeight: '600' }],
-        'display-lg': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '600' }],
-        'display-md': ['2.5rem', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '600' }],
-        'display-sm': ['1.875rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '600' }],
-        // Grammatical metadata - future Latin parsing
-        'grammar': ['0.625rem', { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '500' }],
+        // Editorial type scale - tight tracking for serif
+        'display-xl': [
+          '4.5rem',
+          { lineHeight: '1.05', letterSpacing: '-0.04em', fontWeight: '600' },
+        ],
+        'display-lg': [
+          '3.5rem',
+          { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '600' },
+        ],
+        'display-md': [
+          '2.5rem',
+          { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '600' },
+        ],
+        'display-sm': [
+          '1.875rem',
+          { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '600' },
+        ],
+        // Grammar metadata
+        grammar: [
+          '0.625rem',
+          { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '500' },
+        ],
       },
+
       letterSpacing: {
         eyebrow: '0.15em',
         tight: '-0.02em',
         tighter: '-0.03em',
       },
+
       borderRadius: {
         // Editorial: sharp corners for pages, subtle rounding for interactive
-        'page': '2px',
-        'card': '4px',
+        page: '2px',
+        card: '4px',
       },
+
       backgroundImage: {
-        // Single subtle gradient - not four stacked layers
-        'aurora': 'radial-gradient(ellipse 100% 60% at 50% -10%, rgba(102, 2, 60, 0.04), transparent)',
-        // Paper texture hint
-        'paper': 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.03\'/%3E%3C/svg%3E")',
+        // Subtle radial gradient from rubric
+        aurora:
+          'radial-gradient(ellipse 100% 60% at 50% -10%, var(--color-accent-faint), transparent)',
+        // Paper texture
+        paper:
+          "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E\")",
       },
+
       boxShadow: {
-        // Subtle, editorial shadows
-        'soft': '0 1px 2px rgba(0,0,0,0.04)',
-        'card': '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        soft: '0 1px 2px rgba(0,0,0,0.04)',
+        card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
         'card-hover': '0 4px 12px rgba(0,0,0,0.08)',
-        'glow-tyrian': '0 0 20px rgba(102, 2, 60, 0.15)',
+        'glow-accent': '0 0 20px var(--color-accent-faint)',
+        // Legacy alias
+        'glow-tyrian': '0 0 20px var(--color-accent-faint)',
       },
-      keyframes: {
-        'fade-in': {
-          from: { opacity: '0', transform: 'translateY(8px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        'fade-in-up': {
-          from: { opacity: '0', transform: 'translateY(16px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        'scale-in': {
-          from: { opacity: '0', transform: 'scale(0.97)' },
-          to: { opacity: '1', transform: 'scale(1)' },
-        },
-        'bounce-in': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '70%': { transform: 'scale(1.02)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        // Tactile stamp - quick, satisfying, for correct answers
-        'stamp': {
-          '0%': { opacity: '0', transform: 'scale(1.4)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-      },
-      animation: {
-        'fade-in': 'fade-in 0.4s ease-out',
-        'fade-in-up': 'fade-in-up 0.5s ease-out',
-        'fade-in-delay': 'fade-in 0.4s ease-out 0.15s both',
-        'fade-in-delay-2': 'fade-in 0.4s ease-out 0.3s both',
-        'scale-in': 'scale-in 0.25s ease-out',
-        'bounce-in': 'bounce-in 0.3s ease-out',
-        'stamp': 'stamp 150ms ease-out',
-      },
+
       transitionTimingFunction: {
-        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        ink: 'var(--ease-ink)',
+        spring: 'var(--ease-spring)',
+        'out-expo': 'var(--ease-out-expo)',
+      },
+
+      transitionDuration: {
+        instant: 'var(--duration-instant)',
+        fast: 'var(--duration-fast)',
+        normal: 'var(--duration-normal)',
+        slow: 'var(--duration-slow)',
+      },
+
+      animation: {
+        'fade-in': 'fade-in 0.4s var(--ease-out-expo)',
+        'fade-in-up': 'fade-in-up 0.5s var(--ease-out-expo)',
+        'fade-in-delay': 'fade-in 0.4s var(--ease-out-expo) 0.15s both',
+        'fade-in-delay-2': 'fade-in 0.4s var(--ease-out-expo) 0.3s both',
+        'scale-in': 'scale-in 0.25s var(--ease-out-expo)',
+        'bounce-in': 'bounce-in 0.3s var(--ease-spring)',
+        stamp: 'stamp 150ms var(--ease-out-expo)',
+        'ink-reveal': 'ink-reveal 0.4s var(--ease-ink)',
+        'ink-flow': 'ink-flow 0.6s var(--ease-ink)',
+        'rubric-pulse': 'rubric-pulse 2s var(--ease-ink) infinite',
       },
     },
   },

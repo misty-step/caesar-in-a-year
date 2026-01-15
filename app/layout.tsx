@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${crimson.variable} ${inter.variable}`}>
-      <body className="font-sans antialiased bg-parchment text-ink">
+      <body className="font-sans antialiased bg-background text-text-primary">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/design';
 
 interface LabelProps {
   children: React.ReactNode;
@@ -9,14 +10,21 @@ interface LabelProps {
 /**
  * Eyebrow label component - consistent section headers
  * Used for category labels, section titles, and metadata
+ *
+ * Uses semantic token: text-text-muted
  */
 export const Label: React.FC<LabelProps> = ({
   children,
-  className = '',
+  className,
   as: Tag = 'p',
 }) => {
   return (
-    <Tag className={`text-xs font-semibold uppercase tracking-eyebrow text-ink-muted ${className}`}>
+    <Tag
+      className={cn(
+        'text-xs font-semibold uppercase tracking-eyebrow text-text-muted',
+        className
+      )}
+    >
       {children}
     </Tag>
   );

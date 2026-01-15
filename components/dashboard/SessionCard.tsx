@@ -2,26 +2,37 @@ import Link from 'next/link';
 import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
+import { Card } from '@/components/UI/Card';
 
 interface SessionCardProps {
   justCompleted?: boolean;
 }
 
+/**
+ * Session CTA card with primary action button.
+ *
+ * Uses Card component for surface + Button for the CTA.
+ */
 export function SessionCard({ justCompleted }: SessionCardProps) {
   return (
-    <section className="bg-parchment rounded-card border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <Card
+      as="section"
+      elevation="flat"
+      padding="md"
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+    >
       <div className="space-y-1">
         <Label>
           Session
         </Label>
-        <h2 className="text-xl font-serif font-semibold text-ink">
+        <h2 className="text-xl font-serif font-semibold text-text-primary">
           {justCompleted ? (
             <LatinText latin="Hodie perfecisti!" english="You finished today!" />
           ) : (
             <LatinText latin="Paratus es ad lectionem?" english="Ready for today's guided reading?" />
           )}
         </h2>
-        <p className="text-sm text-ink-light">
+        <p className="text-sm text-text-secondary">
           {justCompleted ? (
             <LatinText
               latin="Iterum exercere potes, si vis."
@@ -44,6 +55,6 @@ export function SessionCard({ justCompleted }: SessionCardProps) {
           />
         </Link>
       </div>
-    </section>
+    </Card>
   );
 }

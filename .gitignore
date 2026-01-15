@@ -54,3 +54,6 @@ content/raw/chapter_counts.json
 # Corpus sync backups
 backups/
 .vercel
+
+# Design exploration catalogue
+.design-catalogue/

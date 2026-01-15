@@ -8,7 +8,9 @@ export const RETRY_BACKOFF_MS = 300;
 export const MAX_ATTEMPTS = 3;
 
 // === Circuit Breaker ===
-// Shared state across all graders in this process
+// State machine: CLOSED -> OPEN (after 5 failures) -> HALF_OPEN (after 60s)
+// HALF_OPEN: single trial call - success -> CLOSED, failure -> OPEN
+// See docs/architecture/grading-flow.md for full diagram
 let consecutiveFailures = 0;
 const FAILURE_THRESHOLD = 5;
 const OPEN_CIRCUIT_RESET_MS = 60000;

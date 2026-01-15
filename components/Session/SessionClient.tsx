@@ -16,6 +16,15 @@ interface SessionClientProps {
   initialStatus: SessionStatus;
 }
 
+/**
+ * Session orchestrator component.
+ *
+ * Delegates to appropriate step component based on item type.
+ * Uses ProgressBar for session progress tracking.
+ *
+ * State: Linear queue progression (simple, code-as-diagram).
+ * See docs/architecture/session-flow.md for step component state machines.
+ */
 export const SessionClient: React.FC<SessionClientProps> = ({
   sessionId,
   items,
@@ -84,4 +93,3 @@ export const SessionClient: React.FC<SessionClientProps> = ({
     </div>
   );
 };
-

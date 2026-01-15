@@ -27,6 +27,12 @@ Set in `.env.local`:
 
 ## Architecture
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module map, data flow, and entry points.
+
+**State Diagrams** (Mermaid):
+- `docs/architecture/session-flow.md` — Step component states, FSRS, streak, circuit breaker
+- `docs/architecture/grading-flow.md` — AI grading data flow, error paths, best-effort ops
+
 ### Session Flow
 App Router manages views via route segments:
 1. `/dashboard` → User stats, "Start Session" button
@@ -51,5 +57,38 @@ Deep module: `gradeTranslation()` calls Gemini 2.5 Flash with structured JSON ou
 ### Data Layer
 In-memory adapter (`lib/data/adapter.ts`) with Convex-ready interface. Future: real persistence.
 
-### Styling
-Tailwind CSS with custom colors (`roman-*`, `pompeii-*`). Animations: `animate-fade-in`, `animate-bounce-in`.
+### Design System (Kinetic Codex)
+
+Two-layer token architecture: primitives (DNA) → semantics (interface).
+
+**Token Reference** (use semantics, never primitives):
+```
+Backgrounds:     bg-background, bg-surface, bg-surface-inverted
+Borders:         border-border, border-border-subtle, border-border-inverted
+Text:            text-text-primary, text-text-secondary, text-text-muted, text-text-faint
+Accent:          bg-accent, text-accent, hover:bg-accent-hover, bg-accent-faint
+Status:          text-success, bg-success-faint, text-warning, bg-warning-faint
+Celebration:     text-celebration, bg-celebration-faint (correct answers)
+Achievement:     text-achievement (XP/mastery)
+```
+
+**Motion**:
+- `duration-fast` (150ms), `duration-normal` (300ms)
+- `ease-ink` (ink-flow easing), `ease-spring` (playful bounce)
+- `animate-fade-in`, `animate-bounce-in`, `animate-stamp`
+
+**Component Patterns**:
+- Use `cn()` from `@/lib/design` for class composition
+- Use CVA components (Button, Card, ProgressBar) with variant props
+- Always `min-h-dvh` (not `min-h-screen`) for mobile viewport
+- Use `size-X` for square elements
+
+**Lint**:
+```bash
+./scripts/lint-tokens.sh  # Check for raw color class violations
+```
+
+**Files**:
+- `app/globals.css` — Token definitions, base styles
+- `lib/design/index.ts` — cn() utility, tokens export
+- `components/UI/` — CVA-based primitives (Button, Card, etc.)

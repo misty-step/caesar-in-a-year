@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { cn } from '@/lib/design';
 import { LatinText } from './LatinText';
+import { buttonVariants } from './Button';
 
 interface EmptyStateProps {
   /** Latin title with English fallback */
@@ -13,19 +15,28 @@ interface EmptyStateProps {
     labelEnglish: string;
     href: string;
   };
+  className?: string;
 }
 
 /**
  * Empty state component with one clear next action.
  * Per ui-skills: "MUST give empty states one clear next action."
+ *
+ * Uses semantic tokens throughout.
  */
-export function EmptyState({ titleLatin, titleEnglish, description, action }: EmptyStateProps) {
+export function EmptyState({
+  titleLatin,
+  titleEnglish,
+  description,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
-    <div className="text-center py-12 px-6">
+    <div className={cn('text-center py-12 px-6', className)}>
       {/* Subtle decorative element */}
-      <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+      <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-surface flex items-center justify-center">
         <svg
-          className="w-6 h-6 text-ink-muted"
+          className="w-6 h-6 text-text-muted"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -39,18 +50,18 @@ export function EmptyState({ titleLatin, titleEnglish, description, action }: Em
         </svg>
       </div>
 
-      <p className="font-serif text-lg text-ink mb-2">
+      <p className="font-serif text-lg text-text-primary mb-2">
         <LatinText latin={titleLatin} english={titleEnglish} />
       </p>
 
       {description && (
-        <p className="text-sm text-ink-muted max-w-xs mx-auto mb-6">{description}</p>
+        <p className="text-sm text-text-muted max-w-xs mx-auto mb-6">{description}</p>
       )}
 
       {action && (
         <Link
           href={action.href}
-          className="inline-flex items-center justify-center px-4 py-2 bg-tyrian-500 text-white font-medium rounded-card hover:bg-tyrian-600 transition-colors focus:outline-none focus:ring-2 focus:ring-tyrian-500 focus:ring-offset-2"
+          className={cn(buttonVariants({ variant: 'primary', size: 'md' }))}
         >
           <LatinText latin={action.labelLatin} english={action.labelEnglish} />
         </Link>

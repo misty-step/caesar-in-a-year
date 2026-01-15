@@ -3,6 +3,14 @@
 import type { ReactNode } from 'react';
 import { Toaster, toast } from 'sonner';
 
+/**
+ * Toast provider with Kinetic Codex styling
+ *
+ * Uses semantic tokens for consistent appearance:
+ * - Surface background
+ * - Border color
+ * - Text primary
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <>
@@ -11,7 +19,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         position="top-center"
         toastOptions={{
           classNames: {
-            toast: 'font-serif bg-slate-50 border border-slate-200 text-ink',
+            toast: 'font-serif bg-surface border border-border text-text-primary shadow-card',
           },
         }}
       />
