@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { hasAccess } from "./billing";
 
 function assertAuthenticated(identity: { subject: string } | null, userId: string) {
   if (!identity) {
@@ -57,6 +58,16 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     assertAuthenticated(identity, args.userId);
+
+    // Security gate: check subscription/trial status before creating session
+    const userProgress = await ctx.db
+      .query("userProgress")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (userProgress && !hasAccess(userProgress)) {
+      throw new ConvexError("SUBSCRIPTION_REQUIRED");
+    }
 
     await ctx.db.insert("sessions", args);
   },
