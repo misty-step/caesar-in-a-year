@@ -21,7 +21,7 @@ function getCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustom
 
 /**
  * Get subscription ID from invoice (handles SDK v20 structure changes)
- * Falls back to direct subscription field if parent path doesn't exist
+ * SDK v20 moved subscription to parent.subscription_details.subscription
  */
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   // SDK v20: invoice.parent.subscription_details.subscription
@@ -29,11 +29,12 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   if (parentSub) {
     return typeof parentSub === "string" ? parentSub : parentSub.id;
   }
-  // Fallback for older API versions or different invoice types
-  if (invoice.subscription) {
-    return typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : invoice.subscription.id;
+  // Fallback for older API versions - use type assertion since types changed
+  const legacyInvoice = invoice as unknown as { subscription?: string | { id: string } };
+  if (legacyInvoice.subscription) {
+    return typeof legacyInvoice.subscription === "string"
+      ? legacyInvoice.subscription
+      : legacyInvoice.subscription.id;
   }
   return null;
 }
