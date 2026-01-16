@@ -24,6 +24,7 @@ vi.mock('@/lib/data/adapter', () => ({
 // Mock ConvexProvider to avoid client requirements
 vi.mock('convex/react', () => ({
   useMutation: () => vi.fn(),
+  useQuery: () => null, // TrialBanner returns null when loading
 }));
 
 describe('DashboardPage', () => {
