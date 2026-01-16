@@ -5,13 +5,38 @@ import { api } from "@/convex/_generated/api";
 import type Stripe from "stripe";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Note: Stripe SDK v20 restructured types significantly:
 // - Invoice.subscription moved to Invoice.parent.subscription_details.subscription
 // - Subscription.current_period_end no longer in types (use invoice.period_end instead)
 // Security: Mutations protected by CONVEX_WEBHOOK_SECRET - not exploitable from client
 
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+/**
+ * Extract customer ID from Stripe object (handles string or expanded object)
+ */
+function getCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer): string {
+  return typeof customer === "string" ? customer : customer.id;
+}
+
+/**
+ * Get subscription ID from invoice (handles SDK v20 structure changes)
+ * Falls back to direct subscription field if parent path doesn't exist
+ */
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  // SDK v20: invoice.parent.subscription_details.subscription
+  const parentSub = invoice.parent?.subscription_details?.subscription;
+  if (parentSub) {
+    return typeof parentSub === "string" ? parentSub : parentSub.id;
+  }
+  // Fallback for older API versions or different invoice types
+  if (invoice.subscription) {
+    return typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : invoice.subscription.id;
+  }
+  return null;
+}
 
 export async function POST(req: Request) {
   if (!WEBHOOK_SECRET) {
@@ -24,7 +49,6 @@ export async function POST(req: Request) {
     return new Response("Convex webhook secret not configured", { status: 500 });
   }
 
-  // Read raw body for signature verification
   const body = await req.text();
   const headerPayload = await headers();
   const signature = headerPayload.get("stripe-signature");
@@ -43,6 +67,7 @@ export async function POST(req: Request) {
   }
 
   const eventTimestamp = event.created * 1000; // Convert to milliseconds
+  const eventId = event.id;
 
   try {
     switch (event.type) {
@@ -50,10 +75,13 @@ export async function POST(req: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.customer && session.subscription) {
           await fetchMutation(api.billing.updateFromStripe, {
-            stripeCustomerId: session.customer as string,
-            stripeSubscriptionId: session.subscription as string,
+            stripeCustomerId: getCustomerId(session.customer),
+            stripeSubscriptionId: typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription.id,
             subscriptionStatus: "active",
             eventTimestamp,
+            eventId,
             serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
@@ -63,17 +91,34 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = getCustomerId(subscription.customer);
+        await fetchMutation(api.billing.updateFromStripe, {
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscription.id,
+          subscriptionStatus: "active",
+          eventTimestamp,
+          eventId,
+          serverSecret: CONVEX_WEBHOOK_SECRET,
+        });
+        console.log(
+          `[Stripe Webhook] Subscription created for customer ${customerId}`
+        );
+        break;
+      }
+
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionDetails = invoice.parent?.subscription_details;
-        if (invoice.customer && subscriptionDetails?.subscription) {
-          const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer.id;
-          // invoice.period_end is the end of the billing period this invoice covers
+        const subscriptionId = getInvoiceSubscriptionId(invoice);
+        if (invoice.customer && subscriptionId) {
+          const customerId = getCustomerId(invoice.customer);
           await fetchMutation(api.billing.updateFromStripe, {
             stripeCustomerId: customerId,
             currentPeriodEnd: invoice.period_end * 1000,
             subscriptionStatus: "active",
             eventTimestamp,
+            eventId,
             serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
@@ -86,11 +131,12 @@ export async function POST(req: Request) {
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.customer) {
-          const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer.id;
+          const customerId = getCustomerId(invoice.customer);
           await fetchMutation(api.billing.updateFromStripe, {
             stripeCustomerId: customerId,
             subscriptionStatus: "past_due",
             eventTimestamp,
+            eventId,
             serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
@@ -102,13 +148,12 @@ export async function POST(req: Request) {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer.id;
+        const customerId = getCustomerId(subscription.customer);
         await fetchMutation(api.billing.updateFromStripe, {
           stripeCustomerId: customerId,
           subscriptionStatus: "expired",
           eventTimestamp,
+          eventId,
           serverSecret: CONVEX_WEBHOOK_SECRET,
         });
         console.log(
@@ -119,9 +164,7 @@ export async function POST(req: Request) {
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer.id;
+        const customerId = getCustomerId(subscription.customer);
         let status: "active" | "canceled" | "past_due" | "unpaid" | "incomplete" =
           "active";
 
@@ -135,12 +178,11 @@ export async function POST(req: Request) {
           status = "incomplete";
         }
 
-        // Note: currentPeriodEnd is set by invoice.payment_succeeded
-        // Subscription status updates don't need to track period end
         await fetchMutation(api.billing.updateFromStripe, {
           stripeCustomerId: customerId,
           subscriptionStatus: status,
           eventTimestamp,
+          eventId,
           serverSecret: CONVEX_WEBHOOK_SECRET,
         });
         console.log(
@@ -151,19 +193,17 @@ export async function POST(req: Request) {
 
       case "charge.refunded": {
         const charge = event.data.object as Stripe.Charge;
-        if (charge.customer) {
-          const customerId = typeof charge.customer === 'string'
-            ? charge.customer
-            : charge.customer.id;
-          await fetchMutation(api.billing.updateFromStripe, {
-            stripeCustomerId: customerId,
-            subscriptionStatus: "expired",
-            eventTimestamp,
-            serverSecret: CONVEX_WEBHOOK_SECRET,
-          });
-          console.log(
-            `[Stripe Webhook] Charge refunded for customer ${customerId}`
+        // Only act on FULL refunds - partial refunds shouldn't revoke access
+        const isFullRefund = charge.refunded && charge.amount_refunded === charge.amount;
+        if (charge.customer && isFullRefund) {
+          const customerId = getCustomerId(charge.customer);
+          // Log for manual review - let subscription lifecycle handle actual cancellation
+          // A refund doesn't necessarily mean the subscription is canceled
+          console.warn(
+            `[Stripe Webhook] Full refund for customer ${customerId} - manual review recommended`
           );
+          // Only expire if this is clearly a chargeback/dispute situation
+          // For normal refunds, let subscription.deleted handle access revocation
         }
         break;
       }

@@ -202,6 +202,7 @@ export const updateFromStripe = mutation({
     ),
     currentPeriodEnd: v.optional(v.number()),
     eventTimestamp: v.number(),
+    eventId: v.optional(v.string()),
     serverSecret: v.string(),
   },
   handler: async (ctx, args) => {
@@ -220,10 +221,19 @@ export const updateFromStripe = mutation({
       return { success: false, reason: "user_not_found" };
     }
 
-    // Idempotency check: ignore older events
+    // Strict deduplication: reject exact same event ID
+    if (args.eventId && user.lastStripeEventId === args.eventId) {
+      console.log(
+        `[Billing] Duplicate event ${args.eventId} for customer: ${args.stripeCustomerId}`
+      );
+      return { success: false, reason: "duplicate_event" };
+    }
+
+    // Idempotency check: ignore strictly older events (< not <=)
+    // Events in same second are allowed through (dedup by eventId above)
     if (
       user.lastStripeEventTimestamp &&
-      args.eventTimestamp <= user.lastStripeEventTimestamp
+      args.eventTimestamp < user.lastStripeEventTimestamp
     ) {
       console.log(
         `[Billing] Ignoring stale event for customer: ${args.stripeCustomerId}`
@@ -238,8 +248,9 @@ export const updateFromStripe = mutation({
       ...(args.subscriptionStatus && {
         subscriptionStatus: args.subscriptionStatus,
       }),
-      ...(args.currentPeriodEnd && { currentPeriodEnd: args.currentPeriodEnd }),
+      ...(args.currentPeriodEnd !== undefined && { currentPeriodEnd: args.currentPeriodEnd }),
       lastStripeEventTimestamp: args.eventTimestamp,
+      ...(args.eventId && { lastStripeEventId: args.eventId }),
     });
 
     return { success: true };

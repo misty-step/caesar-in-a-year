@@ -38,6 +38,7 @@ export default defineSchema({
     ),
     currentPeriodEnd: v.optional(v.number()), // Unix ms - subscription period end
     lastStripeEventTimestamp: v.optional(v.number()), // Unix ms - for idempotency
+    lastStripeEventId: v.optional(v.string()), // Stripe event ID - strict dedup
   })
     .index("by_user", ["userId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),

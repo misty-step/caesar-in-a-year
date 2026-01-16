@@ -57,3 +57,6 @@ backups/
 
 # Design exploration catalogue
 .design-catalogue/
+
+thinktank_*/
+thinktank.log
