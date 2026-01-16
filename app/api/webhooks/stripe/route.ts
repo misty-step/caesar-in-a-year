@@ -4,9 +4,12 @@ import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type Stripe from "stripe";
 
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+
 // Note: Stripe SDK v20 restructured types significantly:
 // - Invoice.subscription moved to Invoice.parent.subscription_details.subscription
 // - Subscription.current_period_end no longer in types (use invoice.period_end instead)
+// Security: Mutations protected by CONVEX_WEBHOOK_SECRET - not exploitable from client
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -14,6 +17,11 @@ export async function POST(req: Request) {
   if (!WEBHOOK_SECRET) {
     console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured");
     return new Response("Webhook secret not configured", { status: 500 });
+  }
+
+  if (!CONVEX_WEBHOOK_SECRET) {
+    console.error("[Stripe Webhook] CONVEX_WEBHOOK_SECRET not configured");
+    return new Response("Convex webhook secret not configured", { status: 500 });
   }
 
   // Read raw body for signature verification
@@ -46,6 +54,7 @@ export async function POST(req: Request) {
             stripeSubscriptionId: session.subscription as string,
             subscriptionStatus: "active",
             eventTimestamp,
+            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
             `[Stripe Webhook] Checkout completed for customer ${session.customer}`
@@ -65,6 +74,7 @@ export async function POST(req: Request) {
             currentPeriodEnd: invoice.period_end * 1000,
             subscriptionStatus: "active",
             eventTimestamp,
+            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
             `[Stripe Webhook] Payment succeeded for customer ${customerId}`
@@ -81,6 +91,7 @@ export async function POST(req: Request) {
             stripeCustomerId: customerId,
             subscriptionStatus: "past_due",
             eventTimestamp,
+            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
             `[Stripe Webhook] Payment failed for customer ${customerId}`
@@ -98,6 +109,7 @@ export async function POST(req: Request) {
           stripeCustomerId: customerId,
           subscriptionStatus: "expired",
           eventTimestamp,
+          serverSecret: CONVEX_WEBHOOK_SECRET,
         });
         console.log(
           `[Stripe Webhook] Subscription deleted for customer ${customerId}`
@@ -129,6 +141,7 @@ export async function POST(req: Request) {
           stripeCustomerId: customerId,
           subscriptionStatus: status,
           eventTimestamp,
+          serverSecret: CONVEX_WEBHOOK_SECRET,
         });
         console.log(
           `[Stripe Webhook] Subscription updated for customer ${customerId}, status: ${status}`
@@ -146,6 +159,7 @@ export async function POST(req: Request) {
             stripeCustomerId: customerId,
             subscriptionStatus: "expired",
             eventTimestamp,
+            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
           console.log(
             `[Stripe Webhook] Charge refunded for customer ${customerId}`

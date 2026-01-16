@@ -4,6 +4,8 @@ import { stripe, PRICE_ID } from "@/lib/billing/stripe";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+
 export async function POST() {
   const { userId, getToken } = await auth();
 
@@ -15,6 +17,14 @@ export async function POST() {
     console.error("[Checkout] STRIPE_PRICE_ID not configured");
     return NextResponse.json(
       { error: "Stripe not configured" },
+      { status: 500 }
+    );
+  }
+
+  if (!CONVEX_WEBHOOK_SECRET) {
+    console.error("[Checkout] CONVEX_WEBHOOK_SECRET not configured");
+    return NextResponse.json(
+      { error: "Server not configured" },
       { status: 500 }
     );
   }
@@ -54,11 +64,10 @@ export async function POST() {
       });
       customerId = customer.id;
 
-      // Link customer to user
+      // Link customer to user (protected by server secret)
       await fetchMutation(
         api.billing.linkStripeCustomer,
-        { userId, stripeCustomerId: customerId },
-        token ? { token } : undefined
+        { userId, stripeCustomerId: customerId, serverSecret: CONVEX_WEBHOOK_SECRET! }
       );
     }
 

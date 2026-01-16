@@ -3,7 +3,21 @@ import { v, ConvexError } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
-const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000; // 1 day grace for webhook delays
+
+/**
+ * Server secret for validating webhook calls.
+ * This prevents client-side exploits while allowing Next.js API routes to call mutations.
+ */
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+
+function validateServerSecret(secret: string | undefined): void {
+  if (!CONVEX_WEBHOOK_SECRET) {
+    throw new ConvexError("CONVEX_WEBHOOK_SECRET not configured");
+  }
+  if (secret !== CONVEX_WEBHOOK_SECRET) {
+    throw new ConvexError("Invalid server secret");
+  }
+}
 
 type SubscriptionStatus = Doc<"userProgress">["subscriptionStatus"];
 
@@ -129,14 +143,16 @@ export const getStatus = query({
 });
 
 /**
- * Initialize trial for new user (called by Clerk webhook).
- * Note: This is public but only called by our Clerk webhook after signature verification.
+ * Initialize trial for new user.
+ * Protected by server secret - only callable from trusted server code.
  */
 export const initializeTrial = mutation({
   args: {
     userId: v.string(),
+    serverSecret: v.string(),
   },
-  handler: async (ctx, { userId }) => {
+  handler: async (ctx, { userId, serverSecret }) => {
+    validateServerSecret(serverSecret);
     const existing = await ctx.db
       .query("userProgress")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -168,7 +184,7 @@ export const initializeTrial = mutation({
 
 /**
  * Update subscription status from Stripe webhook.
- * Note: This is public but only called by our Stripe webhook after signature verification.
+ * Protected by server secret - only callable from trusted server code.
  */
 export const updateFromStripe = mutation({
   args: {
@@ -186,8 +202,10 @@ export const updateFromStripe = mutation({
     ),
     currentPeriodEnd: v.optional(v.number()),
     eventTimestamp: v.number(),
+    serverSecret: v.string(),
   },
   handler: async (ctx, args) => {
+    validateServerSecret(args.serverSecret);
     const user = await ctx.db
       .query("userProgress")
       .withIndex("by_stripe_customer", (q) =>
@@ -230,20 +248,24 @@ export const updateFromStripe = mutation({
 
 /**
  * Link Stripe customer ID to user (called during checkout).
- * Public mutation - requires auth and userId match.
+ * Protected by server secret - only callable from trusted server code.
  */
 export const linkStripeCustomer = mutation({
   args: {
     userId: v.string(),
     stripeCustomerId: v.string(),
+    serverSecret: v.string(),
   },
-  handler: async (ctx, { userId, stripeCustomerId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError("Authentication required");
-    }
-    if (identity.subject !== userId) {
-      throw new ConvexError("Cannot link customer for another user");
+  handler: async (ctx, { userId, stripeCustomerId, serverSecret }) => {
+    validateServerSecret(serverSecret);
+    // Check if this Stripe customer is already linked to another user
+    const existingCustomer = await ctx.db
+      .query("userProgress")
+      .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", stripeCustomerId))
+      .first();
+
+    if (existingCustomer && existingCustomer.userId !== userId) {
+      throw new ConvexError("Stripe customer already linked to another user");
     }
 
     const user = await ctx.db
