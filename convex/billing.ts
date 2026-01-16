@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
@@ -11,11 +11,9 @@ const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
 
 function validateServerSecret(secret: string | undefined): void {
-  if (!CONVEX_WEBHOOK_SECRET) {
-    throw new ConvexError("CONVEX_WEBHOOK_SECRET not configured");
-  }
-  if (secret !== CONVEX_WEBHOOK_SECRET) {
-    throw new ConvexError("Invalid server secret");
+  // Use generic error to avoid leaking configuration state
+  if (!CONVEX_WEBHOOK_SECRET || secret !== CONVEX_WEBHOOK_SECRET) {
+    throw new ConvexError("Unauthorized");
   }
 }
 
@@ -305,23 +303,3 @@ export const linkStripeCustomer = mutation({
   },
 });
 
-/**
- * Check if user has access (for use in other mutations).
- * Throws if no access.
- */
-export const requireAccess = query({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
-    const user = await ctx.db
-      .query("userProgress")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-
-    if (!user) {
-      // New user, assume grace period
-      return { hasAccess: true };
-    }
-
-    return { hasAccess: hasAccess(user) };
-  },
-});
