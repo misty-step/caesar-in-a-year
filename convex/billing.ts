@@ -8,13 +8,23 @@ const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000; // 1 day grace for webhook delays
 type SubscriptionStatus = Doc<"userProgress">["subscriptionStatus"];
 
 /**
+ * Get effective trial end date for a user.
+ * If trialEndsAt is set explicitly, use that.
+ * Otherwise, calculate from record creation time (lazy trial initialization).
+ */
+function getEffectiveTrialEnd(user: Doc<"userProgress">): number {
+  if (user.trialEndsAt) return user.trialEndsAt;
+  // Lazy trial: 14 days from when the user record was created
+  return user._creationTime + TRIAL_DURATION_MS;
+}
+
+/**
  * Determines if a user has access to the app.
  * Access is granted if:
- * 1. Trial is active (trialEndsAt > now)
+ * 1. Trial is active (calculated from record creation if not explicitly set)
  * 2. Subscription is active
  * 3. Subscription is canceled but period hasn't ended
  * 4. Subscription is past_due but within current period (grace)
- * 5. New user without billing data (grace period for webhook delays)
  */
 export function hasAccess(user: Doc<"userProgress">): boolean {
   const now = Date.now();
@@ -23,11 +33,6 @@ export function hasAccess(user: Doc<"userProgress">): boolean {
   const lockedStates: SubscriptionStatus[] = ["incomplete", "unpaid", "expired"];
   if (user.subscriptionStatus && lockedStates.includes(user.subscriptionStatus)) {
     return false;
-  }
-
-  // Trial active
-  if (user.trialEndsAt && now < user.trialEndsAt) {
-    return true;
   }
 
   // Active subscription
@@ -53,11 +58,10 @@ export function hasAccess(user: Doc<"userProgress">): boolean {
     return true;
   }
 
-  // New user grace period (webhook might not have arrived yet)
-  // If no billing data at all, grant 1-day grace from account creation
-  if (!user.trialEndsAt && !user.subscriptionStatus) {
-    const userCreatedAt = user._creationTime;
-    return now < userCreatedAt + GRACE_PERIOD_MS;
+  // Trial active (lazy: calculated from record creation if not explicitly set)
+  const trialEnd = getEffectiveTrialEnd(user);
+  if (now < trialEnd) {
+    return true;
   }
 
   return false;
@@ -65,13 +69,13 @@ export function hasAccess(user: Doc<"userProgress">): boolean {
 
 /**
  * Calculate days remaining in trial.
- * Returns null if not in trial.
+ * Uses lazy trial calculation if trialEndsAt not explicitly set.
  */
-export function getTrialDaysRemaining(user: Doc<"userProgress">): number | null {
-  if (!user.trialEndsAt) return null;
+export function getTrialDaysRemaining(user: Doc<"userProgress">): number {
+  const trialEnd = getEffectiveTrialEnd(user);
   const now = Date.now();
-  if (now >= user.trialEndsAt) return 0;
-  return Math.ceil((user.trialEndsAt - now) / (24 * 60 * 60 * 1000));
+  if (now >= trialEnd) return 0;
+  return Math.ceil((trialEnd - now) / (24 * 60 * 60 * 1000));
 }
 
 /**
@@ -99,21 +103,24 @@ export const getStatus = query({
       .first();
 
     if (!user) {
-      // New user, no record yet - in grace period
+      // New user, no record yet - grant access, trial starts when record is created
       return {
         hasAccess: true,
         isAuthenticated: true,
         trialEndsAt: null,
-        trialDaysRemaining: 14, // Will be set properly when Clerk webhook fires
+        trialDaysRemaining: 14,
         subscriptionStatus: null,
         currentPeriodEnd: null,
       };
     }
 
+    // Trial end is calculated lazily from record creation if not explicitly set
+    const effectiveTrialEnd = getEffectiveTrialEnd(user);
+
     return {
       hasAccess: hasAccess(user),
       isAuthenticated: true,
-      trialEndsAt: user.trialEndsAt ?? null,
+      trialEndsAt: effectiveTrialEnd,
       trialDaysRemaining: getTrialDaysRemaining(user),
       subscriptionStatus: user.subscriptionStatus ?? null,
       currentPeriodEnd: user.currentPeriodEnd ?? null,
