@@ -169,7 +169,10 @@ export async function POST(req: Request) {
         let status: "active" | "canceled" | "past_due" | "unpaid" | "incomplete" =
           "active";
 
-        if (subscription.cancel_at_period_end) {
+        // Map Stripe subscription status to our internal status
+        if (subscription.status === "canceled") {
+          status = "canceled";
+        } else if (subscription.cancel_at_period_end) {
           status = "canceled";
         } else if (subscription.status === "past_due") {
           status = "past_due";

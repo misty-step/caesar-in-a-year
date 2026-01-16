@@ -27,6 +27,11 @@ vi.mock('convex/react', () => ({
   useQuery: () => null, // TrialBanner returns null when loading
 }));
 
+// Mock next/navigation for TrialBanner's useRouter
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 describe('DashboardPage', () => {
   beforeEach(() => {
     getUserProgress.mockReset();

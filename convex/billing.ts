@@ -33,21 +33,17 @@ function getEffectiveTrialEnd(user: Doc<"userProgress">): number {
 /**
  * Determines if a user has access to the app.
  * Access is granted if:
- * 1. Trial is active (calculated from record creation if not explicitly set)
- * 2. Subscription is active
- * 3. Subscription is canceled but period hasn't ended
- * 4. Subscription is past_due but within current period (grace)
+ * 1. Subscription is active
+ * 2. Subscription is canceled but period hasn't ended
+ * 3. Subscription is past_due but within current period (grace)
+ * 4. Trial is active (calculated from record creation if not explicitly set)
+ *
+ * Access is denied for terminal/locked states (incomplete, unpaid, expired).
  */
 export function hasAccess(user: Doc<"userProgress">): boolean {
   const now = Date.now();
 
-  // Explicitly deny for terminal/locked states
-  const lockedStates: SubscriptionStatus[] = ["incomplete", "unpaid", "expired"];
-  if (user.subscriptionStatus && lockedStates.includes(user.subscriptionStatus)) {
-    return false;
-  }
-
-  // Active subscription
+  // Active subscription - most common for paying users
   if (user.subscriptionStatus === "active") {
     return true;
   }
@@ -68,6 +64,12 @@ export function hasAccess(user: Doc<"userProgress">): boolean {
     now < user.currentPeriodEnd
   ) {
     return true;
+  }
+
+  // Explicitly deny for terminal/locked states (before trial check)
+  const lockedStates: SubscriptionStatus[] = ["incomplete", "unpaid", "expired"];
+  if (user.subscriptionStatus && lockedStates.includes(user.subscriptionStatus)) {
+    return false;
   }
 
   // Trial active (lazy: calculated from record creation if not explicitly set)

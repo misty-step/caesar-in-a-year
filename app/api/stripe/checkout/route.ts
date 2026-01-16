@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { stripe, PRICE_ID } from "@/lib/billing/stripe";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -8,6 +8,7 @@ const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
 
 export async function POST() {
   const { userId, getToken } = await auth();
+  const user = await currentUser();
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,8 +45,9 @@ export async function POST() {
     if (userProgress?.stripeCustomerId) {
       customerId = userProgress.stripeCustomerId;
     } else {
-      // Create new Stripe customer
+      // Create new Stripe customer with email for receipts
       const customer = await stripe.customers.create({
+        email: user?.emailAddresses[0]?.emailAddress,
         metadata: {
           userId,
         },

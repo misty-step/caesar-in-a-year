@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/UI/Button";
@@ -19,6 +20,7 @@ interface TrialBannerProps {
  * - Subscribed: Hidden
  */
 export function TrialBanner({ className }: TrialBannerProps) {
+  const router = useRouter();
   const billingStatus = useQuery(api.billing.getStatus);
 
   // Don't show if loading, not authenticated, or already subscribed
@@ -62,7 +64,7 @@ export function TrialBanner({ className }: TrialBannerProps) {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => (window.location.href = "/subscribe")}
+            onClick={() => router.push("/subscribe")}
           >
             Subscribe
           </Button>
@@ -103,7 +105,7 @@ export function TrialBanner({ className }: TrialBannerProps) {
         <Button
           variant={isUrgent ? "primary" : "secondary"}
           size="sm"
-          onClick={() => (window.location.href = "/subscribe")}
+          onClick={() => router.push("/subscribe")}
         >
           Subscribe
         </Button>

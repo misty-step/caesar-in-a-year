@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -16,9 +16,15 @@ function SubscribeContent() {
 
   const billingStatus = useQuery(api.billing.getStatus);
 
-  // If user already has access, redirect to dashboard
+  // Redirect to dashboard if user already has access
+  useEffect(() => {
+    if (billingStatus?.hasAccess) {
+      router.push("/dashboard");
+    }
+  }, [billingStatus?.hasAccess, router]);
+
+  // Show loading state while redirecting
   if (billingStatus?.hasAccess) {
-    router.push("/dashboard");
     return null;
   }
 
