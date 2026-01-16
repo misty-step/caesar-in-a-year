@@ -259,6 +259,7 @@ export const updateFromStripe = mutation({
 
 /**
  * Link Stripe customer ID to user (called during checkout).
+ * Creates userProgress if missing (new users subscribing directly).
  * Protected by server secret - only callable from trusted server code.
  */
 export const linkStripeCustomer = mutation({
@@ -269,6 +270,7 @@ export const linkStripeCustomer = mutation({
   },
   handler: async (ctx, { userId, stripeCustomerId, serverSecret }) => {
     validateServerSecret(serverSecret);
+
     // Check if this Stripe customer is already linked to another user
     const existingCustomer = await ctx.db
       .query("userProgress")
@@ -285,11 +287,21 @@ export const linkStripeCustomer = mutation({
       .first();
 
     if (!user) {
-      throw new ConvexError("User not found");
+      // New user subscribing directly - create userProgress with Stripe customer
+      // Trial starts from creation time (lazy calculation via _creationTime)
+      await ctx.db.insert("userProgress", {
+        userId,
+        streak: 0,
+        totalXp: 0,
+        maxDifficulty: 1,
+        lastSessionAt: 0,
+        stripeCustomerId,
+      });
+      return { success: true, created: true };
     }
 
     await ctx.db.patch(user._id, { stripeCustomerId });
-    return { success: true };
+    return { success: true, created: false };
   },
 });
 

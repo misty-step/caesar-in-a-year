@@ -32,21 +32,9 @@ export async function POST() {
   try {
     const token = await getToken({ template: "convex" });
 
-    // Get user's email from Clerk for Stripe customer
-    const clerkAuth = await auth();
-    // Use userId to look up email in userProgress or just use a placeholder
-    // In production, you'd get this from Clerk's user object
-
-    // Check if user already has a Stripe customer ID
-    const billingStatus = await fetchQuery(
-      api.billing.getStatus,
-      {},
-      token ? { token } : undefined
-    );
-
     let customerId: string;
 
-    // Get or create Stripe customer
+    // Get existing user progress (if any) to check for Stripe customer ID
     const userProgress = await fetchQuery(
       api.userProgress.get,
       { userId },
