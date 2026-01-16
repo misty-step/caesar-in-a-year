@@ -12,6 +12,7 @@ import { LegionStatus } from '@/components/dashboard/LegionStatus';
 import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
 import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
 import { XPDisplay } from '@/components/dashboard/XPDisplay';
+import { TrialBanner } from '@/components/dashboard/TrialBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,8 @@ export default async function DashboardPage() {
         <Hero />
 
         {justCompleted && <JustCompletedBanner />}
+
+        <TrialBanner />
 
         <Stats progress={progress} iter={metrics.iter} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
 
