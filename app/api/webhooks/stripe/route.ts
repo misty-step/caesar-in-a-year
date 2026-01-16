@@ -1,8 +1,12 @@
 import { headers } from "next/headers";
-import { stripe } from "@/lib/billing/stripe";
+import { getStripe } from "@/lib/billing/stripe";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type Stripe from "stripe";
+
+// Note: Stripe SDK v20 restructured types significantly:
+// - Invoice.subscription moved to Invoice.parent.subscription_details.subscription
+// - Subscription.current_period_end no longer in types (use invoice.period_end instead)
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -24,7 +28,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
+    event = getStripe().webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
   } catch (err) {
     console.error("[Stripe Webhook] Signature verification failed:", err);
     return new Response("Invalid signature", { status: 400 });
@@ -51,18 +55,14 @@ export async function POST(req: Request) {
       }
 
       case "invoice.payment_succeeded": {
-        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } };
-        const subscriptionId = typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : invoice.subscription?.id;
-        if (invoice.customer && subscriptionId) {
-          // Get subscription to get current_period_end
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionDetails = invoice.parent?.subscription_details;
+        if (invoice.customer && subscriptionDetails?.subscription) {
           const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer.id;
-          const periodEnd = subscription.current_period_end;
+          // invoice.period_end is the end of the billing period this invoice covers
           await fetchMutation(api.billing.updateFromStripe, {
             stripeCustomerId: customerId,
-            currentPeriodEnd: periodEnd * 1000,
+            currentPeriodEnd: invoice.period_end * 1000,
             subscriptionStatus: "active",
             eventTimestamp,
           });
@@ -123,10 +123,11 @@ export async function POST(req: Request) {
           status = "incomplete";
         }
 
+        // Note: currentPeriodEnd is set by invoice.payment_succeeded
+        // Subscription status updates don't need to track period end
         await fetchMutation(api.billing.updateFromStripe, {
           stripeCustomerId: customerId,
           subscriptionStatus: status,
-          currentPeriodEnd: subscription.current_period_end * 1000,
           eventTimestamp,
         });
         console.log(
