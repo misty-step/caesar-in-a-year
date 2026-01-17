@@ -39,6 +39,83 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   return null;
 }
 
+/**
+ * Map Stripe subscription status to our internal status.
+ * Treats 'trialing' and 'active' as active access states.
+ */
+function mapSubscriptionStatus(
+  stripeStatus: Stripe.Subscription.Status,
+  cancelAtPeriodEnd: boolean
+): "active" | "canceled" | "past_due" | "unpaid" | "incomplete" {
+  if (stripeStatus === "canceled") return "canceled";
+  if (cancelAtPeriodEnd) return "canceled";
+  if (stripeStatus === "past_due") return "past_due";
+  if (stripeStatus === "unpaid") return "unpaid";
+  if (stripeStatus === "incomplete" || stripeStatus === "incomplete_expired") return "incomplete";
+  // 'active' and 'trialing' both grant access
+  return "active";
+}
+
+/**
+ * Attempt to update user billing, with fallback to link via userId metadata.
+ * Returns true if successful, throws if should retry.
+ */
+async function updateWithFallback(
+  stripeCustomerId: string,
+  userId: string | undefined,
+  update: {
+    stripeSubscriptionId?: string;
+    subscriptionStatus?: "active" | "canceled" | "past_due" | "unpaid" | "incomplete" | "expired";
+    currentPeriodEnd?: number;
+    eventTimestamp: number;
+    eventId: string;
+  }
+): Promise<void> {
+  const result = await fetchMutation(api.billing.updateFromStripe, {
+    stripeCustomerId,
+    ...update,
+    serverSecret: CONVEX_WEBHOOK_SECRET!,
+  });
+
+  if (result.success) return;
+
+  // Stale/duplicate events are safe to ignore
+  if (result.reason === "stale_event" || result.reason === "duplicate_event") {
+    console.log(`[Stripe Webhook] Ignoring ${result.reason} for customer ${stripeCustomerId}`);
+    return;
+  }
+
+  // User not found - try fallback via userId metadata
+  if (result.reason === "user_not_found" && userId) {
+    console.warn(`[Stripe Webhook] User not found for customer ${stripeCustomerId}, attempting fallback link via userId ${userId}`);
+
+    // Link customer to user
+    await fetchMutation(api.billing.linkStripeCustomer, {
+      userId,
+      stripeCustomerId,
+      serverSecret: CONVEX_WEBHOOK_SECRET!,
+    });
+
+    // Retry the update
+    const retryResult = await fetchMutation(api.billing.updateFromStripe, {
+      stripeCustomerId,
+      ...update,
+      serverSecret: CONVEX_WEBHOOK_SECRET!,
+    });
+
+    if (retryResult.success) {
+      console.log(`[Stripe Webhook] Fallback link succeeded for customer ${stripeCustomerId}`);
+      return;
+    }
+
+    // Fallback failed - throw to trigger Stripe retry
+    throw new Error(`Fallback link failed: ${retryResult.reason}`);
+  }
+
+  // No fallback possible - throw to trigger Stripe retry
+  throw new Error(`Update failed: ${result.reason}`);
+}
+
 export async function POST(req: Request) {
   if (!WEBHOOK_SECRET) {
     console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured");
@@ -75,37 +152,36 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.customer && session.subscription) {
-          await fetchMutation(api.billing.updateFromStripe, {
-            stripeCustomerId: getCustomerId(session.customer),
+          const stripeCustomerId = getCustomerId(session.customer);
+          // Session metadata contains userId for fallback (set in checkout creation)
+          const userId = session.metadata?.userId;
+
+          await updateWithFallback(stripeCustomerId, userId, {
             stripeSubscriptionId: typeof session.subscription === "string"
               ? session.subscription
               : session.subscription.id,
             subscriptionStatus: "active",
             eventTimestamp,
             eventId,
-            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
-          console.log(
-            `[Stripe Webhook] Checkout completed for customer ${session.customer}`
-          );
+          console.log(`[Stripe Webhook] Checkout completed for customer ${stripeCustomerId}`);
         }
         break;
       }
 
       case "customer.subscription.created": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = getCustomerId(subscription.customer);
-        await fetchMutation(api.billing.updateFromStripe, {
-          stripeCustomerId: customerId,
+        const stripeCustomerId = getCustomerId(subscription.customer);
+        const userId = subscription.metadata?.userId;
+        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
+
+        await updateWithFallback(stripeCustomerId, userId, {
           stripeSubscriptionId: subscription.id,
-          subscriptionStatus: "active",
+          subscriptionStatus: status,
           eventTimestamp,
           eventId,
-          serverSecret: CONVEX_WEBHOOK_SECRET,
         });
-        console.log(
-          `[Stripe Webhook] Subscription created for customer ${customerId}`
-        );
+        console.log(`[Stripe Webhook] Subscription created for customer ${stripeCustomerId}`);
         break;
       }
 
@@ -113,18 +189,16 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = getInvoiceSubscriptionId(invoice);
         if (invoice.customer && subscriptionId) {
-          const customerId = getCustomerId(invoice.customer);
-          await fetchMutation(api.billing.updateFromStripe, {
-            stripeCustomerId: customerId,
+          const stripeCustomerId = getCustomerId(invoice.customer);
+
+          await updateWithFallback(stripeCustomerId, undefined, {
+            stripeSubscriptionId: subscriptionId,
             currentPeriodEnd: invoice.period_end * 1000,
             subscriptionStatus: "active",
             eventTimestamp,
             eventId,
-            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
-          console.log(
-            `[Stripe Webhook] Payment succeeded for customer ${customerId}`
-          );
+          console.log(`[Stripe Webhook] Payment succeeded for customer ${stripeCustomerId}`);
         }
         break;
       }
@@ -132,66 +206,42 @@ export async function POST(req: Request) {
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         if (invoice.customer) {
-          const customerId = getCustomerId(invoice.customer);
-          await fetchMutation(api.billing.updateFromStripe, {
-            stripeCustomerId: customerId,
+          const stripeCustomerId = getCustomerId(invoice.customer);
+
+          await updateWithFallback(stripeCustomerId, undefined, {
             subscriptionStatus: "past_due",
             eventTimestamp,
             eventId,
-            serverSecret: CONVEX_WEBHOOK_SECRET,
           });
-          console.log(
-            `[Stripe Webhook] Payment failed for customer ${customerId}`
-          );
+          console.log(`[Stripe Webhook] Payment failed for customer ${stripeCustomerId}`);
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = getCustomerId(subscription.customer);
-        await fetchMutation(api.billing.updateFromStripe, {
-          stripeCustomerId: customerId,
+        const stripeCustomerId = getCustomerId(subscription.customer);
+
+        await updateWithFallback(stripeCustomerId, undefined, {
           subscriptionStatus: "expired",
           eventTimestamp,
           eventId,
-          serverSecret: CONVEX_WEBHOOK_SECRET,
         });
-        console.log(
-          `[Stripe Webhook] Subscription deleted for customer ${customerId}`
-        );
+        console.log(`[Stripe Webhook] Subscription deleted for customer ${stripeCustomerId}`);
         break;
       }
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = getCustomerId(subscription.customer);
-        let status: "active" | "canceled" | "past_due" | "unpaid" | "incomplete" =
-          "active";
+        const stripeCustomerId = getCustomerId(subscription.customer);
+        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
 
-        // Map Stripe subscription status to our internal status
-        if (subscription.status === "canceled") {
-          status = "canceled";
-        } else if (subscription.cancel_at_period_end) {
-          status = "canceled";
-        } else if (subscription.status === "past_due") {
-          status = "past_due";
-        } else if (subscription.status === "unpaid") {
-          status = "unpaid";
-        } else if (subscription.status === "incomplete") {
-          status = "incomplete";
-        }
-
-        await fetchMutation(api.billing.updateFromStripe, {
-          stripeCustomerId: customerId,
+        await updateWithFallback(stripeCustomerId, undefined, {
           subscriptionStatus: status,
           eventTimestamp,
           eventId,
-          serverSecret: CONVEX_WEBHOOK_SECRET,
         });
-        console.log(
-          `[Stripe Webhook] Subscription updated for customer ${customerId}, status: ${status}`
-        );
+        console.log(`[Stripe Webhook] Subscription updated for customer ${stripeCustomerId}, status: ${status}`);
         break;
       }
 
@@ -202,12 +252,7 @@ export async function POST(req: Request) {
         if (charge.customer && isFullRefund) {
           const customerId = getCustomerId(charge.customer);
           // Log for manual review - let subscription lifecycle handle actual cancellation
-          // A refund doesn't necessarily mean the subscription is canceled
-          console.warn(
-            `[Stripe Webhook] Full refund for customer ${customerId} - manual review recommended`
-          );
-          // Only expire if this is clearly a chargeback/dispute situation
-          // For normal refunds, let subscription.deleted handle access revocation
+          console.warn(`[Stripe Webhook] Full refund for customer ${customerId} - manual review recommended`);
         }
         break;
       }
@@ -216,6 +261,7 @@ export async function POST(req: Request) {
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
   } catch (err) {
+    // Return 500 to trigger Stripe retry (exponential backoff)
     console.error(`[Stripe Webhook] Error processing ${event.type}:`, err);
     return new Response("Webhook handler error", { status: 500 });
   }

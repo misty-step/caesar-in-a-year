@@ -6,6 +6,56 @@ import { api } from "@/convex/_generated/api";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
 
+/**
+ * Resolve or create a Stripe customer, preventing duplicates.
+ * 1. Use existing customerId if linked
+ * 2. Search Stripe by email (handles abandoned checkouts)
+ * 3. Create new customer as fallback
+ */
+async function resolveStripeCustomer(
+  existingCustomerId: string | undefined,
+  email: string | undefined,
+  userId: string,
+  serverSecret: string
+): Promise<string> {
+  // Already linked
+  if (existingCustomerId) {
+    return existingCustomerId;
+  }
+
+  // Search by email to prevent duplicates
+  if (email) {
+    const existing = await stripe.customers.list({ email, limit: 1 });
+    if (existing.data.length > 0) {
+      const customerId = existing.data[0].id;
+      console.log(`[Checkout] Found existing customer ${customerId} for email ${email}`);
+      // Link this customer to user
+      await fetchMutation(api.billing.linkStripeCustomer, {
+        userId,
+        stripeCustomerId: customerId,
+        serverSecret,
+      });
+      return customerId;
+    }
+  }
+
+  // Create new customer
+  const customer = await stripe.customers.create({
+    email,
+    metadata: { userId },
+  });
+  console.log(`[Checkout] Created new customer ${customer.id}`);
+
+  // Link to user
+  await fetchMutation(api.billing.linkStripeCustomer, {
+    userId,
+    stripeCustomerId: customer.id,
+    serverSecret,
+  });
+
+  return customer.id;
+}
+
 export async function POST() {
   const { userId, getToken } = await auth();
   const user = await currentUser();
@@ -33,7 +83,7 @@ export async function POST() {
   try {
     const token = await getToken({ template: "convex" });
 
-    let customerId: string;
+    const email = user?.emailAddresses[0]?.emailAddress;
 
     // Get existing user progress (if any) to check for Stripe customer ID
     const userProgress = await fetchQuery(
@@ -42,26 +92,16 @@ export async function POST() {
       token ? { token } : undefined
     );
 
-    if (userProgress?.stripeCustomerId) {
-      customerId = userProgress.stripeCustomerId;
-    } else {
-      // Create new Stripe customer with email for receipts
-      const customer = await stripe.customers.create({
-        email: user?.emailAddresses[0]?.emailAddress,
-        metadata: {
-          userId,
-        },
-      });
-      customerId = customer.id;
+    // Resolve or create Stripe customer
+    const customerId = await resolveStripeCustomer(
+      userProgress?.stripeCustomerId,
+      email,
+      userId,
+      CONVEX_WEBHOOK_SECRET
+    );
 
-      // Link customer to user (protected by server secret)
-      await fetchMutation(
-        api.billing.linkStripeCustomer,
-        { userId, stripeCustomerId: customerId, serverSecret: CONVEX_WEBHOOK_SECRET! }
-      );
-    }
-
-    // Create checkout session
+    // Create checkout session with userId in both session and subscription metadata
+    // This provides fallback for webhook if linkStripeCustomer races
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -75,10 +115,9 @@ export async function POST() {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/subscribe?canceled=true`,
       automatic_tax: { enabled: true },
+      metadata: { userId }, // Session-level metadata for webhook fallback
       subscription_data: {
-        metadata: {
-          userId,
-        },
+        metadata: { userId },
       },
     });
 

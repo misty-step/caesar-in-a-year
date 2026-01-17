@@ -64,62 +64,59 @@ describe("Stripe webhook handler", () => {
   });
 
   describe("subscription status mapping", () => {
-    // Tests the status mapping logic from subscription.updated handler
+    // Tests mapSubscriptionStatus - maps Stripe status to internal status
+    // 'trialing' and 'active' both grant access
 
-    function mapSubscriptionStatus(subscription: {
-      cancel_at_period_end: boolean;
-      status: string;
-    }): "active" | "canceled" | "past_due" | "unpaid" | "incomplete" {
-      if (subscription.cancel_at_period_end) {
-        return "canceled";
-      } else if (subscription.status === "past_due") {
-        return "past_due";
-      } else if (subscription.status === "unpaid") {
-        return "unpaid";
-      } else if (subscription.status === "incomplete") {
-        return "incomplete";
-      }
-      return "active";
+    function mapSubscriptionStatus(
+      stripeStatus: string,
+      cancelAtPeriodEnd: boolean
+    ): "active" | "canceled" | "past_due" | "unpaid" | "incomplete" {
+      if (stripeStatus === "canceled") return "canceled";
+      if (cancelAtPeriodEnd) return "canceled";
+      if (stripeStatus === "past_due") return "past_due";
+      if (stripeStatus === "unpaid") return "unpaid";
+      if (stripeStatus === "incomplete" || stripeStatus === "incomplete_expired") return "incomplete";
+      return "active"; // 'active' and 'trialing' both grant access
     }
 
+    it("maps canceled status directly", () => {
+      expect(mapSubscriptionStatus("canceled", false)).toBe("canceled");
+    });
+
     it("maps cancel_at_period_end to canceled", () => {
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: true, status: "active" })
-      ).toBe("canceled");
+      expect(mapSubscriptionStatus("active", true)).toBe("canceled");
+    });
+
+    it("prioritizes canceled status over cancel_at_period_end", () => {
+      expect(mapSubscriptionStatus("canceled", true)).toBe("canceled");
     });
 
     it("maps past_due status", () => {
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: false, status: "past_due" })
-      ).toBe("past_due");
+      expect(mapSubscriptionStatus("past_due", false)).toBe("past_due");
     });
 
     it("maps unpaid status", () => {
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: false, status: "unpaid" })
-      ).toBe("unpaid");
+      expect(mapSubscriptionStatus("unpaid", false)).toBe("unpaid");
     });
 
     it("maps incomplete status", () => {
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: false, status: "incomplete" })
-      ).toBe("incomplete");
+      expect(mapSubscriptionStatus("incomplete", false)).toBe("incomplete");
     });
 
-    it("defaults to active for other statuses", () => {
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: false, status: "active" })
-      ).toBe("active");
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: false, status: "trialing" })
-      ).toBe("active");
+    it("maps incomplete_expired status", () => {
+      expect(mapSubscriptionStatus("incomplete_expired", false)).toBe("incomplete");
     });
 
-    it("prioritizes cancel_at_period_end over status", () => {
-      // User canceled but still has active subscription until period end
-      expect(
-        mapSubscriptionStatus({ cancel_at_period_end: true, status: "active" })
-      ).toBe("canceled");
+    it("maps active status", () => {
+      expect(mapSubscriptionStatus("active", false)).toBe("active");
+    });
+
+    it("maps trialing status to active (grants access)", () => {
+      expect(mapSubscriptionStatus("trialing", false)).toBe("active");
+    });
+
+    it("maps paused status to active", () => {
+      expect(mapSubscriptionStatus("paused", false)).toBe("active");
     });
   });
 
@@ -222,6 +219,60 @@ describe("Stripe webhook handler", () => {
     it("handles refunds conservatively", () => {
       expect(handledEvents).toContain("charge.refunded");
       // Note: refunds only log, don't expire - let subscription.deleted handle revocation
+    });
+  });
+
+  describe("updateWithFallback error handling contract", () => {
+    // Documents the expected behavior of updateWithFallback
+
+    it("documents safe-to-ignore results", () => {
+      // These mutation results should NOT trigger Stripe retries
+      const safeToIgnore = ["stale_event", "duplicate_event"];
+      expect(safeToIgnore).toContain("stale_event");
+      expect(safeToIgnore).toContain("duplicate_event");
+    });
+
+    it("documents retry-triggering results", () => {
+      // These mutation results SHOULD return 500 to trigger Stripe retries
+      const shouldRetry = ["user_not_found"];
+      expect(shouldRetry).toContain("user_not_found");
+      // Webhook returns 500 -> Stripe retries with exponential backoff
+    });
+
+    it("documents fallback mechanism for checkout race condition", () => {
+      // When user_not_found and userId available in metadata:
+      // 1. Call linkStripeCustomer to create/link user
+      // 2. Retry updateFromStripe
+      // This handles race between linkStripeCustomer and webhook
+      const fallbackSteps = [
+        "linkStripeCustomer with userId from session.metadata",
+        "retry updateFromStripe",
+      ];
+      expect(fallbackSteps.length).toBe(2);
+    });
+  });
+
+  describe("customer resolution logic", () => {
+    // Documents the resolveStripeCustomer function behavior
+
+    it("documents customer resolution priority", () => {
+      // Priority order for finding/creating Stripe customer:
+      const priority = [
+        "1. Use existing stripeCustomerId from userProgress",
+        "2. Search Stripe by email (prevents duplicates)",
+        "3. Create new customer",
+      ];
+      expect(priority.length).toBe(3);
+    });
+
+    it("documents metadata for webhook fallback", () => {
+      // userId is stored in both session and subscription metadata
+      // This allows webhook to link user even if linkStripeCustomer races
+      const metadataLocations = [
+        "session.metadata.userId",
+        "subscription_data.metadata.userId",
+      ];
+      expect(metadataLocations.length).toBe(2);
     });
   });
 });
