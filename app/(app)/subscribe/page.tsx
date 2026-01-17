@@ -1,6 +1,9 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
+
+// Prevent static prerendering - requires auth context
+export const dynamic = "force-dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
