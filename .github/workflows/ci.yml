@@ -1,0 +1,75 @@
+# CI - Quality gates for PRs and main branch
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Token lint
+        run: pnpm lint:tokens
+
+      - name: Test with coverage
+        run: pnpm test:ci
+
+      - name: Build
+        run: pnpm build
+
+  # Convex validation (only if convex files changed)
+  convex:
+    name: Convex Validation
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'convex/') ||
+      contains(github.event.pull_request.changed_files, 'convex/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check Convex functions
+        run: pnpm tsc --noEmit --project convex/tsconfig.json

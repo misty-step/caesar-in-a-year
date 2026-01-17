@@ -1,0 +1,31 @@
+# lefthook.yml - Git hooks for quality gates
+# Docs: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,ts,jsx,tsx}"
+      run: pnpm eslint --fix {staged_files}
+      stage_fixed: true
+
+    typecheck:
+      glob: "*.{ts,tsx}"
+      run: pnpm tsc --noEmit
+
+    tokens:
+      glob: "*.{ts,tsx}"
+      run: ./scripts/lint-tokens.sh
+
+pre-push:
+  commands:
+    test:
+      run: pnpm test:ci
+
+    build:
+      run: pnpm build
+
+    # Convex type validation
+    convex-typecheck:
+      glob: "convex/**/*.ts"
+      run: pnpm tsc --noEmit --project convex/tsconfig.json

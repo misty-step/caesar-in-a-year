@@ -116,12 +116,22 @@ Achievement:     text-achievement (XP/mastery)
 
 ## Quality Gates
 
+**Git hooks (Lefthook):**
+- `pre-commit`: lint, typecheck, token lint (staged files)
+- `pre-push`: test with coverage, build, convex typecheck
+
 **Local checks:**
 ```bash
 pnpm check           # ESLint + token lint
 pnpm stripe:check    # Stripe config validation (requires env vars loaded)
 pnpm test            # Vitest unit tests
+pnpm test:ci         # Tests with coverage
 ```
+
+**CI (GitHub Actions):**
+- Runs on PRs to master and pushes to master
+- Lint, typecheck, token lint, test, build
+- Convex validation when convex/ files change
 
 **Pre-deployment:**
 - Run `pnpm stripe:check` to validate price IDs exist

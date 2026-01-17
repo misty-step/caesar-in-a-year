@@ -47,7 +47,6 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-lefthook.yml
 tsconfig.tsbuildinfo
 content/raw/chapter_counts.json
 
