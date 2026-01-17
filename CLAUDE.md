@@ -17,6 +17,8 @@ pnpm install         # Install dependencies
 pnpm dev             # Start dev server on http://localhost:3000
 pnpm build           # Production build
 pnpm start           # Run production server
+pnpm check           # Run all linters (ESLint + token lint)
+pnpm stripe:check    # Validate Stripe configuration
 ```
 
 ## Environment
@@ -24,6 +26,10 @@ pnpm start           # Run production server
 Set in `.env.local`:
 - `GEMINI_API_KEY` — AI-powered translation grading
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Authentication
+- `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Payment processing
+- `STRIPE_PRICE_ID` — Subscription price (created in Stripe Dashboard)
+- `STRIPE_WEBHOOK_SECRET` — Webhook signature verification
+- `CONVEX_WEBHOOK_SECRET` — Server-to-server auth for billing mutations
 
 ## Architecture
 
@@ -56,6 +62,21 @@ Deep module: `gradeTranslation()` calls Gemini 2.5 Flash with structured JSON ou
 
 ### Data Layer
 In-memory adapter (`lib/data/adapter.ts`) with Convex-ready interface. Future: real persistence.
+
+### Billing (`lib/billing/`, `convex/billing.ts`)
+Stripe subscription with 14-day trial. Deep module pattern:
+- `lib/billing/stripe.ts` — Stripe client singleton, PRICE_ID export
+- `convex/billing.ts` — Subscription state, `hasAccess()`, `updateFromStripe()`
+- `app/api/webhooks/stripe/route.ts` — Webhook handler with signature verification
+
+**Billing states**: `active`, `past_due`, `canceled`, `expired`, `unpaid`, `incomplete`
+
+**Access logic** (in `hasAccess()`):
+1. Active subscription → access
+2. Canceled but in paid period → access
+3. Past due but in grace period → access
+4. Trial active → access
+5. Everything else → no access
 
 ### Design System (Kinetic Codex)
 
@@ -92,3 +113,21 @@ Achievement:     text-achievement (XP/mastery)
 - `app/globals.css` — Token definitions, base styles
 - `lib/design/index.ts` — cn() utility, tokens export
 - `components/UI/` — CVA-based primitives (Button, Card, etc.)
+
+## Quality Gates
+
+**Local checks:**
+```bash
+pnpm check           # ESLint + token lint
+pnpm stripe:check    # Stripe config validation (requires env vars loaded)
+pnpm test            # Vitest unit tests
+```
+
+**Pre-deployment:**
+- Run `pnpm stripe:check` to validate price IDs exist
+- Verify Vercel env vars: `npx vercel env ls`
+- Verify Convex prod env: `CONVEX_DEPLOYMENT=prod:xxx npx convex env list`
+
+**Scripts:**
+- `scripts/lint-tokens.sh` — Design token compliance
+- `scripts/stripe-check.sh` — Stripe configuration audit
