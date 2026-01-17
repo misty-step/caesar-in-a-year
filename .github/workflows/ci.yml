@@ -44,9 +44,10 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          # Dummy keys for build - actual auth happens at runtime
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-          CLERK_SECRET_KEY: sk_test_placeholder
+          # Valid-format dummy keys for build - actual auth happens at runtime
+          # Clerk validates key format, so we need base64-looking values
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktYnVpbGQtcGxhY2Vob2xkZXI
+          CLERK_SECRET_KEY: sk_test_Y2ktYnVpbGQtcGxhY2Vob2xkZXI
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
 
   # Convex validation (only if convex files changed)
