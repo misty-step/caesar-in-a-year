@@ -44,7 +44,7 @@ describe("Stripe webhook handler", () => {
 
     it("falls back to direct subscription field", () => {
       const invoice = {
-        parent: null,
+        parent: null as { subscription_details?: { subscription?: string } } | null,
         subscription: "sub_direct456",
       };
       const parentSub = invoice.parent?.subscription_details?.subscription;
@@ -54,8 +54,8 @@ describe("Stripe webhook handler", () => {
 
     it("returns null when no subscription reference", () => {
       const invoice = {
-        parent: null,
-        subscription: null,
+        parent: null as { subscription_details?: { subscription?: string } } | null,
+        subscription: null as string | null,
       };
       const parentSub = invoice.parent?.subscription_details?.subscription;
       const result = parentSub || invoice.subscription || null;
