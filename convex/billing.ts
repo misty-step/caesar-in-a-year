@@ -25,7 +25,7 @@ type SubscriptionStatus = Doc<"userProgress">["subscriptionStatus"];
  * Otherwise, calculate from record creation time (lazy trial initialization).
  */
 function getEffectiveTrialEnd(user: Doc<"userProgress">): number {
-  if (user.trialEndsAt) return user.trialEndsAt;
+  if (user.trialEndsAt != null) return user.trialEndsAt;
   // Lazy trial: 14 days from when the user record was created
   return user._creationTime + TRIAL_DURATION_MS;
 }

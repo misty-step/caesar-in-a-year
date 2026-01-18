@@ -160,6 +160,14 @@ describe("billing", () => {
     });
 
     describe("edge cases", () => {
+      it("handles trialEndsAt = 0 as immediately expired (not falsy)", () => {
+        // Regression: falsy check would fall back to lazy trial calculation
+        const user = createTrialUser({
+          trialEndsAt: 0, // Explicitly set to 0 = expired
+        });
+        expect(hasAccess(user)).toBe(false);
+      });
+
       it("handles exact trial end boundary (at boundary = expired)", () => {
         const user = createUser({
           trialEndsAt: MOCK_NOW, // Exactly now

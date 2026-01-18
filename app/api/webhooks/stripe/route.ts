@@ -174,10 +174,13 @@ export async function POST(req: Request) {
         const stripeCustomerId = getCustomerId(subscription.customer);
         const userId = subscription.metadata?.userId;
         const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
+        // SDK v20: current_period_end moved to items, but API still returns at subscription level
+        const periodEnd = subscription.items.data[0]?.current_period_end;
 
         await updateWithFallback(stripeCustomerId, userId, {
           stripeSubscriptionId: subscription.id,
           subscriptionStatus: status,
+          ...(periodEnd && { currentPeriodEnd: periodEnd * 1000 }),
           eventTimestamp,
           eventId,
         });
@@ -235,9 +238,12 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
         const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
+        // SDK v20: current_period_end moved to items
+        const periodEnd = subscription.items.data[0]?.current_period_end;
 
         await updateWithFallback(stripeCustomerId, undefined, {
           subscriptionStatus: status,
+          ...(periodEnd && { currentPeriodEnd: periodEnd * 1000 }),
           eventTimestamp,
           eventId,
         });
