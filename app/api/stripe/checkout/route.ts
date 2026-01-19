@@ -85,12 +85,23 @@ export async function POST() {
 
     const email = user?.emailAddresses[0]?.emailAddress;
 
-    // Get existing user progress (if any) to check for Stripe customer ID
+    // Get existing user progress (if any) to check for Stripe customer ID and trial status
     const userProgress = await fetchQuery(
       api.userProgress.get,
       { userId },
       token ? { token } : undefined
     );
+
+    // Calculate trial end to honor remaining trial days
+    // Uses explicit trialEndsAt, or lazy calculation from _creationTime
+    const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
+    const trialEndMs = userProgress?.trialEndsAt
+      ?? (userProgress?._creationTime ? userProgress._creationTime + TRIAL_DURATION_MS : null);
+
+    const now = Date.now();
+    // Only pass trial_end if user has remaining trial (not new users paying immediately)
+    const hasRemainingTrial = trialEndMs && trialEndMs > now;
+    const trialEndSeconds = hasRemainingTrial ? Math.floor(trialEndMs / 1000) : undefined;
 
     // Resolve or create Stripe customer
     const customerId = await resolveStripeCustomer(
@@ -118,6 +129,8 @@ export async function POST() {
       metadata: { userId }, // Session-level metadata for webhook fallback
       subscription_data: {
         metadata: { userId },
+        // Honor remaining trial days - Stripe delays billing until trial_end
+        ...(trialEndSeconds && { trial_end: trialEndSeconds }),
       },
     });
 

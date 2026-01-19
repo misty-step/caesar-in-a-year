@@ -251,6 +251,8 @@ export const updateFromStripe = mutation({
       ...(args.currentPeriodEnd !== undefined && { currentPeriodEnd: args.currentPeriodEnd }),
       lastStripeEventTimestamp: args.eventTimestamp,
       ...(args.eventId && { lastStripeEventId: args.eventId }),
+      // Clear trial when subscription activates to prevent zombie trial access after cancel
+      ...(args.subscriptionStatus === "active" && { trialEndsAt: 0 }),
     });
 
     return { success: true };
