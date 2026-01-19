@@ -28,7 +28,7 @@ async function resolveStripeCustomer(
     const existing = await stripe.customers.list({ email, limit: 1 });
     if (existing.data.length > 0) {
       const customerId = existing.data[0].id;
-      console.log(`[Checkout] Found existing customer ${customerId} for email ${email}`);
+      console.log(`[Checkout] Found existing Stripe customer ${customerId} for user`);
       // Link this customer to user
       await fetchMutation(api.billing.linkStripeCustomer, {
         userId,

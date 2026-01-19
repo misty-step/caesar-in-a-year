@@ -211,6 +211,8 @@ export async function POST(req: Request) {
         if (invoice.customer) {
           const stripeCustomerId = getCustomerId(invoice.customer);
 
+          // Preserve existing period_end as grace period - only update status
+          // Stripe will send subscription.updated if period changes
           await updateWithFallback(stripeCustomerId, undefined, {
             subscriptionStatus: "past_due",
             eventTimestamp,
