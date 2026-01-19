@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import { Inter, Fraunces, Crimson_Pro } from 'next/font/google';
 import { Providers } from './providers';
+import { validateConfigIfNeeded } from '@/lib/config/validate';
 import './globals.css';
+
+// Validate environment configuration at startup (server-side only)
+// Fails fast with actionable errors instead of cryptic runtime failures
+validateConfigIfNeeded();
 
 // Display: Fraunces - warm, wonky, scholarly without Hollywood kitsch
 const fraunces = Fraunces({

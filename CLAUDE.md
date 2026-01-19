@@ -23,13 +23,35 @@ pnpm stripe:check    # Validate Stripe configuration
 
 ## Environment
 
-Set in `.env.local`:
-- `GEMINI_API_KEY` — AI-powered translation grading
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Authentication
-- `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Payment processing
-- `STRIPE_PRICE_ID` — Subscription price (created in Stripe Dashboard)
-- `STRIPE_WEBHOOK_SECRET` — Webhook signature verification
-- `CONVEX_WEBHOOK_SECRET` — Server-to-server auth for billing mutations
+### Variable Reference
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | AI-powered translation grading |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk client auth |
+| `CLERK_SECRET_KEY` | Clerk server auth |
+| `CLERK_JWT_ISSUER_DOMAIN` | JWT validation (Convex only) |
+| `STRIPE_SECRET_KEY` | Stripe API |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client |
+| `STRIPE_PRICE_ID` | Subscription price |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `CONVEX_WEBHOOK_SECRET` | Server-to-server auth for billing |
+
+### Platform Locations (Critical!)
+
+| Variable | Local | Vercel | Convex |
+|----------|:-----:|:------:|:------:|
+| `CLERK_*` (client/server) | ✓ | ✓ | - |
+| `CLERK_JWT_ISSUER_DOMAIN` | - | - | ✓ |
+| `STRIPE_*` | ✓ | ✓ | - |
+| `GEMINI_API_KEY` | ✓ | ✓ | - |
+| `CONVEX_WEBHOOK_SECRET` | ✓ | ✓ | ✓ |
+
+**Common pitfalls:**
+- `CLERK_JWT_ISSUER_DOMAIN` must match your Clerk instance domain
+- Dev: `https://YOUR-INSTANCE.clerk.accounts.dev`
+- Prod: `https://clerk.yourdomain.com` (custom domain)
+- `CONVEX_WEBHOOK_SECRET` must be identical across Vercel and Convex
 
 ## Architecture
 
@@ -141,3 +163,4 @@ pnpm test:ci         # Tests with coverage
 **Scripts:**
 - `scripts/lint-tokens.sh` — Design token compliance
 - `scripts/stripe-check.sh` — Stripe configuration audit
+- `scripts/verify-env.sh` — Environment variable validation across platforms
