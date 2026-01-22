@@ -4,8 +4,8 @@ import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type Stripe from "stripe";
 
-const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
 // Note: Stripe SDK v20 restructured types significantly:
 // - Invoice.subscription moved to Invoice.parent.subscription_details.subscription

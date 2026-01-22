@@ -8,10 +8,11 @@ let _stripe: Stripe | null = null;
  */
 export function getStripe(): Stripe {
   if (!_stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!secretKey) {
       throw new Error("STRIPE_SECRET_KEY is not set");
     }
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    _stripe = new Stripe(secretKey, {
       typescript: true,
     });
   }
@@ -34,4 +35,4 @@ export const stripe = {
  * Price ID for the $14.99/month subscription.
  * Set in Stripe Dashboard and configure via environment variable.
  */
-export const PRICE_ID = process.env.STRIPE_PRICE_ID;
+export const PRICE_ID = process.env.STRIPE_PRICE_ID?.trim();

@@ -286,7 +286,7 @@ fi
 
 # --- Cross-Platform Parity Check ---
 if [ "$CHECK_LOCAL" = true ] && [ "$CHECK_CONVEX" = true ]; then
-  echo "=== Cross-Platform Parity ==="
+  echo "=== Cross-Platform Parity (dev) ==="
   echo ""
 
   # Check CONVEX_WEBHOOK_SECRET matches across platforms
@@ -303,6 +303,69 @@ if [ "$CHECK_LOCAL" = true ] && [ "$CHECK_CONVEX" = true ]; then
         ((ERRORS++))
       fi
     fi
+  fi
+
+  echo ""
+fi
+
+# --- Production Parity Check ---
+if [ "$CHECK_VERCEL" = true ] && [ "$CHECK_CONVEX" = true ] && [ "$PROD_ONLY" = true ]; then
+  echo "=== Cross-Platform Parity (prod) ==="
+  echo ""
+
+  # Get CONVEX_WEBHOOK_SECRET from both Vercel and Convex prod
+  if command -v vercel &> /dev/null; then
+    VERCEL_SECRET=$(vercel env pull --environment=production .vercel-env-temp 2>/dev/null && \
+                    grep "^CONVEX_WEBHOOK_SECRET=" .vercel-env-temp 2>/dev/null | cut -d= -f2- | tr -d '\n' && \
+                    rm -f .vercel-env-temp)
+    CONVEX_PROD_SECRET=$(npx convex env list --prod 2>/dev/null | grep "^CONVEX_WEBHOOK_SECRET=" | cut -d= -f2-)
+
+    if [ -n "$VERCEL_SECRET" ] && [ -n "$CONVEX_PROD_SECRET" ]; then
+      if [ "$VERCEL_SECRET" = "$CONVEX_PROD_SECRET" ]; then
+        echo "  ✅ CONVEX_WEBHOOK_SECRET matches (Vercel prod ↔ Convex prod)"
+      else
+        echo "  ❌ CONVEX_WEBHOOK_SECRET MISMATCH (Vercel prod ≠ Convex prod)"
+        echo "     Production webhooks will silently fail!"
+        ((ERRORS++))
+      fi
+    else
+      echo "  ⚠️  Could not verify prod parity (missing access to one or both platforms)"
+      ((WARNINGS++))
+    fi
+  else
+    echo "  ⚠️  Vercel CLI not installed - skipping prod parity check"
+    ((WARNINGS++))
+  fi
+
+  echo ""
+fi
+
+# --- Webhook URL Verification ---
+# Only run if APP_URL is set (skip in CI without deploy URL)
+if [ -n "$NEXT_PUBLIC_APP_URL" ] && [ "$PROD_ONLY" = true ]; then
+  echo "=== Webhook URL Verification ==="
+  echo ""
+
+  WEBHOOK_URL="${NEXT_PUBLIC_APP_URL}/api/webhooks/stripe"
+
+  echo "  Testing: $WEBHOOK_URL"
+
+  # Test that URL doesn't redirect (3xx causes webhook failures)
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -I -X POST "$WEBHOOK_URL" 2>/dev/null || echo "000")
+
+  if [[ "$HTTP_CODE" =~ ^3 ]]; then
+    echo "  ❌ Webhook URL REDIRECTS (HTTP $HTTP_CODE)"
+    echo "     Stripe webhooks will fail! Use canonical URL."
+    ((ERRORS++))
+  elif [ "$HTTP_CODE" = "000" ]; then
+    echo "  ⚠️  Could not reach webhook URL (network error)"
+    ((WARNINGS++))
+  elif [ "$HTTP_CODE" = "400" ] || [ "$HTTP_CODE" = "401" ]; then
+    # 400/401 is expected - no signature provided
+    echo "  ✅ Webhook URL reachable (returns $HTTP_CODE without signature - expected)"
+  else
+    echo "  ⚠️  Unexpected response: HTTP $HTTP_CODE"
+    ((WARNINGS++))
   fi
 
   echo ""

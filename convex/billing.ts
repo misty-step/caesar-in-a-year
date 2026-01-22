@@ -8,7 +8,7 @@ const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
  * Server secret for validating webhook calls.
  * This prevents client-side exploits while allowing Next.js API routes to call mutations.
  */
-const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
 
 function validateServerSecret(secret: string | undefined): void {
   // Use generic error to avoid leaking configuration state

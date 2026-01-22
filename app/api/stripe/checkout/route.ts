@@ -4,7 +4,7 @@ import { stripe, PRICE_ID } from "@/lib/billing/stripe";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
-const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET;
+const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
 
 /**
  * Resolve or create a Stripe customer, preventing duplicates.
