@@ -7,9 +7,10 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail -n \"Next,Convex\" -c \"cyan,magenta\" \"pnpm dev:next\" \"pnpm dev:convex\"",
+    "dev": "concurrently --kill-others-on-fail -n \"Next,Convex,Stripe\" -c \"cyan,magenta,yellow\" \"pnpm dev:next\" \"pnpm dev:convex\" \"pnpm dev:stripe\"",
     "dev:next": "next dev --turbopack",
     "dev:convex": "convex dev",
+    "dev:stripe": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
