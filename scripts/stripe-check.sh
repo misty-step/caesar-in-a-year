@@ -60,6 +60,7 @@ echo ""
 
 check_env "STRIPE_SECRET_KEY" "required"
 check_env "STRIPE_PRICE_ID" "required"
+check_env "STRIPE_PRICE_ID_ANNUAL" "optional"
 check_env "STRIPE_WEBHOOK_SECRET" "required"
 check_env "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "required"
 check_env "CONVEX_WEBHOOK_SECRET" "required"
@@ -70,10 +71,12 @@ echo ""
 echo "=== Code Quality ==="
 echo ""
 
-# Check for hardcoded keys
+# Check for hardcoded keys (exclude validation patterns in config files)
 echo "  Checking for hardcoded keys..."
-if grep -rq 'sk_test_\|sk_live_\|pk_test_\|pk_live_\|whsec_' --include="*.ts" --include="*.tsx" app/ convex/ lib/ src/ 2>/dev/null; then
+HARDCODED=$(grep -rn 'sk_test_\|sk_live_\|pk_test_\|pk_live_\|whsec_' --include="*.ts" --include="*.tsx" app/ convex/ lib/ src/ 2>/dev/null | grep -v 'validate.ts' | grep -v 'pattern:' | grep -v 'startsWith' || true)
+if [ -n "$HARDCODED" ]; then
   echo "  ❌ Hardcoded Stripe keys found in code!"
+  echo "$HARDCODED" | head -5
   ((ERRORS++))
 else
   echo "  ✅ No hardcoded keys"
@@ -95,17 +98,30 @@ if [ "$LOCAL_ONLY" = false ] && command -v stripe &> /dev/null; then
   echo "=== Stripe CLI Validation ==="
   echo ""
 
-  # Validate price ID exists
+  # Validate monthly price ID exists
   if [ -n "$STRIPE_PRICE_ID" ]; then
-    echo "  Validating price ID..."
+    echo "  Validating monthly price..."
     if stripe prices retrieve "$STRIPE_PRICE_ID" &>/dev/null; then
       PRICE_INFO=$(stripe prices retrieve "$STRIPE_PRICE_ID" 2>/dev/null)
       AMOUNT=$(echo "$PRICE_INFO" | grep -o '"unit_amount": [0-9]*' | grep -o '[0-9]*')
-      CURRENCY=$(echo "$PRICE_INFO" | grep -o '"currency": "[^"]*"' | cut -d'"' -f4)
       INTERVAL=$(echo "$PRICE_INFO" | grep -o '"interval": "[^"]*"' | cut -d'"' -f4)
-      echo "  ✅ Price exists: \$$((AMOUNT/100)).$((AMOUNT%100))/$INTERVAL ($currency)"
+      echo "  ✅ Monthly: \$$((AMOUNT/100)).$((AMOUNT%100))/$INTERVAL"
     else
-      echo "  ❌ Price ID does not exist in Stripe!"
+      echo "  ❌ Monthly price ID does not exist in Stripe!"
+      ((ERRORS++))
+    fi
+  fi
+
+  # Validate annual price ID exists (if set)
+  if [ -n "$STRIPE_PRICE_ID_ANNUAL" ]; then
+    echo "  Validating annual price..."
+    if stripe prices retrieve "$STRIPE_PRICE_ID_ANNUAL" &>/dev/null; then
+      PRICE_INFO=$(stripe prices retrieve "$STRIPE_PRICE_ID_ANNUAL" 2>/dev/null)
+      AMOUNT=$(echo "$PRICE_INFO" | grep -o '"unit_amount": [0-9]*' | grep -o '[0-9]*')
+      INTERVAL=$(echo "$PRICE_INFO" | grep -o '"interval": "[^"]*"' | cut -d'"' -f4)
+      echo "  ✅ Annual: \$$((AMOUNT/100)).$((AMOUNT%100))/$INTERVAL"
+    else
+      echo "  ❌ Annual price ID does not exist in Stripe!"
       ((ERRORS++))
     fi
   fi

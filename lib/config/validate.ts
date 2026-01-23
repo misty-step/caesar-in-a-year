@@ -50,7 +50,13 @@ const REQUIRED_ENV: EnvRequirement[] = [
     key: "STRIPE_PRICE_ID",
     pattern: /^price_/,
     required: true,
-    hint: "Create a price in Stripe Dashboard → Products",
+    hint: "Create monthly price in Stripe Dashboard → Products",
+  },
+  {
+    key: "STRIPE_PRICE_ID_ANNUAL",
+    pattern: /^price_/,
+    required: false, // Optional - annual plan may not be configured yet
+    hint: "Create annual price in Stripe Dashboard → Products",
   },
   {
     key: "STRIPE_WEBHOOK_SECRET",
