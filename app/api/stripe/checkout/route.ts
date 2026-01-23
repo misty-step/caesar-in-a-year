@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { stripe, PRICE_ID } from "@/lib/billing/stripe";
+import { stripe, getPriceId, type PlanType } from "@/lib/billing/stripe";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
@@ -56,7 +56,7 @@ async function resolveStripeCustomer(
   return customer.id;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const { userId, getToken } = await auth();
   const user = await currentUser();
 
@@ -64,8 +64,20 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!PRICE_ID) {
-    console.error("[Checkout] STRIPE_PRICE_ID not configured");
+  // Parse plan from request body, default to annual
+  let plan: PlanType = "annual";
+  try {
+    const body = await request.json();
+    if (body.plan === "monthly" || body.plan === "annual") {
+      plan = body.plan;
+    }
+  } catch {
+    // No body or invalid JSON - use default (annual)
+  }
+
+  const priceId = getPriceId(plan);
+  if (!priceId) {
+    console.error(`[Checkout] STRIPE_PRICE_ID${plan === "annual" ? "_ANNUAL" : ""} not configured`);
     return NextResponse.json(
       { error: "Stripe not configured" },
       { status: 500 }
@@ -118,7 +130,7 @@ export async function POST() {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],

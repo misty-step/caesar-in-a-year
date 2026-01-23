@@ -165,6 +165,7 @@ if [ "$CHECK_LOCAL" = true ]; then
     check_env_var "STRIPE_WEBHOOK_SECRET" "$STRIPE_WEBHOOK_SECRET" "required"
     check_env_var "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "required"
     check_env_var "STRIPE_PRICE_ID" "$STRIPE_PRICE_ID" "required"
+    check_env_var "STRIPE_PRICE_ID_ANNUAL" "$STRIPE_PRICE_ID_ANNUAL" "optional"
     check_env_var "CONVEX_WEBHOOK_SECRET" "$CONVEX_WEBHOOK_SECRET" "required"
     check_env_var "GEMINI_API_KEY" "$GEMINI_API_KEY" "optional"
     check_env_var "NEXT_PUBLIC_CONVEX_URL" "$NEXT_PUBLIC_CONVEX_URL" "required"

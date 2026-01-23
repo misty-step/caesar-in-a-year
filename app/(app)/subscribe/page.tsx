@@ -5,12 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/UI/Button";
+import { cn } from "@/lib/design";
+
+type PlanType = "monthly" | "annual";
 
 function SubscribeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const canceled = searchParams.get("canceled") === "true";
 
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>("annual");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +39,8 @@ function SubscribeContent() {
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: selectedPlan }),
       });
 
       const data = await response.json();
@@ -78,11 +84,56 @@ function SubscribeContent() {
 
         {/* Pricing card */}
         <div className="bg-surface border border-border rounded-card p-8 mb-8">
-          <div className="text-center mb-6">
-            <div className="text-4xl font-display mb-2">
-              $14.99<span className="text-lg text-text-muted">/month</span>
+          {/* Plan toggle */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex rounded-full bg-background p-1 border border-border">
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("monthly")}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-full transition-colors",
+                  selectedPlan === "monthly"
+                    ? "bg-surface text-text-primary shadow-sm"
+                    : "text-text-muted hover:text-text-secondary"
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlan("annual")}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-full transition-colors",
+                  selectedPlan === "annual"
+                    ? "bg-surface text-text-primary shadow-sm"
+                    : "text-text-muted hover:text-text-secondary"
+                )}
+              >
+                Annual
+              </button>
             </div>
-            <p className="text-text-secondary">
+          </div>
+
+          {/* Price display */}
+          <div className="text-center mb-6">
+            {selectedPlan === "annual" ? (
+              <>
+                <div className="text-4xl font-display mb-1">
+                  $9.99<span className="text-lg text-text-muted">/month</span>
+                </div>
+                <div className="text-sm text-text-muted mb-2">
+                  $119.88 billed annually
+                </div>
+                <div className="inline-block px-3 py-1 rounded-full bg-success-faint text-success text-sm font-medium">
+                  Save $60/year
+                </div>
+              </>
+            ) : (
+              <div className="text-4xl font-display mb-2">
+                $14.99<span className="text-lg text-text-muted">/month</span>
+              </div>
+            )}
+            <p className="text-text-secondary mt-3">
               Full access to Caesar in a Year
             </p>
           </div>

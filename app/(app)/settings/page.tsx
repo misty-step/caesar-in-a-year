@@ -183,12 +183,22 @@ export default function SettingsPage() {
                   <p className="text-sm text-text-muted">Plan</p>
                   <p className="font-medium">
                     Caesar in a Year
-                    {subscription.priceAmount && subscription.priceInterval && (
-                      <span className="text-text-secondary ml-1">
-                        ({formatCurrency(subscription.priceAmount)}/{subscription.priceInterval})
+                    {subscription.priceInterval && (
+                      <span className="text-accent ml-2 text-sm">
+                        {subscription.priceInterval === "year" ? "Annual" : "Monthly"}
                       </span>
                     )}
                   </p>
+                  {subscription.priceAmount && subscription.priceInterval && (
+                    <p className="text-sm text-text-secondary">
+                      {formatCurrency(subscription.priceAmount)}/{subscription.priceInterval}
+                      {subscription.priceInterval === "year" && (
+                        <span className="text-text-muted ml-1">
+                          ({formatCurrency(subscription.priceAmount / 12)}/month)
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <StatusBadge status={subscription.status} cancelAtPeriodEnd={subscription.cancelAtPeriodEnd} />
               </div>
@@ -233,6 +243,16 @@ export default function SettingsPage() {
                   <p className="text-sm text-text-secondary">
                     You still have access until {formatDate(subscription.currentPeriodEnd)}.
                     Click "Manage Subscription" to resume.
+                  </p>
+                </div>
+              )}
+
+              {/* Upgrade nudge for monthly subscribers */}
+              {subscription.priceInterval === "month" && !subscription.cancelAtPeriodEnd && (
+                <div className="p-3 rounded-card bg-accent-faint border border-accent">
+                  <p className="text-sm text-accent font-medium">Save with Annual</p>
+                  <p className="text-sm text-text-secondary">
+                    Switch to annual billing and save $60/year ($119.88/year).
                   </p>
                 </div>
               )}

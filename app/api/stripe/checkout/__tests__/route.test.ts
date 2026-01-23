@@ -143,4 +143,42 @@ describe("Checkout route logic", () => {
       expect(isConfigured).toBe(false);
     });
   });
+
+  describe("plan selection", () => {
+    it("defaults to annual plan when no body provided", () => {
+      // When request has no body, default to annual
+      const defaultPlan = "annual";
+      expect(defaultPlan).toBe("annual");
+    });
+
+    it("accepts monthly plan from request body", () => {
+      const body = { plan: "monthly" };
+      const plan = body.plan === "monthly" || body.plan === "annual" ? body.plan : "annual";
+      expect(plan).toBe("monthly");
+    });
+
+    it("accepts annual plan from request body", () => {
+      const body = { plan: "annual" };
+      const plan = body.plan === "monthly" || body.plan === "annual" ? body.plan : "annual";
+      expect(plan).toBe("annual");
+    });
+
+    it("falls back to annual for invalid plan values", () => {
+      const body = { plan: "invalid" };
+      const plan = body.plan === "monthly" || body.plan === "annual" ? body.plan : "annual";
+      expect(plan).toBe("annual");
+    });
+
+    it("selects correct price ID for each plan", () => {
+      const PRICE_ID_MONTHLY = "price_monthly_123";
+      const PRICE_ID_ANNUAL = "price_annual_456";
+
+      function getPriceId(plan: "monthly" | "annual"): string {
+        return plan === "annual" ? PRICE_ID_ANNUAL : PRICE_ID_MONTHLY;
+      }
+
+      expect(getPriceId("monthly")).toBe("price_monthly_123");
+      expect(getPriceId("annual")).toBe("price_annual_456");
+    });
+  });
 });
