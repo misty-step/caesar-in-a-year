@@ -6,8 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/UI/Button";
 import { cn } from "@/lib/design";
-
-type PlanType = "monthly" | "annual";
+import { PLAN_DETAILS, type PlanType } from "@/lib/billing/stripe";
 
 function SubscribeContent() {
   const router = useRouter();
@@ -119,18 +118,18 @@ function SubscribeContent() {
             {selectedPlan === "annual" ? (
               <>
                 <div className="text-4xl font-display mb-1">
-                  $9.99<span className="text-lg text-text-muted">/month</span>
+                  ${PLAN_DETAILS.annual.monthlyEquivalent}<span className="text-lg text-text-muted">/month</span>
                 </div>
                 <div className="text-sm text-text-muted mb-2">
-                  $119.88 billed annually
+                  ${PLAN_DETAILS.annual.price} billed annually
                 </div>
                 <div className="inline-block px-3 py-1 rounded-full bg-success-faint text-success text-sm font-medium">
-                  Save $60/year
+                  Save ${PLAN_DETAILS.annual.savings}/year
                 </div>
               </>
             ) : (
               <div className="text-4xl font-display mb-2">
-                $14.99<span className="text-lg text-text-muted">/month</span>
+                ${PLAN_DETAILS.monthly.price}<span className="text-lg text-text-muted">/month</span>
               </div>
             )}
             <p className="text-text-secondary mt-3">

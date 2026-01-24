@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { stripe, getPriceId, type PlanType } from "@/lib/billing/stripe";
+import { getStripe, getPriceId, type PlanType } from "@/lib/billing/stripe";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
@@ -25,7 +25,7 @@ async function resolveStripeCustomer(
 
   // Search by email to prevent duplicates
   if (email) {
-    const existing = await stripe.customers.list({ email, limit: 1 });
+    const existing = await getStripe().customers.list({ email, limit: 1 });
     if (existing.data.length > 0) {
       const customerId = existing.data[0].id;
       console.log(`[Checkout] Found existing Stripe customer ${customerId} for user`);
@@ -40,7 +40,7 @@ async function resolveStripeCustomer(
   }
 
   // Create new customer
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     email,
     metadata: { userId },
   });
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Create checkout session with userId in both session and subscription metadata
     // This provides fallback for webhook if linkStripeCustomer races
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [

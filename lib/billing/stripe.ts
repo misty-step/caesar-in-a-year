@@ -20,26 +20,11 @@ export function getStripe(): Stripe {
 }
 
 /**
- * Stripe client for server-side operations.
- * @deprecated Use getStripe() for lazy initialization
- */
-export const stripe = {
-  get customers() { return getStripe().customers; },
-  get checkout() { return getStripe().checkout; },
-  get subscriptions() { return getStripe().subscriptions; },
-  get billingPortal() { return getStripe().billingPortal; },
-  get webhooks() { return getStripe().webhooks; },
-};
-
-/**
  * Price IDs for subscription plans.
  * Set in Stripe Dashboard and configure via environment variables.
  */
 export const PRICE_ID_MONTHLY = process.env.STRIPE_PRICE_ID?.trim();
 export const PRICE_ID_ANNUAL = process.env.STRIPE_PRICE_ID_ANNUAL?.trim();
-
-/** @deprecated Use PRICE_ID_MONTHLY instead */
-export const PRICE_ID = PRICE_ID_MONTHLY;
 
 export type PlanType = "monthly" | "annual";
 

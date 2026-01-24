@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/UI/Button";
 import { cn } from "@/lib/design";
+import { PLAN_DETAILS } from "@/lib/billing/stripe";
 
 type SubscriptionDetails = {
   hasSubscription: boolean;
@@ -252,7 +253,7 @@ export default function SettingsPage() {
                 <div className="p-3 rounded-card bg-accent-faint border border-accent">
                   <p className="text-sm text-accent font-medium">Save with Annual</p>
                   <p className="text-sm text-text-secondary">
-                    Switch to annual billing and save $60/year ($119.88/year).
+                    Switch to annual billing and save ${PLAN_DETAILS.annual.savings}/year ({PLAN_DETAILS.annual.label}).
                   </p>
                 </div>
               )}

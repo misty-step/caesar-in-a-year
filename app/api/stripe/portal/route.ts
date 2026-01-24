@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { stripe } from "@/lib/billing/stripe";
+import { getStripe } from "@/lib/billing/stripe";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
@@ -29,7 +29,7 @@ export async function POST() {
     }
 
     // Create portal session
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: userProgress.stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard`,
     });
