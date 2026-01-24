@@ -140,7 +140,7 @@ Achievement:     text-achievement (XP/mastery)
 
 **Git hooks (Lefthook):**
 - `pre-commit`: lint, typecheck, token lint (staged files)
-- `pre-push`: test with coverage, build, convex typecheck
+- `pre-push`: env parity check, test with coverage, build, convex typecheck
 
 **Local checks:**
 ```bash
@@ -164,3 +164,29 @@ pnpm test:ci         # Tests with coverage
 - `scripts/lint-tokens.sh` — Design token compliance
 - `scripts/stripe-check.sh` — Stripe configuration audit
 - `scripts/verify-env.sh` — Environment variable validation across platforms
+
+## Before Deploying Billing Changes
+
+**Critical:** Mocked tests don't catch configuration issues. Always verify manually.
+
+```bash
+# 1. Verify secret parity (this is now in pre-push, but double-check)
+./scripts/verify-env.sh --parity-only
+
+# 2. Validate Stripe configuration
+pnpm stripe:check
+
+# 3. Test checkout flow locally (actual Stripe test mode)
+pnpm dev  # Then navigate to /subscribe and click "Subscribe Now"
+
+# 4. Verify health endpoint
+curl http://localhost:3000/api/health | jq
+
+# 5. After deploy, verify webhook delivery in Stripe Dashboard
+```
+
+**If checkout fails with "Unauthorized":**
+```bash
+# Secret mismatch - sync local to Convex
+npx convex env set CONVEX_WEBHOOK_SECRET "$(grep '^CONVEX_WEBHOOK_SECRET=' .env.local | cut -d= -f2-)"
+```

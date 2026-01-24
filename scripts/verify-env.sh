@@ -8,6 +8,7 @@
 #   --convex        Check Convex environment (requires npx convex)
 #   --prod-only     Only check production environments
 #   --ci            Strict mode - exit 1 on any issue
+#   --parity-only   Fast check: only verify local ↔ Convex secret parity
 #   --help          Show this help message
 #
 # Returns:
@@ -23,6 +24,7 @@ CHECK_VERCEL=false
 CHECK_CONVEX=false
 PROD_ONLY=false
 CI_MODE=false
+PARITY_ONLY=false
 SHOW_HELP=false
 
 # Default: check all if no specific platform specified
@@ -35,6 +37,7 @@ for arg in "$@"; do
     --convex) CHECK_CONVEX=true; NO_PLATFORM_SPECIFIED=false ;;
     --prod-only) PROD_ONLY=true ;;
     --ci) CI_MODE=true ;;
+    --parity-only) PARITY_ONLY=true ;;
     --help) SHOW_HELP=true ;;
   esac
 done
@@ -46,8 +49,45 @@ if [ "$NO_PLATFORM_SPECIFIED" = true ]; then
 fi
 
 if [ "$SHOW_HELP" = true ]; then
-  head -16 "$0" | tail -14
+  head -17 "$0" | tail -15
   exit 0
+fi
+
+# --- Fast Parity-Only Check ---
+# Used by pre-push hook for quick validation
+if [ "$PARITY_ONLY" = true ]; then
+  echo "Checking CONVEX_WEBHOOK_SECRET parity (local ↔ Convex dev)..."
+
+  if [ ! -f .env.local ]; then
+    echo "❌ .env.local not found"
+    exit 1
+  fi
+
+  LOCAL_HASH=$(grep "^CONVEX_WEBHOOK_SECRET=" .env.local 2>/dev/null | cut -d= -f2- | tr -d '\n' | shasum -a 256 | cut -d' ' -f1)
+  CONVEX_HASH=$(npx convex env list 2>/dev/null | grep "^CONVEX_WEBHOOK_SECRET=" | cut -d= -f2- | tr -d '\n' | shasum -a 256 | cut -d' ' -f1)
+
+  if [ -z "$LOCAL_HASH" ]; then
+    echo "❌ CONVEX_WEBHOOK_SECRET not set in .env.local"
+    exit 1
+  fi
+
+  if [ -z "$CONVEX_HASH" ]; then
+    echo "⚠️  Could not fetch Convex env (skipping parity check)"
+    echo "   Run 'npx convex dev' to ensure Convex CLI is authenticated"
+    exit 0  # Don't block push if Convex CLI unavailable
+  fi
+
+  if [ "$LOCAL_HASH" = "$CONVEX_HASH" ]; then
+    echo "✅ CONVEX_WEBHOOK_SECRET matches"
+    exit 0
+  else
+    echo "❌ CONVEX_WEBHOOK_SECRET MISMATCH (local ≠ Convex dev)"
+    echo ""
+    echo "   Fix: npx convex env set CONVEX_WEBHOOK_SECRET \"\$(grep '^CONVEX_WEBHOOK_SECRET=' .env.local | cut -d= -f2-)\""
+    echo ""
+    echo "   This mismatch will cause checkout/webhook failures!"
+    exit 1
+  fi
 fi
 
 echo "╔══════════════════════════════════════════════════════════════╗"

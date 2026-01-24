@@ -19,6 +19,13 @@ pre-commit:
 
 pre-push:
   commands:
+    # Fast parity check - catches misconfigured secrets before push
+    env-parity:
+      run: ./scripts/verify-env.sh --parity-only
+      fail_text: |
+        CONVEX_WEBHOOK_SECRET mismatch!
+        Run: npx convex env set CONVEX_WEBHOOK_SECRET "$(grep '^CONVEX_WEBHOOK_SECRET=' .env.local | cut -d= -f2-)"
+
     test:
       run: pnpm test:ci
 
