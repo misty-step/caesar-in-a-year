@@ -22,9 +22,11 @@
     "corpus:process": ".venv/bin/python scripts/process-corpus.py --book 1 --chapter 1",
     "corpus:process-all": ".venv/bin/python scripts/process-corpus.py --all",
     "corpus:sync": "tsx scripts/corpus-sync.ts",
+    "corpus:sync:prod": "tsx scripts/corpus-sync.ts --prod",
     "corpus:enrich": "tsx scripts/enrich-corpus.ts",
     "corpus:translate": "tsx scripts/regenerate-translations.ts",
-    "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync"
+    "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync",
+    "deploy:prod": "convex deploy -y && pnpm corpus:sync:prod"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
