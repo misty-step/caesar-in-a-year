@@ -1,16 +1,15 @@
 import { headers } from "next/headers";
 import { getStripe } from "@/lib/billing/stripe";
-import { fetchMutation } from "convex/nextjs";
+import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type Stripe from "stripe";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
-// Note: Stripe SDK v20 restructured types significantly:
-// - Invoice.subscription moved to Invoice.parent.subscription_details.subscription
-// - Subscription.current_period_end no longer in types (use invoice.period_end instead)
-// Security: Mutations protected by CONVEX_WEBHOOK_SECRET - not exploitable from client
+// Security: Actions protected by CONVEX_WEBHOOK_SECRET - not exploitable from client
+// Note: Stripe SDK types may not perfectly match runtime API responses.
+// We use defensive extraction with fallbacks for maximum compatibility.
 
 /**
  * Extract customer ID from Stripe object (handles string or expanded object)
@@ -20,22 +19,24 @@ function getCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustom
 }
 
 /**
- * Get subscription ID from invoice (handles SDK v20 structure changes)
- * SDK v20 moved subscription to parent.subscription_details.subscription
+ * Get subscription ID from invoice.
+ * Stripe SDK v20 types don't include the legacy `subscription` field,
+ * but it exists in API responses for subscription invoices.
+ * We use defensive extraction with fallback to parent.subscription_details.
  */
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
-  // SDK v20: invoice.parent.subscription_details.subscription
+  // Try legacy top-level subscription field (exists in API, not in SDK types)
+  const legacySub = (invoice as unknown as { subscription?: string | { id: string } }).subscription;
+  if (legacySub) {
+    return typeof legacySub === "string" ? legacySub : legacySub.id;
+  }
+
+  // Fallback to parent.subscription_details (SDK v20+ structure)
   const parentSub = invoice.parent?.subscription_details?.subscription;
   if (parentSub) {
     return typeof parentSub === "string" ? parentSub : parentSub.id;
   }
-  // Fallback for older API versions - use type assertion since types changed
-  const legacyInvoice = invoice as unknown as { subscription?: string | { id: string } };
-  if (legacyInvoice.subscription) {
-    return typeof legacyInvoice.subscription === "string"
-      ? legacyInvoice.subscription
-      : legacyInvoice.subscription.id;
-  }
+
   return null;
 }
 
@@ -71,7 +72,7 @@ async function updateWithFallback(
     eventId: string;
   }
 ): Promise<void> {
-  const result = await fetchMutation(api.billing.updateFromStripe, {
+  const result = await fetchAction(api.billing.updateFromStripe, {
     stripeCustomerId,
     ...update,
     serverSecret: CONVEX_WEBHOOK_SECRET!,
@@ -90,14 +91,14 @@ async function updateWithFallback(
     console.warn(`[Stripe Webhook] User not found for customer ${stripeCustomerId}, attempting fallback link via userId ${userId}`);
 
     // Link customer to user
-    await fetchMutation(api.billing.linkStripeCustomer, {
+    await fetchAction(api.billing.linkStripeCustomer, {
       userId,
       stripeCustomerId,
       serverSecret: CONVEX_WEBHOOK_SECRET!,
     });
 
     // Retry the update
-    const retryResult = await fetchMutation(api.billing.updateFromStripe, {
+    const retryResult = await fetchAction(api.billing.updateFromStripe, {
       stripeCustomerId,
       ...update,
       serverSecret: CONVEX_WEBHOOK_SECRET!,
@@ -174,8 +175,9 @@ export async function POST(req: Request) {
         const stripeCustomerId = getCustomerId(subscription.customer);
         const userId = subscription.metadata?.userId;
         const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
-        // SDK v20: current_period_end moved to items, but API still returns at subscription level
-        const periodEnd = subscription.items.data[0]?.current_period_end;
+        // Extract current_period_end with fallback (root level or item level)
+        const periodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
+          ?? subscription.items.data[0]?.current_period_end;
 
         await updateWithFallback(stripeCustomerId, userId, {
           stripeSubscriptionId: subscription.id,
@@ -240,8 +242,9 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
         const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
-        // SDK v20: current_period_end moved to items
-        const periodEnd = subscription.items.data[0]?.current_period_end;
+        // Extract current_period_end with fallback (root level or item level)
+        const periodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
+          ?? subscription.items.data[0]?.current_period_end;
 
         await updateWithFallback(stripeCustomerId, undefined, {
           subscriptionStatus: status,

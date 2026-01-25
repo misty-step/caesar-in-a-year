@@ -13,7 +13,6 @@ interface HealthResponse {
   status: ServiceStatus;
   timestamp: string;
   checks: HealthCheck[];
-  config: Record<string, boolean>;
 }
 
 /**
@@ -58,13 +57,6 @@ export async function GET() {
     status: overall,
     timestamp: new Date().toISOString(),
     checks,
-    config: {
-      CLERK_CONFIGURED: !!process.env.CLERK_SECRET_KEY,
-      STRIPE_CONFIGURED: !!process.env.STRIPE_SECRET_KEY,
-      CONVEX_CONFIGURED: !!process.env.NEXT_PUBLIC_CONVEX_URL,
-      GEMINI_CONFIGURED: !!process.env.GEMINI_API_KEY,
-      WEBHOOK_SECRET_CONFIGURED: !!process.env.CONVEX_WEBHOOK_SECRET,
-    },
   };
 
   return NextResponse.json(response, {

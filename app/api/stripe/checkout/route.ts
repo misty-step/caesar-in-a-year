@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getStripe, getPriceId, type PlanType } from "@/lib/billing/stripe";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { fetchAction, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
 
 /**
- * Resolve or create a Stripe customer, preventing duplicates.
- * 1. Use existing customerId if linked
- * 2. Search Stripe by email (handles abandoned checkouts)
- * 3. Create new customer as fallback
+ * Resolve or create a Stripe customer, preventing duplicates AND account takeover.
+ *
+ * Security: We ONLY reuse an existing Stripe customer if:
+ * 1. The customer is already linked to this user in our DB, OR
+ * 2. The customer's metadata.userId matches this user (proves ownership)
+ *
+ * We do NOT link by email alone - that enables account takeover.
  */
 async function resolveStripeCustomer(
   existingCustomerId: string | undefined,
@@ -18,48 +21,48 @@ async function resolveStripeCustomer(
   userId: string,
   serverSecret: string
 ): Promise<string> {
-  // Already linked
+  // Already linked in our DB - validate it still exists in Stripe
   if (existingCustomerId) {
-    // Validate customer still exists in current Stripe account
     try {
       await getStripe().customers.retrieve(existingCustomerId);
       return existingCustomerId;
-    } catch (err: unknown) {
-      // Customer doesn't exist - likely environment mismatch (sandbox vs production)
+    } catch {
+      // Customer doesn't exist - likely environment mismatch
       console.warn(`[Checkout] Stale customer ID ${existingCustomerId}, clearing...`);
-      await fetchMutation(api.billing.clearStripeCustomer, {
+      await fetchAction(api.billing.clearStripeCustomer, {
         userId,
         serverSecret,
       });
-      // Fall through to search/create flow
     }
   }
 
-  // Search by email to prevent duplicates
+  // Search by email - but ONLY link if metadata proves ownership
   if (email) {
     const existing = await getStripe().customers.list({ email, limit: 1 });
     if (existing.data.length > 0) {
-      const customerId = existing.data[0].id;
-      console.log(`[Checkout] Found existing Stripe customer ${customerId} for user`);
-      // Link this customer to user
-      await fetchMutation(api.billing.linkStripeCustomer, {
-        userId,
-        stripeCustomerId: customerId,
-        serverSecret,
-      });
-      return customerId;
+      const customer = existing.data[0];
+      // Security: Only link if metadata confirms this user owns the customer
+      if (customer.metadata?.userId === userId) {
+        console.log(`[Checkout] Found verified customer ${customer.id} for user`);
+        await fetchAction(api.billing.linkStripeCustomer, {
+          userId,
+          stripeCustomerId: customer.id,
+          serverSecret,
+        });
+        return customer.id;
+      }
+      console.log(`[Checkout] Found customer by email but userId mismatch, creating new`);
     }
   }
 
-  // Create new customer
+  // Create new customer with userId in metadata
   const customer = await getStripe().customers.create({
     email,
     metadata: { userId },
   });
   console.log(`[Checkout] Created new customer ${customer.id}`);
 
-  // Link to user
-  await fetchMutation(api.billing.linkStripeCustomer, {
+  await fetchAction(api.billing.linkStripeCustomer, {
     userId,
     stripeCustomerId: customer.id,
     serverSecret,
@@ -117,10 +120,12 @@ export async function POST(request: NextRequest) {
     );
 
     // Calculate trial end to honor remaining trial days
-    // Uses explicit trialEndsAt, or lazy calculation from _creationTime
+    // New users without userProgress get full trial
     const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
     const trialEndMs = userProgress?.trialEndsAt
-      ?? (userProgress?._creationTime ? userProgress._creationTime + TRIAL_DURATION_MS : null);
+      ?? (userProgress?._creationTime
+        ? userProgress._creationTime + TRIAL_DURATION_MS
+        : Date.now() + TRIAL_DURATION_MS);
 
     const now = Date.now();
     // Only pass trial_end if user has remaining trial (not new users paying immediately)

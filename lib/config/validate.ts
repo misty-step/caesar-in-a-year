@@ -74,9 +74,16 @@ const REQUIRED_ENV: EnvRequirement[] = [
   },
   {
     key: "CONVEX_WEBHOOK_SECRET",
-    pattern: /^.{20,}$/, // At least 20 chars (flexible - hex or base64)
+    pattern: /^[a-f0-9]{32,}$|^[A-Za-z0-9+/=]{24,}$/, // Hex (32+) or Base64 (24+)
     required: true,
     hint: "Generate with: openssl rand -hex 32. Must match Vercel AND Convex.",
+  },
+  // App URL (required for Stripe redirects)
+  {
+    key: "NEXT_PUBLIC_APP_URL",
+    pattern: /^https?:\/\/.+/,
+    required: process.env.NODE_ENV === "production",
+    hint: "Set to your production URL (e.g., https://caesarinayear.com)",
   },
 
   // Gemini (optional - graceful fallback exists)

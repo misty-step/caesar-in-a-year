@@ -1,5 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 
 const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -144,15 +145,13 @@ export const getStatus = query({
 
 /**
  * Initialize trial for new user.
- * Protected by server secret - only callable from trusted server code.
+ * Internal mutation; action validates server secret.
  */
-export const initializeTrial = mutation({
+export const initializeTrialInternal = internalMutation({
   args: {
     userId: v.string(),
-    serverSecret: v.string(),
   },
-  handler: async (ctx, { userId, serverSecret }) => {
-    validateServerSecret(serverSecret);
+  handler: async (ctx, { userId }) => {
     const existing = await ctx.db
       .query("userProgress")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -162,7 +161,8 @@ export const initializeTrial = mutation({
 
     if (existing) {
       // User exists but no trial set - set it now
-      if (!existing.trialEndsAt) {
+      // Note: trialEndsAt=0 means "trial consumed", so check for null/undefined explicitly
+      if (existing.trialEndsAt === undefined || existing.trialEndsAt === null) {
         await ctx.db.patch(existing._id, { trialEndsAt });
       }
       return { trialEndsAt: existing.trialEndsAt ?? trialEndsAt };
@@ -182,11 +182,24 @@ export const initializeTrial = mutation({
   },
 });
 
+export const initializeTrial: ReturnType<typeof action> = action({
+  args: {
+    userId: v.string(),
+    serverSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateServerSecret(args.serverSecret);
+    return await ctx.runMutation(internal.billing.initializeTrialInternal, {
+      userId: args.userId,
+    });
+  },
+});
+
 /**
  * Update subscription status from Stripe webhook.
- * Protected by server secret - only callable from trusted server code.
+ * Internal mutation; action validates server secret.
  */
-export const updateFromStripe = mutation({
+export const updateFromStripeInternal = internalMutation({
   args: {
     stripeCustomerId: v.string(),
     stripeSubscriptionId: v.optional(v.string()),
@@ -203,10 +216,8 @@ export const updateFromStripe = mutation({
     currentPeriodEnd: v.optional(v.number()),
     eventTimestamp: v.number(),
     eventId: v.optional(v.string()),
-    serverSecret: v.string(),
   },
   handler: async (ctx, args) => {
-    validateServerSecret(args.serverSecret);
     const user = await ctx.db
       .query("userProgress")
       .withIndex("by_stripe_customer", (q) =>
@@ -259,20 +270,49 @@ export const updateFromStripe = mutation({
   },
 });
 
+export const updateFromStripe: ReturnType<typeof action> = action({
+  args: {
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.optional(v.string()),
+    subscriptionStatus: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("past_due"),
+        v.literal("canceled"),
+        v.literal("expired"),
+        v.literal("unpaid"),
+        v.literal("incomplete")
+      )
+    ),
+    currentPeriodEnd: v.optional(v.number()),
+    eventTimestamp: v.number(),
+    eventId: v.optional(v.string()),
+    serverSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateServerSecret(args.serverSecret);
+    return await ctx.runMutation(internal.billing.updateFromStripeInternal, {
+      stripeCustomerId: args.stripeCustomerId,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      subscriptionStatus: args.subscriptionStatus,
+      currentPeriodEnd: args.currentPeriodEnd,
+      eventTimestamp: args.eventTimestamp,
+      eventId: args.eventId,
+    });
+  },
+});
+
 /**
  * Link Stripe customer ID to user (called during checkout).
  * Creates userProgress if missing (new users subscribing directly).
- * Protected by server secret - only callable from trusted server code.
+ * Internal mutation; action validates server secret.
  */
-export const linkStripeCustomer = mutation({
+export const linkStripeCustomerInternal = internalMutation({
   args: {
     userId: v.string(),
     stripeCustomerId: v.string(),
-    serverSecret: v.string(),
   },
-  handler: async (ctx, { userId, stripeCustomerId, serverSecret }) => {
-    validateServerSecret(serverSecret);
-
+  handler: async (ctx, { userId, stripeCustomerId }) => {
     // Check if this Stripe customer is already linked to another user
     const existingCustomer = await ctx.db
       .query("userProgress")
@@ -307,14 +347,26 @@ export const linkStripeCustomer = mutation({
   },
 });
 
-export const clearStripeCustomer = mutation({
+export const linkStripeCustomer: ReturnType<typeof action> = action({
   args: {
     userId: v.string(),
+    stripeCustomerId: v.string(),
     serverSecret: v.string(),
   },
-  handler: async (ctx, { userId, serverSecret }) => {
-    validateServerSecret(serverSecret);
+  handler: async (ctx, args) => {
+    validateServerSecret(args.serverSecret);
+    return await ctx.runMutation(internal.billing.linkStripeCustomerInternal, {
+      userId: args.userId,
+      stripeCustomerId: args.stripeCustomerId,
+    });
+  },
+});
 
+export const clearStripeCustomerInternal = internalMutation({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, { userId }) => {
     const user = await ctx.db
       .query("userProgress")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -337,5 +389,18 @@ export const clearStripeCustomer = mutation({
     }
 
     return { success: true };
+  },
+});
+
+export const clearStripeCustomer: ReturnType<typeof action> = action({
+  args: {
+    userId: v.string(),
+    serverSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateServerSecret(args.serverSecret);
+    return await ctx.runMutation(internal.billing.clearStripeCustomerInternal, {
+      userId: args.userId,
+    });
   },
 });
