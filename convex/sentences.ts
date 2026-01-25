@@ -130,15 +130,18 @@ async function syncCorpusHandler(ctx: MutationCtx, sentences: SentenceInput[]) {
     );
   }
 
-  // 3. Upsert each sentence (patch existing, insert new)
+  // 3. Fetch ALL existing sentences once (instead of per-sentence queries)
+  const existingSentences = await ctx.db.query("sentences").collect();
+  const existingBySentenceId = new Map(
+    existingSentences.map((doc) => [doc.sentenceId, doc])
+  );
+
+  // 4. Upsert each sentence using the pre-fetched map
   let updated = 0;
   let inserted = 0;
 
   for (const sentence of sentences) {
-    const existing = await ctx.db
-      .query("sentences")
-      .withIndex("by_sentence_id", (q) => q.eq("sentenceId", sentence.sentenceId))
-      .unique();
+    const existing = existingBySentenceId.get(sentence.sentenceId);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -155,8 +158,7 @@ async function syncCorpusHandler(ctx: MutationCtx, sentences: SentenceInput[]) {
     }
   }
 
-  // 4. Delete stale sentences (not in incoming - already verified no reviews)
-  const existingSentences = await ctx.db.query("sentences").collect();
+  // 5. Delete stale sentences (not in incoming - already verified no reviews)
   let deleted = 0;
 
   for (const doc of existingSentences) {
