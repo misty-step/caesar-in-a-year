@@ -20,7 +20,19 @@ async function resolveStripeCustomer(
 ): Promise<string> {
   // Already linked
   if (existingCustomerId) {
-    return existingCustomerId;
+    // Validate customer still exists in current Stripe account
+    try {
+      await getStripe().customers.retrieve(existingCustomerId);
+      return existingCustomerId;
+    } catch (err: unknown) {
+      // Customer doesn't exist - likely environment mismatch (sandbox vs production)
+      console.warn(`[Checkout] Stale customer ID ${existingCustomerId}, clearing...`);
+      await fetchMutation(api.billing.clearStripeCustomer, {
+        userId,
+        serverSecret,
+      });
+      // Fall through to search/create flow
+    }
   }
 
   // Search by email to prevent duplicates

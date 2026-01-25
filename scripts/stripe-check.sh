@@ -101,8 +101,8 @@ if [ "$LOCAL_ONLY" = false ] && command -v stripe &> /dev/null; then
   # Validate monthly price ID exists
   if [ -n "$STRIPE_PRICE_ID" ]; then
     echo "  Validating monthly price..."
-    if stripe prices retrieve "$STRIPE_PRICE_ID" &>/dev/null; then
-      PRICE_INFO=$(stripe prices retrieve "$STRIPE_PRICE_ID" 2>/dev/null)
+    if stripe -p sandbox prices retrieve "$STRIPE_PRICE_ID" &>/dev/null; then
+      PRICE_INFO=$(stripe -p sandbox prices retrieve "$STRIPE_PRICE_ID" 2>/dev/null)
       AMOUNT=$(echo "$PRICE_INFO" | grep -o '"unit_amount": [0-9]*' | grep -o '[0-9]*')
       INTERVAL=$(echo "$PRICE_INFO" | grep -o '"interval": "[^"]*"' | cut -d'"' -f4)
       echo "  ✅ Monthly: \$$((AMOUNT/100)).$((AMOUNT%100))/$INTERVAL"
@@ -115,8 +115,8 @@ if [ "$LOCAL_ONLY" = false ] && command -v stripe &> /dev/null; then
   # Validate annual price ID exists (if set)
   if [ -n "$STRIPE_PRICE_ID_ANNUAL" ]; then
     echo "  Validating annual price..."
-    if stripe prices retrieve "$STRIPE_PRICE_ID_ANNUAL" &>/dev/null; then
-      PRICE_INFO=$(stripe prices retrieve "$STRIPE_PRICE_ID_ANNUAL" 2>/dev/null)
+    if stripe -p sandbox prices retrieve "$STRIPE_PRICE_ID_ANNUAL" &>/dev/null; then
+      PRICE_INFO=$(stripe -p sandbox prices retrieve "$STRIPE_PRICE_ID_ANNUAL" 2>/dev/null)
       AMOUNT=$(echo "$PRICE_INFO" | grep -o '"unit_amount": [0-9]*' | grep -o '[0-9]*')
       INTERVAL=$(echo "$PRICE_INFO" | grep -o '"interval": "[^"]*"' | cut -d'"' -f4)
       echo "  ✅ Annual: \$$((AMOUNT/100)).$((AMOUNT%100))/$INTERVAL"
@@ -128,12 +128,12 @@ if [ "$LOCAL_ONLY" = false ] && command -v stripe &> /dev/null; then
 
   # Check webhook endpoints
   echo "  Checking webhook endpoints..."
-  WEBHOOK_COUNT=$(stripe webhook_endpoints list --limit 10 2>/dev/null | grep -c '"id":' || echo "0")
+  WEBHOOK_COUNT=$(stripe -p sandbox webhook_endpoints list --limit 10 2>/dev/null | grep -c '"id":' || echo "0")
   if [ "$WEBHOOK_COUNT" -gt 0 ]; then
     echo "  ✅ $WEBHOOK_COUNT webhook endpoint(s) configured"
 
     # Check for duplicates
-    DUPLICATE_COUNT=$(stripe webhook_endpoints list --limit 10 2>/dev/null | grep '"url":' | sort | uniq -d | wc -l)
+    DUPLICATE_COUNT=$(stripe -p sandbox webhook_endpoints list --limit 10 2>/dev/null | grep '"url":' | sort | uniq -d | wc -l)
     if [ "$DUPLICATE_COUNT" -gt 0 ]; then
       echo "  ⚠️  Duplicate webhook URLs detected"
       ((WARNINGS++))

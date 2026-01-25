@@ -307,3 +307,35 @@ export const linkStripeCustomer = mutation({
   },
 });
 
+export const clearStripeCustomer = mutation({
+  args: {
+    userId: v.string(),
+    serverSecret: v.string(),
+  },
+  handler: async (ctx, { userId, serverSecret }) => {
+    validateServerSecret(serverSecret);
+
+    const user = await ctx.db
+      .query("userProgress")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      return { success: false, reason: "user_not_found" };
+    }
+
+    if (user.stripeCustomerId) {
+      await ctx.db.patch(user._id, {
+        stripeCustomerId: undefined,
+        stripeSubscriptionId: undefined,
+        subscriptionStatus: undefined,
+        currentPeriodEnd: undefined,
+        lastStripeEventTimestamp: undefined,
+        lastStripeEventId: undefined,
+      });
+      console.log(`[Billing] Cleared Stripe customer for user: ${userId}`);
+    }
+
+    return { success: true };
+  },
+});
