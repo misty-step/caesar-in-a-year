@@ -1,0 +1,105 @@
+# CI - Quality gates for PRs and main branch
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version from package.json packageManager
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Token lint
+        run: pnpm lint:tokens
+
+      - name: Test with coverage
+        run: pnpm test:ci
+
+      - name: Verify env documentation
+        run: |
+          # Check that all env vars used in code are documented in .env.example
+          echo "Checking env var documentation..."
+          UNDOCUMENTED=""
+          for var in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET STRIPE_PRICE_ID CONVEX_WEBHOOK_SECRET CLERK_JWT_ISSUER_DOMAIN; do
+            if ! grep -q "^$var=" .env.example; then
+              UNDOCUMENTED="$UNDOCUMENTED $var"
+            fi
+          done
+          if [ -n "$UNDOCUMENTED" ]; then
+            echo "❌ Undocumented env vars:$UNDOCUMENTED"
+            echo "Add these to .env.example"
+            exit 1
+          fi
+          echo "✅ All critical env vars documented"
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Clerk - real keys for proper build
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          # Convex - placeholder (actual deployment not needed for build)
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          # Stripe - placeholders for build (actual keys not needed)
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          STRIPE_PRICE_ID: price_placeholder
+          # Server secret - placeholder
+          CONVEX_WEBHOOK_SECRET: placeholder_secret_for_build
+          # Skip runtime validation during build
+          CI: true
+
+  # Convex validation (only if convex files changed)
+  convex:
+    name: Convex Validation
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'convex/') ||
+      contains(github.event.pull_request.changed_files, 'convex/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version from package.json packageManager
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check Convex functions
+        run: pnpm tsc --noEmit --project convex/tsconfig.json

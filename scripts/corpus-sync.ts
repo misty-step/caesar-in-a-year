@@ -8,6 +8,7 @@
  *   pnpm corpus:sync                    # Sync content/corpus.json
  *   pnpm corpus:sync --file other.json  # Sync specific file
  *   pnpm corpus:sync --dry-run          # Validate without writing
+ *   pnpm corpus:sync --prod             # Sync to production Convex deployment
  */
 
 import dotenv from "dotenv";
@@ -45,6 +46,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   let file = "content/corpus.json";
   let dryRun = false;
+  let prod = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--file" && args[i + 1]) {
@@ -52,6 +54,8 @@ function parseArgs() {
       i++;
     } else if (args[i] === "--dry-run") {
       dryRun = true;
+    } else if (args[i] === "--prod") {
+      prod = true;
     } else if (args[i] === "--help" || args[i] === "-h") {
       console.log(`
 Usage: corpus-sync.ts [options]
@@ -59,16 +63,21 @@ Usage: corpus-sync.ts [options]
 Options:
   --file <path>   Path to corpus.json (default: content/corpus.json)
   --dry-run       Validate without syncing to Convex
+  --prod          Use production Convex deployment
   --help, -h      Show this help message
 `);
       process.exit(0);
     }
   }
 
-  return { file, dryRun };
+  return { file, dryRun, prod };
 }
 
-async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
+async function syncCorpus(
+  filePath: string,
+  dryRun: boolean,
+  prod: boolean
+): Promise<void> {
   // 1. Load file
   if (!fs.existsSync(filePath)) {
     console.error(`Error: File not found: ${filePath}`);
@@ -119,7 +128,11 @@ async function syncCorpus(filePath: string, dryRun: boolean): Promise<void> {
   }
 
   // 4. Check for Convex URL (support both naming conventions)
-  const convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+  let convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (prod) {
+    convexUrl = "https://enduring-lyrebird-918.convex.cloud";
+    console.log("Targeting production deployment...");
+  }
   if (!convexUrl) {
     console.error("\nError: CONVEX_URL or NEXT_PUBLIC_CONVEX_URL environment variable not set");
     console.error("Run `npx convex dev` to configure Convex deployment");
@@ -216,5 +229,5 @@ async function createBackup(client: ConvexHttpClient): Promise<void> {
 }
 
 // Main
-const { file, dryRun } = parseArgs();
-syncCorpus(file, dryRun);
+const { file, dryRun, prod } = parseArgs();
+syncCorpus(file, dryRun, prod);

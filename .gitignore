@@ -47,7 +47,6 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-lefthook.yml
 tsconfig.tsbuildinfo
 content/raw/chapter_counts.json
 
@@ -57,3 +56,7 @@ backups/
 
 # Design exploration catalogue
 .design-catalogue/
+
+thinktank_*/
+thinktank.log
+coverage/

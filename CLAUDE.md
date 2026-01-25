@@ -17,13 +17,41 @@ pnpm install         # Install dependencies
 pnpm dev             # Start dev server on http://localhost:3000
 pnpm build           # Production build
 pnpm start           # Run production server
+pnpm check           # Run all linters (ESLint + token lint)
+pnpm stripe:check    # Validate Stripe configuration
 ```
 
 ## Environment
 
-Set in `.env.local`:
-- `GEMINI_API_KEY` — AI-powered translation grading
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Authentication
+### Variable Reference
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | AI-powered translation grading |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk client auth |
+| `CLERK_SECRET_KEY` | Clerk server auth |
+| `CLERK_JWT_ISSUER_DOMAIN` | JWT validation (Convex only) |
+| `STRIPE_SECRET_KEY` | Stripe API |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client |
+| `STRIPE_PRICE_ID` | Subscription price |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `CONVEX_WEBHOOK_SECRET` | Server-to-server auth for billing |
+
+### Platform Locations (Critical!)
+
+| Variable | Local | Vercel | Convex |
+|----------|:-----:|:------:|:------:|
+| `CLERK_*` (client/server) | ✓ | ✓ | - |
+| `CLERK_JWT_ISSUER_DOMAIN` | - | - | ✓ |
+| `STRIPE_*` | ✓ | ✓ | - |
+| `GEMINI_API_KEY` | ✓ | ✓ | - |
+| `CONVEX_WEBHOOK_SECRET` | ✓ | ✓ | ✓ |
+
+**Common pitfalls:**
+- `CLERK_JWT_ISSUER_DOMAIN` must match your Clerk instance domain
+- Dev: `https://YOUR-INSTANCE.clerk.accounts.dev`
+- Prod: `https://clerk.yourdomain.com` (custom domain)
+- `CONVEX_WEBHOOK_SECRET` must be identical across Vercel and Convex
 
 ## Architecture
 
@@ -56,6 +84,21 @@ Deep module: `gradeTranslation()` calls Gemini 2.5 Flash with structured JSON ou
 
 ### Data Layer
 In-memory adapter (`lib/data/adapter.ts`) with Convex-ready interface. Future: real persistence.
+
+### Billing (`lib/billing/`, `convex/billing.ts`)
+Stripe subscription with 14-day trial. Deep module pattern:
+- `lib/billing/stripe.ts` — Stripe client singleton, PRICE_ID export
+- `convex/billing.ts` — Subscription state, `hasAccess()`, `updateFromStripe()`
+- `app/api/webhooks/stripe/route.ts` — Webhook handler with signature verification
+
+**Billing states**: `active`, `past_due`, `canceled`, `expired`, `unpaid`, `incomplete`
+
+**Access logic** (in `hasAccess()`):
+1. Active subscription → access
+2. Canceled but in paid period → access
+3. Past due but in grace period → access
+4. Trial active → access
+5. Everything else → no access
 
 ### Design System (Kinetic Codex)
 
@@ -92,3 +135,58 @@ Achievement:     text-achievement (XP/mastery)
 - `app/globals.css` — Token definitions, base styles
 - `lib/design/index.ts` — cn() utility, tokens export
 - `components/UI/` — CVA-based primitives (Button, Card, etc.)
+
+## Quality Gates
+
+**Git hooks (Lefthook):**
+- `pre-commit`: lint, typecheck, token lint (staged files)
+- `pre-push`: env parity check, test with coverage, build, convex typecheck
+
+**Local checks:**
+```bash
+pnpm check           # ESLint + token lint
+pnpm stripe:check    # Stripe config validation (requires env vars loaded)
+pnpm test            # Vitest unit tests
+pnpm test:ci         # Tests with coverage
+```
+
+**CI (GitHub Actions):**
+- Runs on PRs to master and pushes to master
+- Lint, typecheck, token lint, test, build
+- Convex validation when convex/ files change
+
+**Pre-deployment:**
+- Run `pnpm stripe:check` to validate price IDs exist
+- Verify Vercel env vars: `npx vercel env ls`
+- Verify Convex prod env: `CONVEX_DEPLOYMENT=prod:xxx npx convex env list`
+
+**Scripts:**
+- `scripts/lint-tokens.sh` — Design token compliance
+- `scripts/stripe-check.sh` — Stripe configuration audit
+- `scripts/verify-env.sh` — Environment variable validation across platforms
+
+## Before Deploying Billing Changes
+
+**Critical:** Mocked tests don't catch configuration issues. Always verify manually.
+
+```bash
+# 1. Verify secret parity (this is now in pre-push, but double-check)
+./scripts/verify-env.sh --parity-only
+
+# 2. Validate Stripe configuration
+pnpm stripe:check
+
+# 3. Test checkout flow locally (actual Stripe test mode)
+pnpm dev  # Then navigate to /subscribe and click "Subscribe Now"
+
+# 4. Verify health endpoint
+curl http://localhost:3000/api/health | jq
+
+# 5. After deploy, verify webhook delivery in Stripe Dashboard
+```
+
+**If checkout fails with "Unauthorized":**
+```bash
+# Secret mismatch - sync local to Convex
+npx convex env set CONVEX_WEBHOOK_SECRET "$(grep '^CONVEX_WEBHOOK_SECRET=' .env.local | cut -d= -f2-)"
+```

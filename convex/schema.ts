@@ -14,14 +14,34 @@ export default defineSchema({
     .index("by_difficulty", ["difficulty"])
     .index("by_order", ["order"]),
 
-  // User-level stats (streak, XP, content gating)
+  // User-level stats (streak, XP, content gating) + billing
   userProgress: defineTable({
     userId: v.string(), // Clerk subject ID
     streak: v.number(), // Consecutive days with activity
     totalXp: v.number(), // Gamification points
     maxDifficulty: v.number(), // Content gating threshold
     lastSessionAt: v.number(), // Unix ms - for streak calculation
-  }).index("by_user", ["userId"]),
+
+    // Billing fields
+    trialEndsAt: v.optional(v.number()), // Unix ms - trial expiration
+    stripeCustomerId: v.optional(v.string()), // Stripe customer ID
+    stripeSubscriptionId: v.optional(v.string()), // Stripe subscription ID
+    subscriptionStatus: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("past_due"),
+        v.literal("canceled"),
+        v.literal("expired"),
+        v.literal("unpaid"),
+        v.literal("incomplete")
+      )
+    ),
+    currentPeriodEnd: v.optional(v.number()), // Unix ms - subscription period end
+    lastStripeEventTimestamp: v.optional(v.number()), // Unix ms - for idempotency
+    lastStripeEventId: v.optional(v.string()), // Stripe event ID - strict dedup
+  })
+    .index("by_user", ["userId"])
+    .index("by_stripe_customer", ["stripeCustomerId"]),
 
   // Learning sessions (persisted for cross-request survival)
   sessions: defineTable({
