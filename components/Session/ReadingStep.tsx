@@ -175,7 +175,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
                 key={wI}
                 onClick={() => handleWordClick(word)}
                 className={cn(
-                  'transition-colors duration-fast inline-block mr-1.5 rounded px-1 -mx-1',
+                  'transition-colors duration-fast inline-block rounded px-0.5',
                   hasGloss && 'cursor-pointer',
                   isSelected
                     ? 'bg-accent text-white'
