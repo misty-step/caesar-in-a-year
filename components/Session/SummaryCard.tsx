@@ -4,6 +4,7 @@ import { Label } from '@/components/UI/Label';
 import { Button } from '@/components/UI/Button';
 import { Card } from '@/components/UI/Card';
 import type { Session } from '@/lib/data/types';
+import { XP_PER_ITEM } from '@/lib/progress/xp';
 
 interface SummaryCardProps {
   session: Session;
@@ -41,8 +42,7 @@ function LaurelIcon() {
  */
 export function SummaryCard({ session }: SummaryCardProps) {
   const totalItems = session.items.length;
-  // Estimate XP: 10 per item (simplified)
-  const estimatedXP = totalItems * 10;
+  const estimatedXP = totalItems * XP_PER_ITEM;
 
   return (
     <Card as="section" elevation="flat" padding="lg" className="max-w-2xl mx-auto space-y-6 animate-fade-in">

@@ -10,6 +10,7 @@ import { gradeGist } from '@/lib/ai/gradeGist';
 import { shouldGenerateVocabDrills, generateVocabDrills } from '@/lib/ai/generateVocabDrills';
 import { advanceSession } from '@/lib/session/advance';
 import { computeStreak } from '@/lib/progress/streak';
+import { XP_PER_ITEM } from '@/lib/progress/xp';
 import { GradeStatus, type GradingResult, type SessionStatus, type AttemptHistoryEntry } from '@/lib/data/types';
 
 export type SubmitReviewInput = {
@@ -223,7 +224,7 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
       await data.upsertUserProgress({
         userId,
         streak: streakResult.nextStreak,
-        totalXp: (progress?.totalXp ?? 0) + session.items.length,
+        totalXp: (progress?.totalXp ?? 0) + session.items.length * XP_PER_ITEM,
         maxDifficulty: progress?.maxDifficulty ?? 1,
         lastSessionAt: streakResult.nextLastSessionAtMs,
       });
