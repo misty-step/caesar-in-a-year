@@ -8,3 +8,4 @@
 export { cn } from './utils';
 export { primitives, semantics, motion } from './tokens';
 export type { Primitive, Semantic, Motion } from './tokens';
+export { logger, logError } from '../logger';

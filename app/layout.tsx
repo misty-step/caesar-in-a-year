@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Inter, Fraunces, Crimson_Pro } from 'next/font/google';
 import { Providers } from './providers';
 import { validateConfigIfNeeded } from '@/lib/config/validate';
+import { PostHogProvider } from '@/lib/posthog';
 import './globals.css';
 
 // Validate environment configuration at startup (server-side only)
@@ -39,7 +41,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${fraunces.variable} ${crimson.variable} ${inter.variable}`}>
       <body className="font-sans antialiased bg-background text-text-primary">
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={null}>
+            <PostHogProvider>{children}</PostHogProvider>
+          </Suspense>
+        </Providers>
       </body>
     </html>
   );

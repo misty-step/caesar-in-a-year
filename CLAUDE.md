@@ -36,6 +36,12 @@ pnpm stripe:check    # Validate Stripe configuration
 | `STRIPE_PRICE_ID` | Subscription price |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
 | `CONVEX_WEBHOOK_SECRET` | Server-to-server auth for billing |
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry error tracking |
+| `SENTRY_AUTH_TOKEN` | Source map uploads (CI only) |
+| `SENTRY_ORG` | Sentry organization slug |
+| `SENTRY_PROJECT` | Sentry project slug |
+| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog client analytics |
+| `POSTHOG_API_KEY` | PostHog server-side events |
 
 ### Platform Locations (Critical!)
 
@@ -46,6 +52,8 @@ pnpm stripe:check    # Validate Stripe configuration
 | `STRIPE_*` | ✓ | ✓ | - |
 | `GEMINI_API_KEY` | ✓ | ✓ | - |
 | `CONVEX_WEBHOOK_SECRET` | ✓ | ✓ | ✓ |
+| `SENTRY_*` | ✓ | ✓ | - |
+| `POSTHOG_*` | ✓ | ✓ | - |
 
 **Common pitfalls:**
 - `CLERK_JWT_ISSUER_DOMAIN` must match your Clerk instance domain
