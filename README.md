@@ -46,12 +46,39 @@ Under the hood:
 
 ## Scripts
 
-- `pnpm dev` – run dev server.
-- `pnpm build` / `pnpm start` – production build and serve.
-- `pnpm lint` – ESLint (Next config).
-- `pnpm vitest` – run unit tests (lib + selected app routes).
+| Command | Purpose |
+|---------|---------|
+| `pnpm dev` | Dev server with hot reload |
+| `pnpm build` | Production build |
+| `pnpm start` | Serve production build |
+| `pnpm check` | Lint + token compliance |
+| `pnpm test` | Unit tests (Vitest) |
+| `pnpm stripe:check` | Validate Stripe config |
 
-Run lint and tests before pushing. The in-memory adapter is for local development only; swap in a real Convex/DB adapter before production.
+Run lint and tests before pushing (enforced via Lefthook pre-commit hooks).
+
+## Observability
+
+**Error Tracking (Sentry)**
+- Client, server, and edge runtime errors captured
+- PII scrubbed before transmission
+- Session replay on errors (production only)
+
+**Analytics (PostHog)**
+- Pageview tracking with Clerk user identification
+- Disabled in development by default
+- Server-side events via `getPostHogServer()`
+
+**Structured Logging**
+- `logger.info/warn/error()` with JSON output in production
+- `logError(error, context)` for error normalization
+
+Configure via `.env.local`:
+```bash
+NEXT_PUBLIC_SENTRY_DSN=...
+NEXT_PUBLIC_POSTHOG_KEY=...
+POSTHOG_API_KEY=...
+```
 
 ## Corpus Pipeline
 
