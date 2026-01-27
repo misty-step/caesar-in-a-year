@@ -35,6 +35,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Caesar in a Year',
   description: 'Learn to read De Bello Gallico with daily guided sessions.',
+  openGraph: {
+    title: 'Caesar in a Year',
+    description: 'Learn to read De Bello Gallico with daily guided sessions.',
+    images: ['/og.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
