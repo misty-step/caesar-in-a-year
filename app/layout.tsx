@@ -36,8 +36,6 @@ export const metadata: Metadata = {
   title: 'Caesar in a Year',
   description: 'Learn to read De Bello Gallico with daily guided sessions.',
   openGraph: {
-    title: 'Caesar in a Year',
-    description: 'Learn to read De Bello Gallico with daily guided sessions.',
     images: ['/og.png'],
   },
   twitter: {
