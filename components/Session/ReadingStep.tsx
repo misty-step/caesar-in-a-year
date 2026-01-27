@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { GradeStatus, type ReadingPassage, type GradingResult, type SessionStatus, type ErrorType } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
+import { AudioButton } from '@/components/UI/AudioButton';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { Card } from '@/components/UI/Card';
@@ -198,7 +199,10 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
         <Label>
           <LatinText latin="Lectio Nova" english="New Reading" />
         </Label>
-        <h2 className="text-2xl md:text-3xl font-serif text-text-primary">{reading.title}</h2>
+        <div className="flex items-center gap-2 justify-center">
+          <h2 className="text-2xl md:text-3xl font-serif text-text-primary">{reading.title}</h2>
+          <AudioButton text={reading.latinText.join(' ')} />
+        </div>
       </div>
 
       {/* Passage card */}

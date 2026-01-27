@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { GradeStatus, type VocabCard, type SessionStatus } from '@/lib/data/types';
 import { type SimpleGradingResult } from '@/lib/ai/grading-utils';
 import { Button } from '@/components/UI/Button';
+import { AudioButton } from '@/components/UI/AudioButton';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
@@ -107,9 +108,12 @@ export const VocabDrillStep: React.FC<VocabDrillStepProps> = ({
         <Label>
           <LatinText latin="Vocabulum" english="Vocabulary" />
         </Label>
-        <h2 className="text-3xl md:text-4xl font-serif text-text-primary leading-tight">
-          {showFormSubtitle ? quotedForm : vocab.latinWord}
-        </h2>
+        <div className="flex items-center gap-2 justify-center">
+          <h2 className="text-3xl md:text-4xl font-serif text-text-primary leading-tight">
+            {showFormSubtitle ? quotedForm : vocab.latinWord}
+          </h2>
+          <AudioButton text={vocab.latinWord} />
+        </div>
         {showFormSubtitle && (
           <p className="text-sm text-text-muted">
             ({vocab.latinWord})

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { GradeStatus, type Sentence, type GradingResult, type SessionStatus, type AttemptHistoryEntry, type ErrorType } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
+import { AudioButton } from '@/components/UI/AudioButton';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { GradingLoader } from '@/components/UI/GradingLoader';
@@ -199,8 +200,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           <Label>
             <LatinText latin="Recognitio" english="Review" />
           </Label>
-          {feedback ? renderInteractiveLatin() : (
-            <h2 className="text-3xl md:text-4xl font-serif text-text-primary leading-tight">{sentence.latin}</h2>
+          {feedback ? (
+            <div className="flex items-center gap-2 justify-center">
+              {renderInteractiveLatin()}
+              <AudioButton text={sentence.latin} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 justify-center">
+              <h2 className="text-3xl md:text-4xl font-serif text-text-primary leading-tight">{sentence.latin}</h2>
+              <AudioButton text={sentence.latin} />
+            </div>
           )}
         </div>
 
