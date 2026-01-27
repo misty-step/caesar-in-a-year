@@ -15,20 +15,20 @@ function serialize(level: LogLevel, message: string, fields?: LogFields): string
 function write(level: LogLevel, message: string, fields?: LogFields): void {
   if (level === 'debug' && !isDevelopment) return;
 
+  const logMethods: Record<LogLevel, (...args: unknown[]) => void> = {
+    debug: console.debug,
+    info: console.log,
+    warn: console.warn,
+    error: console.error,
+  };
+
+  if (isDevelopment) {
+    logMethods[level](message, fields ?? {});
+    return;
+  }
+
   const line = serialize(level, message, fields);
-  if (level === 'debug') {
-    console.debug(line);
-    return;
-  }
-  if (level === 'info') {
-    console.log(line);
-    return;
-  }
-  if (level === 'warn') {
-    console.warn(line);
-    return;
-  }
-  console.error(line);
+  logMethods[level](line);
 }
 
 export const logger = {
@@ -52,7 +52,6 @@ function normalizeError(error: unknown): { message: string; fields: LogFields } 
       message: error.message,
       fields: {
         errorName: error.name,
-        errorMessage: error.message,
         stack: error.stack,
       },
     };
