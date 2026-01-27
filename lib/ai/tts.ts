@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { callWithRetry, getGeminiClient } from '@/lib/ai/grading-utils';
 

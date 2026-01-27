@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { put, head } from '@vercel/blob';
 

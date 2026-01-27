@@ -42,6 +42,7 @@
     "posthog-node": "^5.24.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "stripe": "^20.1.2",
     "svix": "^1.84.1",
