@@ -141,8 +141,10 @@ Achievement:     text-achievement (XP/mastery)
 
 **Files**:
 - `app/globals.css` — Token definitions, base styles
-- `lib/design/index.ts` — cn() utility, tokens export
+- `lib/design/index.ts` — cn() utility, tokens export (design-only, no cross-cutting concerns)
 - `components/UI/` — CVA-based primitives (Button, Card, etc.)
+
+**Barrel file organization**: Each barrel (`index.ts`) exports only its domain. Cross-cutting concerns (logger, auth, etc.) have their own entry points — don't mix them into unrelated barrels.
 
 ## Quality Gates
 
