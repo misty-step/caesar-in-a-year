@@ -1,56 +1,68 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogFields = Record<string, unknown>;
 
-interface LogContext {
-  [key: string]: unknown;
-}
+const isDevelopment = process.env.NODE_ENV === 'development';
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
-  [key: string]: unknown;
-}
-
-function formatLog(level: LogLevel, message: string, context?: LogContext): string {
-  const entry: LogEntry = {
+function serialize(level: LogLevel, message: string, fields?: LogFields): string {
+  return JSON.stringify({
     level,
     message,
     timestamp: new Date().toISOString(),
-    ...context,
-  };
-  return JSON.stringify(entry);
+    ...fields,
+  });
+}
+
+function write(level: LogLevel, message: string, fields?: LogFields): void {
+  if (level === 'debug' && !isDevelopment) return;
+
+  const line = serialize(level, message, fields);
+  if (level === 'debug') {
+    console.debug(line);
+    return;
+  }
+  if (level === 'info') {
+    console.log(line);
+    return;
+  }
+  if (level === 'warn') {
+    console.warn(line);
+    return;
+  }
+  console.error(line);
 }
 
 export const logger = {
-  debug(message: string, context?: LogContext) {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(formatLog('debug', message, context));
-    }
+  debug(message: string, fields?: LogFields): void {
+    write('debug', message, fields);
   },
-
-  info(message: string, context?: LogContext) {
-    console.log(formatLog('info', message, context));
+  info(message: string, fields?: LogFields): void {
+    write('info', message, fields);
   },
-
-  warn(message: string, context?: LogContext) {
-    console.warn(formatLog('warn', message, context));
+  warn(message: string, fields?: LogFields): void {
+    write('warn', message, fields);
   },
-
-  error(message: string, context?: LogContext) {
-    console.error(formatLog('error', message, context));
+  error(message: string, fields?: LogFields): void {
+    write('error', message, fields);
   },
 };
 
-export function logError(error: unknown, context?: LogContext) {
-  const errorContext: LogContext = { ...context };
-
+function normalizeError(error: unknown): { message: string; fields: LogFields } {
   if (error instanceof Error) {
-    errorContext.errorName = error.name;
-    errorContext.errorMessage = error.message;
-    errorContext.stack = error.stack;
-  } else {
-    errorContext.error = String(error);
+    return {
+      message: error.message,
+      fields: {
+        errorName: error.name,
+        errorMessage: error.message,
+        stack: error.stack,
+      },
+    };
   }
 
-  logger.error(error instanceof Error ? error.message : String(error), errorContext);
+  const message = String(error);
+  return { message, fields: { error: message } };
+}
+
+export function logError(error: unknown, fields: LogFields = {}): void {
+  const normalized = normalizeError(error);
+  logger.error(normalized.message, { ...fields, ...normalized.fields });
 }
