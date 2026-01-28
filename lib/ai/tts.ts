@@ -1,16 +1,11 @@
 import 'server-only';
 
-import { callWithRetry, getGeminiClient } from '@/lib/ai/grading-utils';
-
 // === Config ===
-const MODEL_NAME = 'gemini-2.5-flash-tts';
-const LANGUAGE_CODE = 'la-VA';
+const MODEL_NAME = 'gemini-2.5-flash-preview-tts';
 const VOICE_NAME = 'Charon';
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 15000;
 
 // === Circuit Breaker ===
-// State machine: CLOSED -> OPEN (after 5 failures) -> HALF_OPEN (after 60s)
-// HALF_OPEN: single trial call - success -> CLOSED, failure -> OPEN
 let consecutiveFailures = 0;
 const FAILURE_THRESHOLD = 5;
 const OPEN_CIRCUIT_RESET_MS = 60000;
@@ -19,7 +14,7 @@ let lastFailureTime = 0;
 function isCircuitOpen(): boolean {
   if (consecutiveFailures >= FAILURE_THRESHOLD) {
     if (Date.now() - lastFailureTime > OPEN_CIRCUIT_RESET_MS) {
-      return false; // Half-open: try again
+      return false;
     }
     return true;
   }
@@ -40,39 +35,70 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     throw new Error('Text is required for TTS');
   }
 
+  // Gemini TTS fails on single words - wrap with instruction
+  const trimmedText = text.trim();
+  const isSingleWord = !/\s/.test(trimmedText);
+  const isVeryShort = trimmedText.length < 15;
+  const textToSend =
+    isSingleWord || isVeryShort ? `Please say: ${trimmedText}` : trimmedText;
+
   if (isCircuitOpen()) {
     console.warn('TTS circuit breaker open - skipping AI call');
     throw new Error('TTS circuit breaker open');
   }
 
-  const ai = getGeminiClient();
-  if (!ai) {
-    throw new Error('Gemini client unavailable');
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY not configured');
   }
 
-  try {
-    const response = await callWithRetry(
-      () =>
-        ai.models.generateContent({
-          model: MODEL_NAME,
-          contents: text,
-          config: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: VOICE_NAME,
-                },
-              },
-              languageCode: LANGUAGE_CODE,
-            },
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+  const body = {
+    contents: [
+      {
+        parts: [{ text: textToSend }],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: VOICE_NAME,
           },
-        }),
-      { timeoutMs: TIMEOUT_MS }
+        },
+      },
+    },
+  };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('TTS API error:', response.status, errorText);
+      throw new Error(`TTS API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(
+      'TTS response candidates:',
+      JSON.stringify(data.candidates?.[0], null, 2)?.slice(0, 500)
     );
 
-    const base64Audio =
-      response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const base64Audio = data.candidates?.[0]?.content?.parts?.[0]?.inlineData
+      ?.data;
     if (!base64Audio) {
       throw new Error('Empty audio response from TTS');
     }
