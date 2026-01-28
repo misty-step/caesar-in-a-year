@@ -11,6 +11,9 @@ export function pcmToWav(pcmData: Uint8Array): Uint8Array {
   const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
   const blockAlign = (numChannels * bitsPerSample) / 8;
   const dataSize = pcmData.length;
+  if (dataSize % blockAlign !== 0) {
+    throw new Error('PCM data length must align to sample size');
+  }
   const fileSize = 36 + dataSize;
 
   const buffer = new ArrayBuffer(44 + dataSize);

@@ -201,7 +201,7 @@ export const ReadingStep: React.FC<ReadingStepProps> = ({ reading, sessionId, it
         </Label>
         <div className="flex items-center gap-2 justify-center">
           <h2 className="text-2xl md:text-3xl font-serif text-text-primary">{reading.title}</h2>
-          <AudioButton text={reading.latinText.join(' ')} />
+          <AudioButton text={reading.title} />
         </div>
       </div>
 

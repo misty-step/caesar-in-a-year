@@ -72,18 +72,16 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     },
   };
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -92,10 +90,6 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     }
 
     const data = await response.json();
-    console.log(
-      'TTS response candidates:',
-      JSON.stringify(data.candidates?.[0], null, 2)?.slice(0, 500)
-    );
 
     const base64Audio = data.candidates?.[0]?.content?.parts?.[0]?.inlineData
       ?.data;
@@ -109,5 +103,7 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     console.error('TTS generation failed:', error);
     recordFailure();
     throw error instanceof Error ? error : new Error('TTS generation failed');
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

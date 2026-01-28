@@ -93,6 +93,15 @@ async function testTTS() {
         });
 
         const responseText = await response.text();
+
+        if (!response.ok) {
+          console.log('Result: ❌ Failed');
+          console.log('Finish reason: http_error');
+          console.log('Status:', response.status);
+          console.log('===');
+          continue;
+        }
+
         let data: any;
         try {
           data = JSON.parse(responseText);
