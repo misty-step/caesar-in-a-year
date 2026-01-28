@@ -1,4 +1,5 @@
 import 'server-only';
+import { logger, logError } from '@/lib/logger';
 
 // === Config ===
 const MODEL_NAME = 'gemini-2.5-flash-preview-tts';
@@ -43,7 +44,7 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     isSingleWord || isVeryShort ? `Please say: ${trimmedText}` : trimmedText;
 
   if (isCircuitOpen()) {
-    console.warn('TTS circuit breaker open - skipping AI call');
+    logger.warn('TTS circuit breaker open - skipping AI call');
     throw new Error('TTS circuit breaker open');
   }
 
@@ -85,7 +86,7 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('TTS API error:', response.status, errorText);
+      logger.error('TTS API error', { status: response.status, body: errorText.slice(0, 200) });
       throw new Error(`TTS API error: ${response.status}`);
     }
 
@@ -100,7 +101,7 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
     recordSuccess();
     return new Uint8Array(Buffer.from(base64Audio, 'base64'));
   } catch (error) {
-    console.error('TTS generation failed:', error);
+    logError(error, { context: 'TTS generation' });
     recordFailure();
     throw error instanceof Error ? error : new Error('TTS generation failed');
   } finally {
