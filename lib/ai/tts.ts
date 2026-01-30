@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger, logError } from '@/lib/logger';
+import { CircuitBreaker } from '@/lib/ai/circuitBreaker';
 
 // === Config ===
 const MODEL_NAME = 'gemini-2.5-flash-preview-tts';
@@ -7,29 +8,11 @@ const VOICE_NAME = 'Charon';
 const TIMEOUT_MS = 15000;
 
 // === Circuit Breaker ===
-let consecutiveFailures = 0;
-const FAILURE_THRESHOLD = 5;
-const OPEN_CIRCUIT_RESET_MS = 60000;
-let lastFailureTime = 0;
-
-function isCircuitOpen(): boolean {
-  if (consecutiveFailures >= FAILURE_THRESHOLD) {
-    if (Date.now() - lastFailureTime > OPEN_CIRCUIT_RESET_MS) {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-function recordSuccess() {
-  consecutiveFailures = 0;
-}
-
-function recordFailure() {
-  consecutiveFailures++;
-  lastFailureTime = Date.now();
-}
+const circuitBreaker = new CircuitBreaker({
+  name: 'tts',
+  threshold: 5,
+  resetMs: 60000,
+});
 
 export async function generateLatinAudio(text: string): Promise<Uint8Array> {
   if (!text?.trim()) {
@@ -43,7 +26,7 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
   const textToSend =
     isSingleWord || isVeryShort ? `Please say: ${trimmedText}` : trimmedText;
 
-  if (isCircuitOpen()) {
+  if (circuitBreaker.isOpen()) {
     logger.warn('TTS circuit breaker open - skipping AI call');
     throw new Error('TTS circuit breaker open');
   }
@@ -98,11 +81,11 @@ export async function generateLatinAudio(text: string): Promise<Uint8Array> {
       throw new Error('Empty audio response from TTS');
     }
 
-    recordSuccess();
+    circuitBreaker.recordSuccess();
     return new Uint8Array(Buffer.from(base64Audio, 'base64'));
   } catch (error) {
     logError(error, { context: 'TTS generation' });
-    recordFailure();
+    circuitBreaker.recordFailure();
     throw error instanceof Error ? error : new Error('TTS generation failed');
   } finally {
     clearTimeout(timeoutId);
