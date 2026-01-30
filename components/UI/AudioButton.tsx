@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { normalizeLatinText } from '@/lib/audio/textNormalization';
 import { cn } from '@/lib/design';
 
 // Global audio controller to auto-stop previous playback.
@@ -12,10 +13,6 @@ type AudioState = 'idle' | 'loading' | 'playing' | 'error';
 interface AudioButtonProps {
   text: string;
   className?: string;
-}
-
-function normalizeLatinText(text: string): string {
-  return text.normalize('NFC').trim().replace(/\s+/g, ' ');
 }
 
 async function sha256Hex(input: string): Promise<string> {
