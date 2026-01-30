@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 
 const DEFAULT_LIMIT = 10;
@@ -228,7 +228,8 @@ export const getMasteredAtLevel = query({
 });
 
 // One-time migration: backfill sentenceDifficulty for existing reviews
-export const backfillSentenceDifficulty = mutation({
+// Internal mutation: only callable from Convex dashboard/scripts, not from client
+export const backfillSentenceDifficulty = internalMutation({
   handler: async (ctx) => {
     const reviews = await ctx.db.query("sentenceReviews").collect();
     let updated = 0;
