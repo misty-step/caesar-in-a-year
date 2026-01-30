@@ -1,4 +1,5 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
+import { CircuitBreaker } from "@/lib/ai/circuitBreaker";
 import { GradeStatus, type GradingResult } from "@/lib/data/types";
 
 // === Config ===
@@ -11,28 +12,22 @@ export const MAX_ATTEMPTS = 3;
 // State machine: CLOSED -> OPEN (after 5 failures) -> HALF_OPEN (after 60s)
 // HALF_OPEN: single trial call - success -> CLOSED, failure -> OPEN
 // See docs/architecture/grading-flow.md for full diagram
-let consecutiveFailures = 0;
-const FAILURE_THRESHOLD = 5;
-const OPEN_CIRCUIT_RESET_MS = 60000;
-let lastFailureTime = 0;
+const circuitBreaker = new CircuitBreaker({
+  name: "grading-utils",
+  threshold: 5,
+  resetMs: 60000,
+});
 
 export function isCircuitOpen(): boolean {
-  if (consecutiveFailures >= FAILURE_THRESHOLD) {
-    if (Date.now() - lastFailureTime > OPEN_CIRCUIT_RESET_MS) {
-      return false; // Half-open: try again
-    }
-    return true;
-  }
-  return false;
+  return circuitBreaker.isOpen();
 }
 
 export function recordSuccess() {
-  consecutiveFailures = 0;
+  circuitBreaker.recordSuccess();
 }
 
 export function recordFailure() {
-  consecutiveFailures++;
-  lastFailureTime = Date.now();
+  circuitBreaker.recordFailure();
 }
 
 // === Gemini Client ===
