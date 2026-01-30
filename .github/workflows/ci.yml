@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Generate Next.js types
+        run: npx next typegen
+
       - name: Type check
         run: pnpm tsc --noEmit
 
