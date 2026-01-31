@@ -30,6 +30,11 @@ export interface GradingResult {
   analysis?: GradingAnalysis;
 }
 
+export interface RateLimitInfo {
+  remaining: number;
+  resetAtMs: number;
+}
+
 export interface Sentence {
   id: string;
   latin: string;
