@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GradeStatus, type Sentence, type GradingResult, type SessionStatus, type AttemptHistoryEntry, type ErrorType } from '@/lib/data/types';
+import { GradeStatus, type Sentence, type GradingResult, type SessionStatus, type AttemptHistoryEntry, type ErrorType, type RateLimitInfo } from '@/lib/data/types';
 import { Button } from '@/components/UI/Button';
 import { AudioButton } from '@/components/UI/AudioButton';
 import { LatinText } from '@/components/UI/LatinText';
@@ -43,6 +43,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [advancePayload, setAdvancePayload] = useState<{ nextIndex: number; status: SessionStatus } | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null);
 
   const handleSubmit = async () => {
     if (!input.trim() || isSubmitting) return;
@@ -70,10 +71,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
         nextIndex: number;
         status: SessionStatus;
         attemptHistory?: AttemptHistoryEntry[];
+        rateLimit?: RateLimitInfo;
       };
 
       setFeedback({ result: data.result, userInput: data.userInput, attemptHistory: data.attemptHistory });
       setAdvancePayload({ nextIndex: data.nextIndex, status: data.status });
+      setRateLimit(data.rateLimit ?? null);
     } catch (error) {
       console.error('Error grading review sentence', error);
       setFeedback({
@@ -86,6 +89,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
         userInput: input,
       });
       setAdvancePayload(null);
+      setRateLimit(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -98,6 +102,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
     setFeedback(null);
     setInput('');
     setSelectedWord(null);
+    setRateLimit(null);
   };
 
   // Convert glossary array to map for lookup
@@ -165,6 +170,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
         return 'border-text-muted bg-surface';
     }
   };
+
+  const formatResetTime = (resetAtMs: number) => new Date(resetAtMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   // Status icon - stamp animation on correct for tactile feedback
   const StatusIcon = ({ status }: { status: GradeStatus }) => {
@@ -257,6 +264,24 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ sentence, sessionId, ite
           )
         ) : (
           <div className="space-y-6 animate-fade-in">
+            {rateLimit?.remaining === 0 && (
+              <div className="bg-warning-faint border border-warning rounded-lg p-3 mb-4 flex items-center gap-3">
+                <svg className="size-5 text-warning shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-medium text-text-primary">
+                    <LatinText latin="Magister quiescit." english="AI tutor is resting." />
+                  </p>
+                  <p className="text-text-muted">
+                    <LatinText
+                      latin={`Iterum tenta hora ${formatResetTime(rateLimit.resetAtMs)}`}
+                      english={`Try again at ${formatResetTime(rateLimit.resetAtMs)}`}
+                    />
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Scriptorium-style margin feedback */}
             <div className={cn('border-l-4 p-4 rounded-r-lg', getMarginColor(feedback.result.status))}>
               <div className="flex items-center gap-2 mb-3">
