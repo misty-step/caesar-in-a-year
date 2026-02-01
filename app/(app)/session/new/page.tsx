@@ -30,6 +30,12 @@ export default async function NewSessionPage() {
   }
 
   const data = createDataAdapter(token ?? undefined);
+  const activeSession = await data.getActiveSession();
+
+  if (activeSession) {
+    redirect(`/session/${activeSession.id}`);
+  }
+
   const content = await data.getContent(userId);
   const items = buildSessionItems(content);
   const session = await data.createSession(userId, items);
