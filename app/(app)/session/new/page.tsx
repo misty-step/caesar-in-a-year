@@ -8,7 +8,7 @@ import { buildSessionItems } from '@/lib/session/builder';
 
 export const dynamic = 'force-dynamic';
 
-export default async function NewSessionPage() {
+export default async function NewSessionPage(): Promise<React.JSX.Element> {
   const { userId, getToken } = await auth();
 
   // Middleware guarantees auth; this is defensive

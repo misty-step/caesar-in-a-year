@@ -56,9 +56,10 @@ export const getActiveSession = query({
 
     const session = await ctx.db
       .query("sessions")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", identity.subject).eq("status", "active")
+      )
       .order("desc")
-      .filter((q) => q.eq(q.field("status"), "active"))
       .first();
 
     return session ?? null;

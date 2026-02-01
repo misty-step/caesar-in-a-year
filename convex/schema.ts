@@ -54,7 +54,8 @@ export default defineSchema({
     completedAt: v.optional(v.string()),
   })
     .index("by_session_id", ["sessionId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"]),
 
   // Per-attempt history (for interaction tracking and history-aware AI)
   attempts: defineTable({

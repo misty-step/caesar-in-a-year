@@ -15,7 +15,7 @@ interface SessionCardProps {
  *
  * Uses Card component for surface + Button for the CTA.
  */
-export function SessionCard({ justCompleted, activeSession }: SessionCardProps) {
+export function SessionCard({ justCompleted, activeSession }: SessionCardProps): React.JSX.Element {
   const isResume = Boolean(activeSession);
   const resumeProgress = activeSession
     ? `${activeSession.currentIndex + 1}/${activeSession.items.length}`

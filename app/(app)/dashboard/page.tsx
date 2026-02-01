@@ -76,7 +76,7 @@ function mapContentToSummary(content: ContentSeed) {
   };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage(): Promise<React.JSX.Element> {
   const { userId, getToken } = await auth();
 
   // Middleware guarantees auth; this is defensive
