@@ -12,12 +12,14 @@ vi.mock('@clerk/nextjs/server', () => ({
 const getUserProgress = vi.fn();
 const getContent = vi.fn();
 const getProgressMetrics = vi.fn();
+const getActiveSession = vi.fn();
 
 vi.mock('@/lib/data/adapter', () => ({
   createDataAdapter: () => ({
     getUserProgress,
     getContent,
     getProgressMetrics,
+    getActiveSession,
   }),
 }));
 
@@ -37,6 +39,8 @@ describe('DashboardPage', () => {
     getUserProgress.mockReset();
     getContent.mockReset();
     getProgressMetrics.mockReset();
+    getActiveSession.mockReset();
+    getActiveSession.mockResolvedValue(null);
   });
 
   it('renders fallback progress when no data is stored', async () => {
