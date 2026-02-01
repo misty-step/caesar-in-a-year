@@ -114,9 +114,15 @@ async function getMemoryContent(): Promise<ContentSeed> {
 const progressStore = new Map<string, UserProgress>();
 const sessionStore = new Map<string, Session>();
 const attemptStore = new Map<string, Attempt[]>();
+let memoryUserId: string | null = null;
+
+function setMemoryUser(userId: string) {
+  memoryUserId = userId;
+}
 
 const memoryAdapter: DataAdapter = {
   async getUserProgress(userId: string): Promise<UserProgress | null> {
+    setMemoryUser(userId);
     const existing = progressStore.get(userId);
     if (existing) return existing;
 
@@ -131,14 +137,17 @@ const memoryAdapter: DataAdapter = {
   },
 
   async upsertUserProgress(progress: UserProgress): Promise<void> {
+    setMemoryUser(progress.userId);
     progressStore.set(progress.userId, progress);
   },
 
-  async getContent(_userId: string, _daysActive?: number): Promise<ContentSeed> {
+  async getContent(userId: string, _daysActive?: number): Promise<ContentSeed> {
+    setMemoryUser(userId);
     return getMemoryContent();
   },
 
   async createSession(userId: string, items: Session['items']): Promise<Session> {
+    setMemoryUser(userId);
     const now = new Date().toISOString();
     const id = generateSessionId();
 
@@ -160,7 +169,18 @@ const memoryAdapter: DataAdapter = {
     return session;
   },
 
+  async getActiveSession(): Promise<Session | null> {
+    if (!memoryUserId) return null;
+
+    const sessions = Array.from(sessionStore.values())
+      .filter((session) => session.userId === memoryUserId && session.status === 'active')
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+
+    return sessions[0] ?? null;
+  },
+
   async getSession(sessionId: string, userId: string): Promise<Session | null> {
+    setMemoryUser(userId);
     const session = sessionStore.get(sessionId);
     if (!session || session.userId !== userId) return null;
     return session;
@@ -172,6 +192,7 @@ const memoryAdapter: DataAdapter = {
     nextIndex: number;
     status: SessionStatus;
   }): Promise<Session> {
+    setMemoryUser(params.userId);
     const session = sessionStore.get(params.sessionId);
 
     if (!session || session.userId !== params.userId) {
@@ -199,12 +220,14 @@ const memoryAdapter: DataAdapter = {
   },
 
   async recordAttempt(attempt: Attempt): Promise<void> {
+    setMemoryUser(attempt.userId);
     const existing = attemptStore.get(attempt.sessionId) ?? [];
     existing.push(attempt);
     attemptStore.set(attempt.sessionId, existing);
   },
 
   async getAttemptHistory(userId: string, sentenceId: string, limit = 10): Promise<AttemptHistoryEntry[]> {
+    setMemoryUser(userId);
     // In-memory: search all sessions for matching attempts
     const allAttempts: AttemptHistoryEntry[] = [];
     for (const [, attempts] of attemptStore) {
@@ -240,6 +263,7 @@ const memoryAdapter: DataAdapter = {
   },
 
   async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
+    setMemoryUser(userId);
     const existing = progressStore.get(userId);
     const current = existing?.maxDifficulty ?? 10;
     const newDifficulty = Math.min(current + increment, 100);
@@ -250,6 +274,7 @@ const memoryAdapter: DataAdapter = {
   },
 
   async getProgressMetrics(userId: string, _tzOffsetMin?: number): Promise<ProgressMetrics> {
+    setMemoryUser(userId);
     const progress = progressStore.get(userId);
     return {
       legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },

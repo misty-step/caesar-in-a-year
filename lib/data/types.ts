@@ -185,6 +185,7 @@ export interface DataAdapter {
   upsertUserProgress(progress: UserProgress): Promise<void>;
   getContent(userId: string, daysActive?: number): Promise<ContentSeed>;
   createSession(userId: string, items: SessionItem[]): Promise<Session>;
+  getActiveSession(): Promise<Session | null>;
   getSession(sessionId: string, userId: string): Promise<Session | null>;
   advanceSession(params: {
     sessionId: string;
