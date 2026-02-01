@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || '/ingest';
 
 let started = false;
 let ready = false;
@@ -31,6 +31,10 @@ export function initPostHog(onReady?: () => void): boolean {
     person_profiles: 'identified_only',
     capture_pageview: false,
     capture_pageleave: true,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: '*',
+    },
     loaded: () => {
       ready = true;
       if (process.env.NODE_ENV === 'development') {
