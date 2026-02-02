@@ -1,5 +1,4 @@
-import { auth } from '@n    extjs/server';
-import { redirect } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 
 import { createDataAdapter } from '@/lib/data/adapter';
 import type { ContentSeed, ProgressMetrics, Session, UserProgress as DataUserProgress } from '@/lib/data/types';
@@ -48,12 +47,12 @@ function AuthConfigError(): React.JSX.Element {
           </ol>
         </div>
 
-        <button
-          onClick={() => window.location.reload()}
-          className="w-full bg-accent text-white px-6 py-3 rounded-button font-medium hover:opacity-90 transition-opacity"
+        <a
+          href="/dashboard"
+          className="w-full block bg-accent text-white px-6 py-3 rounded-button font-medium hover:opacity-90 transition-opacity text-center"
         >
           Try Again
-        </button>
+        </a>
       </div>
     </main>
   );
