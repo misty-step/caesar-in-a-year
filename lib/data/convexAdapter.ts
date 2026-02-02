@@ -302,6 +302,30 @@ export class ConvexAdapter implements DataAdapter {
     };
   }
 
+  async getActiveSession(): Promise<Session | null> {
+    logger.query('sessions.getActiveSession', { hasToken: Boolean(this.token) });
+
+    const session = await fetchQuery(
+      api.sessions.getActiveSession,
+      {},
+      this.options
+    );
+
+    if (!session) {
+      return null;
+    }
+
+    return {
+      id: session.sessionId,
+      userId: session.userId,
+      items: session.items as SessionItem[],
+      currentIndex: session.currentIndex,
+      status: session.status,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+    };
+  }
+
   async getSession(sessionId: string, userId: string): Promise<Session | null> {
     logger.query('sessions.get', { sessionId, userId: userId.slice(0, 8) + '...' });
 

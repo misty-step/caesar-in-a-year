@@ -46,6 +46,26 @@ export const get = query({
   },
 });
 
+export const getActiveSession = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", identity.subject).eq("status", "active")
+      )
+      .order("desc")
+      .first();
+
+    return session ?? null;
+  },
+});
+
 export const create = mutation({
   args: {
     sessionId: v.string(),

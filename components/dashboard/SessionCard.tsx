@@ -3,9 +3,11 @@ import { Button } from '@/components/UI/Button';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { Card } from '@/components/UI/Card';
+import type { Session } from '@/lib/data/types';
 
 interface SessionCardProps {
   justCompleted?: boolean;
+  activeSession?: Session | null;
 }
 
 /**
@@ -13,7 +15,27 @@ interface SessionCardProps {
  *
  * Uses Card component for surface + Button for the CTA.
  */
-export function SessionCard({ justCompleted }: SessionCardProps) {
+export function SessionCard({ justCompleted, activeSession }: SessionCardProps): React.JSX.Element {
+  const isResume = Boolean(activeSession);
+  const resumeProgress = activeSession
+    ? `${activeSession.currentIndex + 1}/${activeSession.items.length}`
+    : null;
+
+  // Priority: resume > just completed > start new
+  let ctaLatin: string;
+  let ctaEnglish: string;
+  if (isResume) {
+    ctaLatin = `Perge (${resumeProgress})`;
+    ctaEnglish = `Resume (${resumeProgress})`;
+  } else if (justCompleted) {
+    ctaLatin = 'Iterum Exercere';
+    ctaEnglish = 'Practice Again';
+  } else {
+    ctaLatin = 'Incipe Sessionem';
+    ctaEnglish = 'Start Session';
+  }
+  const ctaHref = activeSession ? `/session/${activeSession.id}` : '/session/new';
+
   return (
     <Card
       as="section"
@@ -47,11 +69,11 @@ export function SessionCard({ justCompleted }: SessionCardProps) {
         </p>
       </div>
       <div className="flex justify-end">
-        <Link href="/session/new">
+        <Link href={ctaHref}>
           <Button
             className="w-full sm:w-auto text-base px-8 py-3"
-            labelLatin={justCompleted ? 'Iterum Exercere' : 'Incipe Sessionem'}
-            labelEnglish={justCompleted ? 'Practice Again' : 'Start Session'}
+            labelLatin={ctaLatin}
+            labelEnglish={ctaEnglish}
           />
         </Link>
       </div>
