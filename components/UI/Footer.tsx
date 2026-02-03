@@ -109,15 +109,32 @@ export const Footer: React.FC = () => {
           <p className="text-xs text-text-on-inverted-faint">
             &copy; {currentYear} Caesar in a Year. Text: McDevitte & Bohn (1869), public domain.
           </p>
-          <div className="flex items-center mt-4 md:mt-0 text-xs text-text-on-inverted-faint">
-            <span className="mr-2">Designed in Rome. Built with</span>
-            <LatinText
-              latin="Cura"
-              english="Care"
-              className="text-text-on-inverted-muted hover:text-text-on-inverted transition-colors"
-              interaction="tooltip"
-              inverted
-            />
+          <div className="flex items-center mt-4 md:mt-0 text-xs text-text-on-inverted-faint space-x-4">
+            <a
+              href="mailto:hello@mistystep.io"
+              className="hover:text-text-on-inverted transition-colors duration-fast"
+            >
+              Contact
+            </a>
+            <a
+              href="https://mistystep.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-on-inverted transition-colors duration-fast"
+            >
+              A Misty Step project
+            </a>
+            <span>v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
+            <span className="border-l border-border-inverted-subtle pl-4 flex items-center">
+              <span className="mr-2">Designed in Rome. Built with</span>
+              <LatinText
+                latin="Cura"
+                english="Care"
+                className="text-text-on-inverted-muted hover:text-text-on-inverted transition-colors"
+                interaction="tooltip"
+                inverted
+              />
+            </span>
           </div>
         </div>
       </div>
