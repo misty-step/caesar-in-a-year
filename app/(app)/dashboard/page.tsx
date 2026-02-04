@@ -17,24 +17,6 @@ import { TrialBanner } from '@/components/dashboard/TrialBanner';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Custom error for dashboard-specific auth issues.
- * Provides clear diagnostic information for debugging.
- */
-class DashboardAuthError extends Error {
-  constructor(
-    message: string,
-    public readonly diagnostics: {
-      userId: string;
-      hasToken: boolean;
-      tokenLength?: number;
-    }
-  ) {
-    super(message);
-    this.name = 'DashboardAuthError';
-  }
-}
-
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgressVM;
   metrics: ProgressMetrics;
@@ -105,14 +87,14 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
 
   const token = await getToken({ template: 'convex' });
 
-  // Validate token presence and report diagnostics to Sentry
-  if (!token) {
-    const diagnostics = {
+  // Validate token presence - only report to Sentry in production
+  // Dev mode uses in-memory adapter fallback, so null token is expected
+  if (!token && process.env.NODE_ENV === 'production') {
+    Sentry.setContext('auth', {
       userId,
       hasToken: false,
-      environment: process.env.NODE_ENV ?? 'unknown',
-    };
-    Sentry.setContext('auth', diagnostics);
+      environment: 'production',
+    });
     Sentry.captureMessage('Dashboard: Convex token is null', {
       level: 'warning',
       tags: { component: 'dashboard', issue: 'missing_token' },

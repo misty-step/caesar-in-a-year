@@ -35,6 +35,27 @@ describe('createDataAdapter', () => {
     });
   });
 
+  it('production mode without token logs structured error before throwing', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const consoleSpy = vi.spyOn(console, 'error');
+
+    try {
+      createDataAdapter();
+    } catch {
+      // Expected to throw
+    }
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[DataAdapter] Auth error:',
+      expect.objectContaining({
+        error: expect.stringContaining('Convex authentication token is missing'),
+        hasToken: false,
+        environment: 'production',
+        hint: expect.any(String),
+      })
+    );
+  });
+
   it('production mode with token returns ConvexAdapter', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
