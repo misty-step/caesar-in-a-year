@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
+import * as Sentry from '@sentry/nextjs';
 
-import { createDataAdapter } from '@/lib/data/adapter';
+import { createDataAdapter, ConvexAuthError } from '@/lib/data/adapter';
 import type { ContentSeed, ProgressMetrics, Session, UserProgress as DataUserProgress } from '@/lib/data/types';
 import { getCurrentStreak } from '@/lib/progress/streak';
 
@@ -15,6 +16,24 @@ import { XPDisplay } from '@/components/dashboard/XPDisplay';
 import { TrialBanner } from '@/components/dashboard/TrialBanner';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Custom error for dashboard-specific auth issues.
+ * Provides clear diagnostic information for debugging.
+ */
+class DashboardAuthError extends Error {
+  constructor(
+    message: string,
+    public readonly diagnostics: {
+      userId: string;
+      hasToken: boolean;
+      tokenLength?: number;
+    }
+  ) {
+    super(message);
+    this.name = 'DashboardAuthError';
+  }
+}
 
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgressVM;
@@ -85,7 +104,50 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   }
 
   const token = await getToken({ template: 'convex' });
-  const { progress, metrics, summary, activeSession } = await getDashboardData(userId, token);
+
+  // Validate token presence and report diagnostics to Sentry
+  if (!token) {
+    const diagnostics = {
+      userId,
+      hasToken: false,
+      environment: process.env.NODE_ENV ?? 'unknown',
+    };
+    Sentry.setContext('auth', diagnostics);
+    Sentry.captureMessage('Dashboard: Convex token is null', {
+      level: 'warning',
+      tags: { component: 'dashboard', issue: 'missing_token' },
+    });
+  }
+
+  let progress: UserProgressVM;
+  let metrics: ProgressMetrics;
+  let summary: { reviewCount: number; readingTitle: string };
+  let activeSession: Session | null;
+  try {
+    const data = await getDashboardData(userId, token);
+    progress = data.progress;
+    metrics = data.metrics;
+    summary = data.summary;
+    activeSession = data.activeSession;
+  } catch (error) {
+    // Report to Sentry with full context
+    Sentry.setContext('dashboard', {
+      userId,
+      hasToken: Boolean(token),
+      tokenLength: token?.length,
+    });
+
+    if (error instanceof ConvexAuthError) {
+      Sentry.setContext('convex_auth', error.context);
+    }
+
+    Sentry.captureException(error, {
+      tags: { component: 'dashboard', operation: 'getDashboardData' },
+    });
+
+    // Re-throw to trigger error boundary
+    throw error;
+  }
 
   // Detect if user just completed a session (within last 60 seconds)
   const justCompleted = progress.lastSessionAt
