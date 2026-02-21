@@ -174,9 +174,11 @@ async function checkGemini(): Promise<HealthCheck> {
   const start = Date.now();
   try {
     // List models as a lightweight health check
+    // API key in header, not URL (security: URLs appear in logs)
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models`,
       {
+        headers: { "x-goog-api-key": apiKey },
         signal: AbortSignal.timeout(5000),
       }
     );
