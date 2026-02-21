@@ -42,7 +42,21 @@ export function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
 
-  cachedClient = new GoogleGenAI({ apiKey });
+  const heliconeApiKey = process.env.HELICONE_API_KEY;
+  cachedClient = new GoogleGenAI({
+    apiKey,
+    ...(heliconeApiKey && {
+      httpOptions: {
+        baseUrl: 'https://gateway.helicone.ai',
+        headers: {
+          'Helicone-Auth': `Bearer ${heliconeApiKey}`,
+          'Helicone-Target-Url': 'https://generativelanguage.googleapis.com',
+          'Helicone-Property-Product': 'caesar-in-a-year',
+          'Helicone-Property-Environment': process.env.NODE_ENV ?? 'development',
+        },
+      },
+    }),
+  });
   return cachedClient;
 }
 

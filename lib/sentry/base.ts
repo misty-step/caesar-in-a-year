@@ -6,5 +6,6 @@ export const sentryBaseOptions = {
   enabled: Boolean(dsn),
   environment,
   tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
+  sendDefaultPii: false,
 };
 

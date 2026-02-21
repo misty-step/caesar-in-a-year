@@ -28,9 +28,11 @@ export function initPostHog(onReady?: () => void): boolean {
 
   posthog.init(key, {
     api_host: POSTHOG_HOST,
+    ui_host: 'https://us.posthog.com',
     person_profiles: 'identified_only',
     capture_pageview: false,
     capture_pageleave: true,
+    respect_dnt: true,
     session_recording: {
       maskAllInputs: true,
       maskTextSelector: '*',
