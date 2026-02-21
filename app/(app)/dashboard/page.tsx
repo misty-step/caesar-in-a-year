@@ -17,6 +17,48 @@ import { TrialBanner } from '@/components/dashboard/TrialBanner';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Auth configuration error component
+ * Shows when Convex token is missing (Clerk JWT template not configured)
+ */
+function AuthConfigError(): React.JSX.Element {
+  return (
+    <main className="min-h-dvh bg-background text-text-primary flex items-center justify-center">
+      <div className="max-w-md mx-auto px-6 text-center space-y-6">
+        <div className="size-16 mx-auto rounded-card bg-warning-faint flex items-center justify-center">
+          <svg className="size-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-serif text-text-primary">Authentication Error</h1>
+          <p className="text-text-muted text-sm">
+            Unable to connect to the database. This is a configuration issue, not a problem with your account.
+          </p>
+        </div>
+
+        <div className="bg-surface p-4 rounded-lg text-left text-sm space-y-2">
+          <p className="font-medium text-text-secondary">For administrators:</p>
+          <ol className="list-decimal list-inside space-y-1 text-text-muted">
+            <li>Check Clerk Dashboard → JWT Templates</li>
+            <li>Verify &quot;convex&quot; template exists</li>
+            <li>Check Convex Dashboard → Settings → Auth</li>
+            <li>Verify Clerk provider is configured</li>
+          </ol>
+        </div>
+
+        <a
+          href="/dashboard"
+          className="w-full block bg-accent text-white px-6 py-3 rounded-button font-medium hover:opacity-90 transition-opacity text-center"
+        >
+          Try Again
+        </a>
+      </div>
+    </main>
+  );
+}
+
 async function getDashboardData(userId: string, token?: string | null): Promise<{
   progress: UserProgressVM;
   metrics: ProgressMetrics;
@@ -87,18 +129,13 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
 
   const token = await getToken({ template: 'convex' });
 
-  // Validate token presence - only report to Sentry in production
-  // Dev mode uses in-memory adapter fallback, so null token is expected
+  // Handle missing Convex token - report to Sentry and show user-friendly error
   if (!token && process.env.NODE_ENV === 'production') {
-    Sentry.setContext('auth', {
-      userId,
-      hasToken: false,
-      environment: 'production',
-    });
     Sentry.captureMessage('Dashboard: Convex token is null', {
       level: 'warning',
       tags: { component: 'dashboard', issue: 'missing_token' },
     });
+    return <AuthConfigError />;
   }
 
   let progress: UserProgressVM;
