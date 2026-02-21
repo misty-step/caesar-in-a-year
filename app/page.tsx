@@ -145,6 +145,47 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* Social Proof */}
+        <section aria-label="testimonials" className="py-16 border-t border-border">
+          <p className="label mb-8">What learners say</p>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <blockquote className="bg-surface rounded-card p-6 border border-border-subtle">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4 italic">
+                "Finally an app that makes me actually read the Latin instead of just memorizing vocab lists. Three months in and I can parse sentences I'd have skipped before."
+              </p>
+              <footer>
+                <p className="text-xs text-text-muted font-medium">Alex M.</p>
+                <p className="text-xs text-text-faint">Beta reader · Classics hobbyist</p>
+              </footer>
+            </blockquote>
+
+            <blockquote className="bg-surface rounded-card p-6 border border-border-subtle">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4 italic">
+                "The spaced repetition keeps me honest. I kept forgetting the same words for years — now they actually stick because I'm reading them in context."
+              </p>
+              <footer>
+                <p className="text-xs text-text-muted font-medium">Sarah K.</p>
+                <p className="text-xs text-text-faint">Beta reader · Former Latin student</p>
+              </footer>
+            </blockquote>
+
+            <blockquote className="bg-surface rounded-card p-6 border border-border-subtle">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4 italic">
+                "AI grading is surprisingly rigorous. It catches when my translation is technically right but misses the nuance. That's exactly the feedback I needed."
+              </p>
+              <footer>
+                <p className="text-xs text-text-muted font-medium">James R.</p>
+                <p className="text-xs text-text-faint">Beta reader · Graduate student</p>
+              </footer>
+            </blockquote>
+          </div>
+
+          <p className="mt-8 text-xs text-text-faint">
+            Built by a Latin enthusiast who wanted to actually finish reading Caesar.
+          </p>
+        </section>
+
         {/* Final CTA */}
         <section className="py-20 md:py-28 border-t border-border">
           <h2 className="font-serif text-2xl md:text-3xl text-text-primary mb-3 italic text-balance">
