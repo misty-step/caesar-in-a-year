@@ -6,10 +6,10 @@
  * using Gemini AI, replacing the misaligned MIT Classics translations.
  *
  * Usage:
- *   pnpm corpus:translate                    # Process all sentences
- *   pnpm corpus:translate --start 100        # Resume from sentence 100
- *   pnpm corpus:translate --batch 20         # Sentences per AI call (default: 20)
- *   pnpm corpus:translate --dry-run          # Show first batch only
+ *   bun corpus:translate                    # Process all sentences
+ *   bun corpus:translate --start 100        # Resume from sentence 100
+ *   bun corpus:translate --batch 20         # Sentences per AI call (default: 20)
+ *   bun corpus:translate --dry-run          # Show first batch only
  */
 
 import dotenv from "dotenv";

@@ -8,11 +8,11 @@
 - `dist/` – build output; do not edit by hand.
 
 ## Build, Test, and Development Commands
-- `pnpm install` (preferred) or `npm install` – install dependencies.
-- `pnpm dev` – run dev server on `http://localhost:3000`.
-- `pnpm build` / `pnpm start` – production build and serve.
-- `pnpm lint` – run ESLint with Next.js config.
-- `pnpm vitest` – run unit tests (Node environment).
+- `bun install` – install dependencies.
+- `bun dev` – run dev server on `http://localhost:3000`.
+- `bun build` / `bun start` – production build and serve.
+- `bun lint` – run ESLint with Next.js config.
+- `bun vitest` – run unit tests (Node environment).
 
 ## Coding Style & Naming Conventions
 - TypeScript strict; prefer explicit types for exports and public functions.
@@ -26,7 +26,7 @@
 - Name tests `*.test.ts`; `describe` by unit under test.
 - For AI and data code, mock external services (`@google/genai`, Convex) rather than calling the network.
 - Target ~80% coverage for new logic; cover success and failure paths, especially session advancement and grading fallbacks.
-- Run `pnpm vitest` and `pnpm lint` before opening a PR.
+- Run `bun vitest` and `bun lint` before opening a PR.
 
 ## Commit & Pull Request Guidelines
 - Use Conventional Commits (`feat:`, `fix:`, `chore:`) as in existing history.

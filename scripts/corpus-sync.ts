@@ -5,10 +5,10 @@
  * Syncs corpus.json to Convex database with Zod validation.
  *
  * Usage:
- *   pnpm corpus:sync                    # Sync content/corpus.json
- *   pnpm corpus:sync --file other.json  # Sync specific file
- *   pnpm corpus:sync --dry-run          # Validate without writing
- *   pnpm corpus:sync --prod             # Sync to production Convex deployment
+ *   bun corpus:sync                    # Sync content/corpus.json
+ *   bun corpus:sync --file other.json  # Sync specific file
+ *   bun corpus:sync --dry-run          # Validate without writing
+ *   bun corpus:sync --prod             # Sync to production Convex deployment
  */
 
 import dotenv from "dotenv";
