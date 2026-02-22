@@ -16,33 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        # version from package.json packageManager
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: bun lint
 
       - name: Generate Next.js types
-        run: npx next typegen
+        run: bunx next typegen
 
       - name: Type check
-        run: pnpm tsc --noEmit
+        run: bun tsc --noEmit
 
       - name: Token lint
-        run: pnpm lint:tokens
+        run: bun lint:tokens
 
       - name: Test with coverage
-        run: pnpm test:ci
+        run: bun test:ci
 
       - name: Verify env documentation
         run: |
@@ -62,7 +55,7 @@ jobs:
           echo "✅ All critical env vars documented"
 
       - name: Build
-        run: pnpm build
+        run: bun run build
         env:
           # Clerk - real keys for proper build
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -91,18 +84,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        # version from package.json packageManager
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Type check Convex functions
-        run: pnpm tsc --noEmit --project convex/tsconfig.json
+        run: bun tsc --noEmit --project convex/tsconfig.json
