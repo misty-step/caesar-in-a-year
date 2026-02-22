@@ -42,7 +42,13 @@ export function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
 
-  cachedClient = new GoogleGenAI({ apiKey });
+  // Disable SDK-internal retries (default: 5 attempts via p-retry).
+  // callWithRetry handles retries at the application layer; nested retries
+  // would cause exponential growth (up to 3 × 5 = 15 total attempts per call).
+  cachedClient = new GoogleGenAI({
+    apiKey,
+    httpOptions: { retryOptions: { attempts: 1 } },
+  });
   return cachedClient;
 }
 
