@@ -22,15 +22,49 @@ import { ConvexAdapter } from './convexAdapter';
 export type { DataAdapter } from './types';
 
 /**
+ * Error thrown when Convex authentication fails.
+ * Includes diagnostic information for debugging.
+ */
+export class ConvexAuthError extends Error {
+  constructor(
+    message: string,
+    public readonly context: {
+      hasToken: boolean;
+      environment: string;
+      hint?: string;
+    }
+  ) {
+    super(message);
+    this.name = 'ConvexAuthError';
+  }
+}
+
+/**
  * Factory to create the appropriate DataAdapter.
  *
  * @param token - Auth token for Convex (from Clerk). If provided, uses ConvexAdapter.
  *                If not provided, falls back to in-memory adapter (dev only).
+ * @throws ConvexAuthError if token is required but missing (production)
  */
 export function createDataAdapter(token?: string): DataAdapter {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   // In production, always require Convex token
-  if (!token && process.env.NODE_ENV === 'production') {
-    throw new Error('[DataAdapter] Convex token required in production');
+  if (!token && isProduction) {
+    const error = new ConvexAuthError(
+      'Convex authentication token is missing. This usually means the Clerk JWT template "convex" is not configured or the user session is invalid.',
+      {
+        hasToken: false,
+        environment: 'production',
+        hint: 'Verify Clerk JWT template "convex" exists and matches CLERK_JWT_ISSUER_DOMAIN in Convex env vars',
+      }
+    );
+    // Log structured error for observability
+    console.error('[DataAdapter] Auth error:', {
+      error: error.message,
+      ...error.context,
+    });
+    throw error;
   }
 
   if (token) {
