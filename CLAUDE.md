@@ -15,8 +15,8 @@ Caesar in a Year is a Latin learning app designed to help users read Caesar's *D
 ```bash
 bun install         # Install dependencies
 bun dev             # Start dev server on http://localhost:3000
-bun build           # Production build
-bun start           # Run production server
+bun run build       # Production build
+bun run start       # Run production server
 bun check           # Run all linters (ESLint + token lint)
 bun stripe:check    # Validate Stripe configuration
 ```

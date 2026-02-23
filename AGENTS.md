@@ -10,7 +10,7 @@
 ## Build, Test, and Development Commands
 - `bun install` – install dependencies.
 - `bun dev` – run dev server on `http://localhost:3000`.
-- `bun build` / `bun start` – production build and serve.
+- `bun run build` / `bun run start` – production build and serve.
 - `bun lint` – run ESLint with Next.js config.
 - `bun vitest` – run unit tests (Node environment).
 

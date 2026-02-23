@@ -49,8 +49,8 @@ Under the hood:
 | Command | Purpose |
 |---------|---------|
 | `bun dev` | Dev server with hot reload |
-| `bun build` | Production build |
-| `bun start` | Serve production build |
+| `bun run build` | Production build |
+| `bun run start` | Serve production build |
 | `bun check` | Lint + token compliance |
 | `bun test` | Unit tests (Vitest) |
 | `bun stripe:check` | Validate Stripe config |
