@@ -6,8 +6,9 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { advanceSession } from '@/lib/session/advance';
 import { normalizeSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
-import { GradeStatus, type SessionItem, type VocabCard } from '@/lib/data/types';
+import { type SessionItem, type VocabCard } from '@/lib/data/types';
 import { gradeVocab } from '@/lib/ai/gradeVocab';
+import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
 
 export const runtime = 'nodejs';
 
@@ -85,6 +86,15 @@ export async function POST(req: Request) {
       typeof userInput !== 'string'
     ) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    // Check rate limit before calling AI
+    const rateLimitDecision = consumeAiCall(userId, Date.now());
+    if (!rateLimitDecision.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', resetAtMs: rateLimitDecision.resetAtMs },
+        { status: 429 }
+      );
     }
 
     const normalizedSessionId = normalizeSessionId(sessionId);
