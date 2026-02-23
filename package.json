@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
-    "@google/genai": "^1.0.0",
+    "@google/genai": "^1.42.0",
     "@sentry/nextjs": "^10.36.0",
     "@stripe/stripe-js": "^8.6.1",
     "@vercel/blob": "^2.0.1",
@@ -53,10 +53,10 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@next/eslint-plugin-next": "^16.0.7",
+    "@testing-library/react": "^16.2.0",
     "@types/node": "^20.11.30",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "@testing-library/react": "^16.2.0",
     "@vitest/coverage-v8": "^4.0.17",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",

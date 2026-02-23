@@ -3,16 +3,20 @@ import { GradeStatus } from '@/lib/data/types';
 
 vi.mock('server-only', () => ({}));
 
-const { mockGenerateContent, mockModels } = vi.hoisted(() => {
+const { mockGenerateContent, mockModels, capturedClientArgs } = vi.hoisted(() => {
   const generate = vi.fn();
   const models = { generateContent: generate };
-  return { mockGenerateContent: generate, mockModels: models };
+  const capturedArgs: unknown[] = [];
+  return { mockGenerateContent: generate, mockModels: models, capturedClientArgs: capturedArgs };
 });
 
 vi.mock('@google/genai', () => {
   return {
     GoogleGenAI: class {
       models = mockModels;
+      constructor(args: unknown) {
+        capturedClientArgs.push(args);
+      }
     },
   };
 });
@@ -111,6 +115,18 @@ describe('getGeminiClient', () => {
 
     expect(first).toBeTruthy();
     expect(first).toBe(second);
+  });
+
+  it('disables SDK-internal retries to prevent nested retry storm', async () => {
+    capturedClientArgs.length = 0;
+    process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key' };
+    const { getGeminiClient } = await import('../grading-utils');
+
+    getGeminiClient();
+
+    expect(capturedClientArgs[0]).toMatchObject({
+      httpOptions: { retryOptions: { attempts: 1 } },
+    });
   });
 });
 

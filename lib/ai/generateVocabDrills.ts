@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient } from "@/lib/ai/grading-utils";
 import type { GradingResult, AttemptHistoryEntry, VocabCard } from "@/lib/data/types";
 
 const MODEL_NAME = "gemini-3-flash-preview";
@@ -101,28 +102,13 @@ export async function generateVocabDrills(input: VocabDrillInput): Promise<Vocab
     return [];
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const ai = getGeminiClient();
+  if (!ai) {
     console.error("GEMINI_API_KEY not set for vocab drill generation");
     return [];
   }
 
   try {
-    const heliconeApiKey = process.env.HELICONE_API_KEY;
-    const ai = new GoogleGenAI({
-      apiKey,
-      ...(heliconeApiKey && {
-        httpOptions: {
-          baseUrl: 'https://gateway.helicone.ai',
-          headers: {
-            'Helicone-Auth': `Bearer ${heliconeApiKey}`,
-            'Helicone-Target-Url': 'https://generativelanguage.googleapis.com',
-            'Helicone-Property-Product': 'caesar-in-a-year',
-            'Helicone-Property-Environment': process.env.NODE_ENV ?? 'development',
-          },
-        },
-      }),
-    });
     const prompt = constructVocabPrompt(latin, targetWords, gradingResult);
 
     const responsePromise = ai.models.generateContent({
