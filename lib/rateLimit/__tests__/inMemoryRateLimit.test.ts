@@ -63,4 +63,15 @@ describe('inMemoryRateLimit', () => {
     const result = consumeAiCall('user1', baseTime);
     expect(result.resetAtMs).toBe(baseTime + 60 * 60 * 1000);
   });
+
+  it('quota is shared across callers (all routes draw from the same pool)', () => {
+    // consumeAiCall is the single function all AI routes call — /api/grade,
+    // /api/vocab-review, and /api/phrase-review all share this pool for a user.
+    const baseTime = 1000;
+    for (let i = 0; i < 100; i++) consumeAiCall('user1', baseTime);
+    // Simulates a second route (e.g. vocab-review) calling after grade exhausted quota
+    const result = consumeAiCall('user1', baseTime);
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+  });
 });

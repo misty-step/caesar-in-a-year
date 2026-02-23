@@ -6,7 +6,7 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { advanceSession } from '@/lib/session/advance';
 import { normalizeSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
-import { GradeStatus, type SessionItem, type VocabCard } from '@/lib/data/types';
+import { type SessionItem, type VocabCard } from '@/lib/data/types';
 import { gradeVocab } from '@/lib/ai/gradeVocab';
 import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
 
