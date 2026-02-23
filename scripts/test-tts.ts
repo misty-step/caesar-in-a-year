@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Test script for Gemini TTS API
- * Run: pnpm tsx scripts/test-tts.ts
+ * Run: bun run scripts/test-tts.ts
  */
 
 import dotenv from 'dotenv';

@@ -6,12 +6,12 @@ pre-commit:
   commands:
     lint:
       glob: "*.{js,ts,jsx,tsx}"
-      run: pnpm eslint --fix {staged_files}
+      run: bun eslint --fix {staged_files}
       stage_fixed: true
 
     typecheck:
       glob: "*.{ts,tsx}"
-      run: pnpm tsc --noEmit
+      run: bun tsc --noEmit
 
     tokens:
       glob: "*.{ts,tsx}"
@@ -27,12 +27,12 @@ pre-push:
         Run: npx convex env set CONVEX_WEBHOOK_SECRET "$(grep '^CONVEX_WEBHOOK_SECRET=' .env.local | cut -d= -f2-)"
 
     test:
-      run: pnpm test:ci
+      run: bun test:ci
 
     build:
-      run: pnpm build
+      run: bun run build
 
     # Convex type validation
     convex-typecheck:
       glob: "convex/**/*.ts"
-      run: pnpm tsc --noEmit --project convex/tsconfig.json
+      run: bun tsc --noEmit --project convex/tsconfig.json

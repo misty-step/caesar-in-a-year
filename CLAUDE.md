@@ -13,12 +13,12 @@ Caesar in a Year is a Latin learning app designed to help users read Caesar's *D
 ## Commands
 
 ```bash
-pnpm install         # Install dependencies
-pnpm dev             # Start dev server on http://localhost:3000
-pnpm build           # Production build
-pnpm start           # Run production server
-pnpm check           # Run all linters (ESLint + token lint)
-pnpm stripe:check    # Validate Stripe configuration
+bun install         # Install dependencies
+bun dev             # Start dev server on http://localhost:3000
+bun run build       # Production build
+bun run start       # Run production server
+bun check           # Run all linters (ESLint + token lint)
+bun stripe:check    # Validate Stripe configuration
 ```
 
 ## Environment
@@ -154,10 +154,10 @@ Achievement:     text-achievement (XP/mastery)
 
 **Local checks:**
 ```bash
-pnpm check           # ESLint + token lint
-pnpm stripe:check    # Stripe config validation (requires env vars loaded)
-pnpm test            # Vitest unit tests
-pnpm test:ci         # Tests with coverage
+bun check           # ESLint + token lint
+bun stripe:check    # Stripe config validation (requires env vars loaded)
+bun test            # Vitest unit tests
+bun test:ci         # Tests with coverage
 ```
 
 **CI (GitHub Actions):**
@@ -166,7 +166,7 @@ pnpm test:ci         # Tests with coverage
 - Convex validation when convex/ files change
 
 **Pre-deployment:**
-- Run `pnpm stripe:check` to validate price IDs exist
+- Run `bun stripe:check` to validate price IDs exist
 - Verify Vercel env vars: `npx vercel env ls`
 - Verify Convex prod env: `CONVEX_DEPLOYMENT=prod:xxx npx convex env list`
 
@@ -184,10 +184,10 @@ pnpm test:ci         # Tests with coverage
 ./scripts/verify-env.sh --parity-only
 
 # 2. Validate Stripe configuration
-pnpm stripe:check
+bun stripe:check
 
 # 3. Test checkout flow locally (actual Stripe test mode)
-pnpm dev  # Then navigate to /subscribe and click "Subscribe Now"
+bun dev  # Then navigate to /subscribe and click "Subscribe Now"
 
 # 4. Verify health endpoint
 curl http://localhost:3000/api/health | jq

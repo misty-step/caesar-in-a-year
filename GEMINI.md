@@ -12,6 +12,6 @@ Leverage Google Search for current docs and best practices.
 
 ### Corpus Tools
 ```bash
-pnpm corpus:process -- --book 1 --chapter 1
-pnpm corpus:sync
+bun corpus:process -- --book 1 --chapter 1
+bun corpus:sync
 ```

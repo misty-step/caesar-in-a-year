@@ -2,12 +2,12 @@
   "name": "caesar-in-a-year",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.11.0",
+  "packageManager": "bun@1.3.9",
   "engines": {
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail -n \"Next,Convex,Stripe\" -c \"cyan,magenta,yellow\" \"pnpm dev:next\" \"pnpm dev:convex\" \"pnpm dev:stripe\"",
+    "dev": "concurrently --kill-others-on-fail -n \"Next,Convex,Stripe\" -c \"cyan,magenta,yellow\" \"bun dev:next\" \"bun dev:convex\" \"bun dev:stripe\"",
     "dev:next": "next dev --turbopack",
     "dev:convex": "convex dev",
     "dev:stripe": "stripe -p sandbox listen --forward-to localhost:3000/api/webhooks/stripe",
@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "lint:tokens": "./scripts/lint-tokens.sh",
     "stripe:check": "./scripts/stripe-check.sh",
-    "check": "pnpm lint && pnpm lint:tokens",
+    "check": "bun lint && bun lint:tokens",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
     "corpus:process": ".venv/bin/python scripts/process-corpus.py --book 1 --chapter 1",
@@ -25,8 +25,8 @@
     "corpus:sync:prod": "tsx scripts/corpus-sync.ts --prod",
     "corpus:enrich": "tsx scripts/enrich-corpus.ts",
     "corpus:translate": "tsx scripts/regenerate-translations.ts",
-    "corpus:all": "pnpm corpus:process-all && pnpm corpus:sync",
-    "deploy:prod": "convex deploy -y && pnpm corpus:sync:prod"
+    "corpus:all": "bun corpus:process-all && bun corpus:sync",
+    "deploy:prod": "convex deploy -y && bun corpus:sync:prod"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",

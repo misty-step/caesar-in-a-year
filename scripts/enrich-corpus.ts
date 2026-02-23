@@ -6,10 +6,10 @@
  * Run ONCE to enrich the curriculum - output is static data.
  *
  * Usage:
- *   pnpm corpus:enrich                    # Process all sentences
- *   pnpm corpus:enrich --start 100        # Resume from sentence 100
- *   pnpm corpus:enrich --batch 5          # Sentences per AI call (default: 10)
- *   pnpm corpus:enrich --dry-run          # Show first batch only
+ *   bun corpus:enrich                    # Process all sentences
+ *   bun corpus:enrich --start 100        # Resume from sentence 100
+ *   bun corpus:enrich --batch 5          # Sentences per AI call (default: 10)
+ *   bun corpus:enrich --dry-run          # Show first batch only
  */
 
 import dotenv from "dotenv";

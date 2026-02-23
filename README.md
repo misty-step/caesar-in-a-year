@@ -6,13 +6,13 @@ Daily guided Latin sessions that train you to read *De Bello Gallico* in context
 
 **Prereqs**
 - Node `>= 20.9.0`
-- `pnpm` (preferred)
+- [Bun](https://bun.sh) `>= 1.1.0`
 
 **Install & run**
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 Visit `http://localhost:3000`.
@@ -48,12 +48,12 @@ Under the hood:
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm dev` | Dev server with hot reload |
-| `pnpm build` | Production build |
-| `pnpm start` | Serve production build |
-| `pnpm check` | Lint + token compliance |
-| `pnpm test` | Unit tests (Vitest) |
-| `pnpm stripe:check` | Validate Stripe config |
+| `bun dev` | Dev server with hot reload |
+| `bun run build` | Production build |
+| `bun run start` | Serve production build |
+| `bun check` | Lint + token compliance |
+| `bun test` | Unit tests (Vitest) |
+| `bun stripe:check` | Validate Stripe config |
 
 Run lint and tests before pushing (enforced via Lefthook pre-commit hooks).
 
@@ -92,9 +92,9 @@ python3 -m venv .venv
 .venv/bin/pip install requests beautifulsoup4 lxml
 
 # Process a single chapter
-pnpm corpus:process                           # Book 1, Chapter 1
-pnpm corpus:process -- --book 1 --chapter 5   # Specific chapter
-pnpm corpus:process -- --book 7 --chapter 1   # Different book
+bun corpus:process                           # Book 1, Chapter 1
+bun corpus:process -- --book 1 --chapter 5   # Specific chapter
+bun corpus:process -- --book 7 --chapter 1   # Different book
 
 # Process all of Book 1
 for ch in {1..52}; do
@@ -105,8 +105,8 @@ done
 .venv/bin/python scripts/process-corpus.py --validate-only content/corpus.json
 
 # Sync to Convex (needs CONVEX_URL)
-pnpm corpus:sync -- --dry-run    # Validate first
-pnpm corpus:sync                 # Actually sync
+bun corpus:sync -- --dry-run    # Validate first
+bun corpus:sync                 # Actually sync
 ```
 
 **Text Sources** (public domain):
