@@ -43,6 +43,24 @@ describe('POST /api/grade', () => {
     expect(submitReviewForUser).not.toHaveBeenCalled();
   });
 
+  it('returns 400 for oversized input before rate limiting', async () => {
+    const req = new Request('http://localhost/api/grade', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'sess-1',
+        itemIndex: 0,
+        userInput: 'a'.repeat(1001),
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('Input too long');
+    expect(consumeAiCall).not.toHaveBeenCalled();
+    expect(submitReviewForUser).not.toHaveBeenCalled();
+  });
+
   it('invokes submitReviewForUser and returns result with rate limit info', async () => {
     submitReviewForUser.mockResolvedValueOnce({
       result: { status: 'CORRECT', feedback: 'Nice.', correction: undefined },

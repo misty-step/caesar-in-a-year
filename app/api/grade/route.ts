@@ -4,6 +4,7 @@ import { submitReviewForUser } from '@/app/(app)/session/[sessionId]/actions';
 import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
 
 export const runtime = 'nodejs';
+const MAX_USER_INPUT_LENGTH = 1000;
 
 export async function POST(req: Request) {
   const { userId, getToken } = await auth();
@@ -22,6 +23,10 @@ export async function POST(req: Request) {
 
     if (typeof sessionId !== 'string' || typeof itemIndex !== 'number' || typeof userInput !== 'string') {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    if (userInput.length > MAX_USER_INPUT_LENGTH) {
+      return NextResponse.json({ error: 'Input too long' }, { status: 400 });
     }
 
     // Check rate limit before calling AI

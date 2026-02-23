@@ -89,6 +89,24 @@ describe('POST /api/phrase-review', () => {
     expect(consumeAiCall).not.toHaveBeenCalled();
   });
 
+  it('returns 400 for oversized input before rate limiting', async () => {
+    const req = new Request('http://localhost/api/phrase-review', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'sess-1',
+        itemIndex: 0,
+        phraseCardId: 'card-1',
+        userInput: 'a'.repeat(501),
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('Input too long');
+    expect(consumeAiCall).not.toHaveBeenCalled();
+  });
+
   it('returns 429 when rate limit exceeded', async () => {
     const resetAtMs = Date.now() + 3600000;
     consumeAiCall.mockReturnValueOnce({ allowed: false, remaining: 0, resetAtMs });
