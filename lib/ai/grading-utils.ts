@@ -42,12 +42,24 @@ export function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
 
+  const heliconeApiKey = process.env.HELICONE_API_KEY;
   // Disable SDK-internal retries (default: 5 attempts via p-retry).
   // callWithRetry handles retries at the application layer; nested retries
   // would cause exponential growth (up to 3 × 5 = 15 total attempts per call).
   cachedClient = new GoogleGenAI({
     apiKey,
-    httpOptions: { retryOptions: { attempts: 1 } },
+    httpOptions: {
+      retryOptions: { attempts: 1 },
+      ...(heliconeApiKey && {
+        baseUrl: 'https://gateway.helicone.ai',
+        headers: {
+          'Helicone-Auth': `Bearer ${heliconeApiKey}`,
+          'Helicone-Target-Url': 'https://generativelanguage.googleapis.com',
+          'Helicone-Property-Product': 'caesar-in-a-year',
+          'Helicone-Property-Environment': process.env.NODE_ENV ?? 'development',
+        },
+      }),
+    },
   });
   return cachedClient;
 }

@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient } from "@/lib/ai/grading-utils";
 import type { GradingResult, AttemptHistoryEntry, VocabCard } from "@/lib/data/types";
 
 const MODEL_NAME = "gemini-3-flash-preview";
@@ -101,14 +102,13 @@ export async function generateVocabDrills(input: VocabDrillInput): Promise<Vocab
     return [];
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const ai = getGeminiClient();
+  if (!ai) {
     console.error("GEMINI_API_KEY not set for vocab drill generation");
     return [];
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
     const prompt = constructVocabPrompt(latin, targetWords, gradingResult);
 
     const responsePromise = ai.models.generateContent({
