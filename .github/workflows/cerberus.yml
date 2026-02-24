@@ -1,14 +1,10 @@
-# Cerberus AI Code Review Council
+# Cerberus AI Code Review
 # https://github.com/misty-step/cerberus
-name: Cerberus Council
+name: Cerberus
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: read
-  pull-requests: write
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 concurrency:
   group: cerberus-${{ github.event.pull_request.number }}
@@ -16,31 +12,9 @@ concurrency:
 
 jobs:
   review:
-    name: "${{ matrix.reviewer }}"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - { reviewer: APOLLO, perspective: correctness }
-          - { reviewer: ATHENA, perspective: architecture }
-          - { reviewer: SENTINEL, perspective: security }
-          - { reviewer: VULCAN, perspective: performance }
-          - { reviewer: ARTEMIS, perspective: maintainability }
-      fail-fast: false
-    steps:
-      - uses: actions/checkout@v4
-      - uses: misty-step/cerberus@v2
-        with:
-          perspective: ${{ matrix.perspective }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          api-key: ${{ secrets.OPENROUTER_API_KEY }}
-
-  verdict:
-    name: "Council Verdict"
-    needs: review
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: misty-step/cerberus/verdict@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+    uses: misty-step/cerberus/.github/workflows/cerberus.yml@master
+    permissions:
+      contents: read
+      pull-requests: write
+    secrets:
+      api-key: ${{ secrets.OPENROUTER_API_KEY }}
