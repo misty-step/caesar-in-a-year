@@ -131,7 +131,10 @@ const logger = {
     console.log(`[Convex:Query] ${name}`, JSON.stringify(args));
   },
   mutation: (name: string, args: Record<string, unknown>) => {
-    console.log(`[Convex:Mutation] ${name}`, JSON.stringify(args));
+    const safeArgs = { ...args };
+    delete safeArgs.userInput;
+    delete safeArgs.userTranslation;
+    console.log(`[Convex:Mutation] ${name}`, JSON.stringify(safeArgs));
   },
   error: (op: string, error: unknown) => {
     console.error(`[Convex:Error] ${op}`, error);
