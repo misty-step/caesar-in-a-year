@@ -12,6 +12,8 @@ import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
 
 export const runtime = 'nodejs';
 
+const MAX_USER_INPUT_LENGTH = 500;
+
 // State enum ↔ string helpers
 type StateString = 'new' | 'learning' | 'review' | 'relearning';
 
@@ -86,6 +88,10 @@ export async function POST(req: Request) {
       typeof userInput !== 'string'
     ) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    if (userInput.length > MAX_USER_INPUT_LENGTH) {
+      return NextResponse.json({ error: 'Input too long' }, { status: 400 });
     }
 
     // Check rate limit before calling AI
