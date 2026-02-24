@@ -13,7 +13,7 @@ function buildUrl(pathname: string): string {
 
 export function PostHogProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const [ready, setReady] = useState(isPostHogReady);
 
   useEffect(() => {
@@ -22,13 +22,14 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
+    if (!isLoaded) return;
 
     if (isSignedIn && user) {
       posthog.identify(user.id);
       return;
     }
     posthog.reset();
-  }, [isSignedIn, ready, user]);
+  }, [isLoaded, isSignedIn, ready, user]);
 
   useEffect(() => {
     if (!ready || !pathname) return;
