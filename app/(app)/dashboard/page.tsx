@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import * as Sentry from '@sentry/nextjs';
+import { cookies } from 'next/headers';
 
 import { createDataAdapter, ConvexAuthError } from '@/lib/data/adapter';
 import type { ContentSeed, ProgressMetrics, Session, UserProgress as DataUserProgress } from '@/lib/data/types';
@@ -14,8 +15,28 @@ import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
 import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
 import { XPDisplay } from '@/components/dashboard/XPDisplay';
 import { TrialBanner } from '@/components/dashboard/TrialBanner';
+import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
 
 export const dynamic = 'force-dynamic';
+
+const TZ_OFFSET_COOKIE_NAME = 'tzOffsetMin';
+const MIN_TZ_OFFSET_MIN = -720;
+const MAX_TZ_OFFSET_MIN = 720;
+
+async function parseTimezoneOffsetFromCookie(): Promise<number> {
+  const cookieStore = await cookies();
+  const rawOffset = cookieStore.get(TZ_OFFSET_COOKIE_NAME)?.value;
+  if (!rawOffset) {
+    return 0;
+  }
+
+  const parsedOffset = Number.parseInt(rawOffset, 10);
+  if (Number.isNaN(parsedOffset)) {
+    return 0;
+  }
+
+  return Math.max(MIN_TZ_OFFSET_MIN, Math.min(MAX_TZ_OFFSET_MIN, parsedOffset));
+}
 
 /**
  * Auth configuration error component
@@ -59,7 +80,7 @@ function AuthConfigError(): React.JSX.Element {
   );
 }
 
-async function getDashboardData(userId: string, token?: string | null): Promise<{
+async function getDashboardData(userId: string, token: string | undefined, tzOffsetMin: number): Promise<{
   progress: UserProgressVM;
   metrics: ProgressMetrics;
   activeSession: Session | null;
@@ -69,11 +90,6 @@ async function getDashboardData(userId: string, token?: string | null): Promise<
   };
 }> {
   const data = createDataAdapter(token ?? undefined);
-
-  // TODO: Read timezone from cookie for proper local date display
-  // For now, default to UTC (offset 0). User sessions will still be
-  // attributed to the correct day relative to UTC.
-  const tzOffsetMin = 0;
 
   const [rawProgress, content, metrics, activeSession] = await Promise.all([
     data.getUserProgress(userId),
@@ -142,8 +158,10 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   let metrics: ProgressMetrics;
   let summary: { reviewCount: number; readingTitle: string };
   let activeSession: Session | null;
+  const tzOffsetMin = await parseTimezoneOffsetFromCookie();
+
   try {
-    const data = await getDashboardData(userId, token);
+    const data = await getDashboardData(userId, token ?? undefined, tzOffsetMin);
     progress = data.progress;
     metrics = data.metrics;
     summary = data.summary;
@@ -176,6 +194,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   return (
     <main className="min-h-dvh bg-background text-text-primary">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
+        <TimezoneSync />
         <Hero />
 
         {justCompleted && <JustCompletedBanner />}
