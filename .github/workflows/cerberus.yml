@@ -1,46 +1,94 @@
-# Cerberus AI Code Review Council
-# https://github.com/misty-step/cerberus
-name: Cerberus Council
+name: Cerberus
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: read
-  pull-requests: write
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 concurrency:
   group: cerberus-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  review:
-    name: "${{ matrix.reviewer }}"
+  preflight:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      should_run: ${{ steps.preflight.outputs.should_run }}
+    steps:
+      - uses: misty-step/cerberus/preflight@master
+        id: preflight
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+
+  route:
+    needs: preflight
+    if: needs.preflight.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      panel: ${{ steps.router.outputs.panel }}
+      model-tier: ${{ steps.router.outputs.model-tier }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch PR diff
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr diff ${{ github.event.pull_request.number }} > /tmp/pr.diff
+      - uses: misty-step/cerberus/router@master
+        id: router
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          diff-file: /tmp/pr.diff
+
+  matrix:
+    needs: route
+    if: needs.preflight.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - id: generate
+        uses: misty-step/cerberus/matrix@master
+        with:
+          panel: ${{ needs.route.outputs.panel }}
+          model-tier: ${{ needs.route.outputs.model-tier }}
+
+  review:
+    needs: [matrix, preflight]
+    if: needs.preflight.outputs.should_run == 'true'
+    name: "${{ matrix.reviewer_label || matrix.reviewer }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     strategy:
-      matrix:
-        include:
-          - { reviewer: APOLLO, perspective: correctness }
-          - { reviewer: ATHENA, perspective: architecture }
-          - { reviewer: SENTINEL, perspective: security }
-          - { reviewer: VULCAN, perspective: performance }
-          - { reviewer: ARTEMIS, perspective: maintainability }
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      - uses: misty-step/cerberus@v2
+      - uses: misty-step/cerberus@master
         with:
           perspective: ${{ matrix.perspective }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          model-tier: ${{ matrix.model_tier }}
 
   verdict:
-    name: "Council Verdict"
-    needs: review
-    if: always()
+    name: Verdict
+    needs: [review, preflight]
+    if: always() && needs.review.result != 'skipped' && needs.preflight.outputs.should_run == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - uses: misty-step/cerberus/verdict@v2
+      - uses: misty-step/cerberus/verdict@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
