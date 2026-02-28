@@ -18,12 +18,9 @@ import { TrialBanner } from '@/components/dashboard/TrialBanner';
 import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
 import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
+import { TZ_OFFSET_COOKIE_NAME, MIN_TZ_OFFSET_MIN, MAX_TZ_OFFSET_MIN } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
-
-const TZ_OFFSET_COOKIE_NAME = 'tzOffsetMin';
-const MIN_TZ_OFFSET_MIN = -720;
-const MAX_TZ_OFFSET_MIN = 720;
 
 async function parseTimezoneOffsetFromCookie(): Promise<number> {
   const cookieStore = await cookies();

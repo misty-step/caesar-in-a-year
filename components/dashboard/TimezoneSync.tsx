@@ -2,11 +2,9 @@
 
 import { useEffect } from 'react';
 
-const TZ_OFFSET_COOKIE_NAME = 'tzOffsetMin';
-const MIN_TZ_OFFSET_MIN = -720;
-const MAX_TZ_OFFSET_MIN = 720;
+import { TZ_OFFSET_COOKIE_NAME, MIN_TZ_OFFSET_MIN, MAX_TZ_OFFSET_MIN } from '@/lib/timezone';
 
-function getBrowserTimezoneOffsetMinutes(): number {
+export function getBrowserTimezoneOffsetMinutes(): number {
   const offsetMinutes = new Date().getTimezoneOffset();
   return Math.max(MIN_TZ_OFFSET_MIN, Math.min(MAX_TZ_OFFSET_MIN, offsetMinutes));
 }
