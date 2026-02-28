@@ -94,7 +94,8 @@ function reconstructCard(doc: FsrsReviewDoc): Card {
   };
 }
 
-type SentenceDoc = {
+/** @internal exported for testing */
+export type SentenceDoc = {
   sentenceId: string;
   latin: string;
   referenceTranslation: string;
@@ -113,14 +114,11 @@ function mapSentence(doc: SentenceDoc): Sentence {
 function buildGlossaryFromCorpus(sentenceIds: string[]): Record<string, string> {
   if (!isEnrichedCorpusLoaded()) return {};
   const vocab = getVocabForSentences(sentenceIds);
-  const glossary: Record<string, string> = {};
-  for (const v of vocab) {
-    glossary[v.latinWord] = v.meaning;
-  }
-  return glossary;
+  return Object.fromEntries(vocab.map((v) => [v.latinWord.toLowerCase(), v.meaning]));
 }
 
-function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
+/** @internal exported for testing */
+export function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
   const first = sentences[0];
   const parts = first.sentenceId.split('.');
   const sentenceIds = sentences.map((s) => s.sentenceId);
