@@ -178,7 +178,7 @@ export class ConvexAdapter implements DataAdapter {
   async getUserProgress(userId: string): Promise<UserProgress | null> {
     const progress = await fetchQuery(api.userProgress.get, { userId }, this.options);
     if (!progress) {
-      return { userId, ...DEFAULT_PROGRESS };
+      return null;
     }
     return {
       userId: progress.userId,

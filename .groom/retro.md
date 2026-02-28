@@ -17,3 +17,36 @@
 Security fixes on "copy the guard" class are S. Add 0.5 size for each new test file needed (2 here). Add 0.5 if the fix touches a pattern already in a different route (check for behavioral divergence with similar routes up front). ADR violations surfaced by bots are expected for security-vs-UX tradeoffs — pre-answer them in the issue.
 
 ---
+
+## #90 — Add first-session guidance card to dashboard for Day 1 users
+
+**Date**: 2026-02-28
+**Predicted effort**: S
+**Actual effort**: S (accurate)
+
+**Scope changes**:
+- Issue referenced `totalSessionsCompleted` but that field doesn't exist in `UserProgress` type — used `rawProgress === null` as equivalent signal
+- Used `localStorage` for dismissal persistence (issue listed it as optional but AC required "does not appear again")
+
+**Blockers**: None
+
+**Pattern for future scoping**:
+New dashboard card components are S. Pattern is well-established (see JustCompletedBanner, TrialBanner). Client components with localStorage for persistence are straightforward. Check that data types in issue match actual codebase types — field names may have diverged since issue was written.
+
+---
+
+## #86 — Fix isReturningUser copy inversion on subscribe page
+
+**Date**: 2026-02-28
+**Predicted effort**: S
+**Actual effort**: S (accurate)
+
+**Scope changes**:
+- Added: subscribe page test file (no prior test coverage for this page)
+
+**Blockers**: None
+
+**Pattern for future scoping**:
+UI copy logic bugs where the condition is wrong (not the copy itself) are XS-S. One-line conditional fix + new test file = S. Pre-existing test infra issues (bun runner compat with vitest APIs) are not blockers for targeted test files that avoid those APIs.
+
+---

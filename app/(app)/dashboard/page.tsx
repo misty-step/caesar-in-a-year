@@ -15,6 +15,7 @@ import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
 import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
 import { XPDisplay } from '@/components/dashboard/XPDisplay';
 import { TrialBanner } from '@/components/dashboard/TrialBanner';
+import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
 import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 
@@ -85,6 +86,7 @@ async function getDashboardData(userId: string, token: string | undefined, tzOff
   progress: UserProgressVM;
   metrics: ProgressMetrics;
   activeSession: Session | null;
+  isNewUser: boolean;
   summary: {
     reviewCount: number;
     readingTitle: string;
@@ -102,7 +104,7 @@ async function getDashboardData(userId: string, token: string | undefined, tzOff
   const progress = mapProgress(rawProgress, tzOffsetMin);
   const summary = mapContentToSummary(content);
 
-  return { progress, metrics, activeSession, summary };
+  return { progress, metrics, activeSession, isNewUser: rawProgress === null, summary };
 }
 
 function mapProgress(progress: DataUserProgress | null, tzOffsetMin: number): UserProgressVM {
@@ -159,6 +161,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   let metrics: ProgressMetrics;
   let summary: { reviewCount: number; readingTitle: string };
   let activeSession: Session | null;
+  let isNewUser: boolean;
   const tzOffsetMin = await parseTimezoneOffsetFromCookie();
 
   try {
@@ -167,6 +170,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
     metrics = data.metrics;
     summary = data.summary;
     activeSession = data.activeSession;
+    isNewUser = data.isNewUser;
   } catch (error) {
     // Report to Sentry with full context
     Sentry.setContext('dashboard', {
@@ -201,6 +205,8 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
         {justCompleted && <JustCompletedBanner />}
 
         <TrialBanner />
+
+        {isNewUser && <FirstSessionGuidance userId={userId} />}
 
         <Stats progress={progress} iter={metrics.iter} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
 
