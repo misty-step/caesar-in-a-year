@@ -145,29 +145,26 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Social Proof */}
+        {/* Testimonial */}
         <section className="py-16 border-t border-border">
           <p className="label mb-8">Early Readers</p>
 
           <blockquote className="max-w-xl">
             <p className="font-serif text-lg md:text-xl text-text-primary leading-relaxed mb-4">
-              "I tried three different Latin programs before this one. The AI grading
-              actually explains <em>why</em> my translation is off — it&apos;s like
-              having a tutor who never gets tired."
+              {"\u201C"}I tried three different Latin programs before this one. The AI grading
+              actually explains <em>why</em> my translation is off — it{"\u2019"}s like
+              having a tutor who never gets tired.{"\u201D"}
             </p>
             <footer className="flex items-center gap-3">
               <div className="w-8 h-px bg-border" />
               <div>
-                <cite className="text-sm text-text-muted not-italic">Sarah M.</cite>
+                <span className="text-sm text-text-muted">Sarah M.</span>
                 <p className="text-xs text-text-faint">Beta tester, 90-day streak</p>
               </div>
             </footer>
           </blockquote>
-        </section>
 
-        {/* Credibility */}
-        <section className="py-12 border-t border-border">
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-muted mt-10">
             Built by a classics enthusiast who believes the best way to learn Latin is to read it.
           </p>
         </section>
