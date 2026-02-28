@@ -162,7 +162,12 @@ describe('DashboardPage', () => {
     expect(html).toContain('Sample Reading');
   });
 
-  it('defaults to 0 when cookie value is NaN', async () => {
+  it.each([
+    { description: 'defaults to 0 when cookie value is NaN', cookieValue: 'not-a-number', expectedOffset: 0 },
+    { description: 'clamps out-of-range positive cookie value to 720', cookieValue: '999', expectedOffset: 720 },
+    { description: 'clamps out-of-range negative cookie value to -720', cookieValue: '-999', expectedOffset: -720 },
+    { description: 'handles negative timezone offset (UTC+ zones)', cookieValue: '-330', expectedOffset: -330 },
+  ])('$description', async ({ cookieValue, expectedOffset }) => {
     getUserProgress.mockResolvedValueOnce(null);
     getContent.mockResolvedValueOnce({
       review: [],
@@ -175,78 +180,12 @@ describe('DashboardPage', () => {
       xp: { total: 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
       streak: 0,
     });
-    mockCookieStore.get.mockReturnValue({ value: 'not-a-number' });
+    mockCookieStore.get.mockReturnValue({ value: cookieValue });
 
     const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
     const tree = await DashboardPage();
     renderToString(tree as React.ReactElement);
 
-    expect(getProgressMetrics).toHaveBeenCalledWith('user-1', 0);
-  });
-
-  it('clamps out-of-range positive cookie value to 720', async () => {
-    getUserProgress.mockResolvedValueOnce(null);
-    getContent.mockResolvedValueOnce({
-      review: [],
-      reading: { id: 'r1', title: 'Sample Reading', latinText: [], glossary: {}, gistQuestion: '', referenceGist: '' },
-    });
-    getProgressMetrics.mockResolvedValueOnce({
-      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
-      iter: { sentencesEncountered: 0, totalSentences: 365, percentComplete: 0, contentDay: 1, daysActive: 1, scheduleDelta: 0 },
-      activity: [],
-      xp: { total: 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
-      streak: 0,
-    });
-    mockCookieStore.get.mockReturnValue({ value: '999' });
-
-    const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
-    const tree = await DashboardPage();
-    renderToString(tree as React.ReactElement);
-
-    expect(getProgressMetrics).toHaveBeenCalledWith('user-1', 720);
-  });
-
-  it('clamps out-of-range negative cookie value to -720', async () => {
-    getUserProgress.mockResolvedValueOnce(null);
-    getContent.mockResolvedValueOnce({
-      review: [],
-      reading: { id: 'r1', title: 'Sample Reading', latinText: [], glossary: {}, gistQuestion: '', referenceGist: '' },
-    });
-    getProgressMetrics.mockResolvedValueOnce({
-      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
-      iter: { sentencesEncountered: 0, totalSentences: 365, percentComplete: 0, contentDay: 1, daysActive: 1, scheduleDelta: 0 },
-      activity: [],
-      xp: { total: 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
-      streak: 0,
-    });
-    mockCookieStore.get.mockReturnValue({ value: '-999' });
-
-    const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
-    const tree = await DashboardPage();
-    renderToString(tree as React.ReactElement);
-
-    expect(getProgressMetrics).toHaveBeenCalledWith('user-1', -720);
-  });
-
-  it('handles negative timezone offset (UTC+ zones)', async () => {
-    getUserProgress.mockResolvedValueOnce(null);
-    getContent.mockResolvedValueOnce({
-      review: [],
-      reading: { id: 'r1', title: 'Sample Reading', latinText: [], glossary: {}, gistQuestion: '', referenceGist: '' },
-    });
-    getProgressMetrics.mockResolvedValueOnce({
-      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
-      iter: { sentencesEncountered: 0, totalSentences: 365, percentComplete: 0, contentDay: 1, daysActive: 1, scheduleDelta: 0 },
-      activity: [],
-      xp: { total: 0, level: 1, currentLevelXp: 0, toNextLevel: 100 },
-      streak: 0,
-    });
-    mockCookieStore.get.mockReturnValue({ value: '-330' });
-
-    const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
-    const tree = await DashboardPage();
-    renderToString(tree as React.ReactElement);
-
-    expect(getProgressMetrics).toHaveBeenCalledWith('user-1', -330);
+    expect(getProgressMetrics).toHaveBeenCalledWith('user-1', expectedOffset);
   });
 });
