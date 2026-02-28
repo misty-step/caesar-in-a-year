@@ -8,6 +8,10 @@ export const TIMEOUT_MS = 60000; // 60s - generous for reliability
 export const RETRY_BACKOFF_MS = 300;
 export const MAX_ATTEMPTS = 3;
 
+// ADR 0003: standard message when AI grading is unavailable (rate limit, circuit breaker, etc.)
+export const AI_UNAVAILABLE_FEEDBACK =
+  "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.";
+
 // === Circuit Breaker ===
 // State machine: CLOSED -> OPEN (after 5 failures) -> HALF_OPEN (after 60s)
 // HALF_OPEN: single trial call - success -> CLOSED, failure -> OPEN

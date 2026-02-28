@@ -157,17 +157,7 @@ function setMemoryUser(userId: string) {
 const memoryAdapter: DataAdapter = {
   async getUserProgress(userId: string): Promise<UserProgress | null> {
     setMemoryUser(userId);
-    const existing = progressStore.get(userId);
-    if (existing) return existing;
-
-    // Default starter progress; persisted in-memory once updated.
-    return {
-      userId,
-      streak: 0,
-      totalXp: 0,
-      maxDifficulty: 1,
-      lastSessionAt: 0,
-    };
+    return progressStore.get(userId) ?? null;
   },
 
   async upsertUserProgress(progress: UserProgress): Promise<void> {
