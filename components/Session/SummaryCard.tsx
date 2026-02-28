@@ -60,7 +60,7 @@ export function SummaryCard({ session, attemptSummary, streak }: SummaryCardProp
       </div>
 
       {/* Stats row */}
-      <div className="flex justify-center gap-8 py-4 border-y border-border">
+      <div className="flex justify-center gap-8 py-4 border-y border-border" role="group" aria-label="Session statistics">
         <div className="text-center">
           <p className="text-2xl font-bold text-text-primary">{totalItems}</p>
           <p className="text-xs text-text-muted">
@@ -85,7 +85,7 @@ export function SummaryCard({ session, attemptSummary, streak }: SummaryCardProp
 
       {/* Accuracy breakdown */}
       {attemptSummary.total > 0 && (
-        <div className="flex justify-center gap-6 py-3">
+        <div className="flex justify-center gap-6 py-3" role="group" aria-label="Accuracy breakdown">
           {[
             { icon: '\u2713', count: attemptSummary.correct, color: 'text-success', latin: 'Recte', english: 'Correct' },
             { icon: '~', count: attemptSummary.partial, color: 'text-warning', latin: 'Partim', english: 'Partial' },

@@ -37,7 +37,7 @@ export default async function SummaryPage(props: SummaryPageProps) {
 
   // Fetch attempt summary and user progress for the recap display
   const [attemptSummary, userProgress] = await Promise.all([
-    data.getSessionAttemptSummary(sessionId, userId),
+    data.getSessionAttemptSummary(sessionId, userId).catch(() => ({ correct: 0, partial: 0, incorrect: 0, total: 0 })),
     data.getUserProgress(userId),
   ]);
 

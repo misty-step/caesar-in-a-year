@@ -42,12 +42,13 @@ describe('SummaryCard', () => {
       <SummaryCard session={buildSession()} attemptSummary={defaultSummary} streak={0} />
     );
 
-    expect(screen.getByText('5')).toBeTruthy();
-    expect(screen.getByText('Correct')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
-    expect(screen.getByText('Partial')).toBeTruthy();
-    expect(screen.getByText('1')).toBeTruthy();
-    expect(screen.getByText('Incorrect')).toBeTruthy();
+    const accuracyGroup = screen.getByRole('group', { name: 'Accuracy breakdown' });
+    expect(accuracyGroup.textContent).toContain('5');
+    expect(accuracyGroup.textContent).toContain('Correct');
+    expect(accuracyGroup.textContent).toContain('2');
+    expect(accuracyGroup.textContent).toContain('Partial');
+    expect(accuracyGroup.textContent).toContain('1');
+    expect(accuracyGroup.textContent).toContain('Incorrect');
   });
 
   it('hides accuracy breakdown when no attempts recorded', () => {
@@ -93,7 +94,8 @@ describe('SummaryCard', () => {
       <SummaryCard session={buildSession()} attemptSummary={defaultSummary} streak={0} />
     );
 
-    expect(screen.getByText('3')).toBeTruthy();
-    expect(screen.getByText('Segments')).toBeTruthy();
+    const statsGroup = screen.getByRole('group', { name: 'Session statistics' });
+    expect(statsGroup.textContent).toContain('3');
+    expect(statsGroup.textContent).toContain('Segments');
   });
 });
