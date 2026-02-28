@@ -21,7 +21,10 @@ vi.mock("@/lib/billing/stripe", () => ({
   },
 }));
 
-describe("SubscribePage isReturningUser copy", () => {
+// Tests use vi.resetModules() + dynamic import() because the bun test runner
+// caches module instances across tests. Without this, mock state from one test
+// leaks into the next via the cached component module.
+describe("SubscribePage isLapsedSubscriber copy", () => {
   beforeEach(() => {
     vi.resetModules();
     mockBillingStatus = undefined;
@@ -85,9 +88,69 @@ describe("SubscribePage isReturningUser copy", () => {
     expect(html).toContain("Welcome back");
   });
 
+  it('shows "Welcome back" copy for past_due subscriber after grace period', async () => {
+    mockBillingStatus = {
+      hasAccess: false,
+      isAuthenticated: true,
+      trialEndsAt: 0,
+      trialDaysRemaining: 0,
+      subscriptionStatus: "past_due",
+      currentPeriodEnd: Date.now() - ONE_DAY_MS,
+    };
+
+    const { default: SubscribePage } = await import(
+      "@/app/(app)/subscribe/page"
+    );
+    const html = renderToString(<SubscribePage />);
+
+    expect(html).toContain("Salve, Discipule!");
+    expect(html).toContain("Welcome back");
+  });
+
+  it('shows "Welcome back" copy for unpaid subscriber', async () => {
+    mockBillingStatus = {
+      hasAccess: false,
+      isAuthenticated: true,
+      trialEndsAt: 0,
+      trialDaysRemaining: 0,
+      subscriptionStatus: "unpaid",
+      currentPeriodEnd: Date.now() - ONE_DAY_MS,
+    };
+
+    const { default: SubscribePage } = await import(
+      "@/app/(app)/subscribe/page"
+    );
+    const html = renderToString(<SubscribePage />);
+
+    expect(html).toContain("Salve, Discipule!");
+    expect(html).toContain("Welcome back");
+  });
+
+  it("shows default copy for incomplete subscription (first payment never completed)", async () => {
+    mockBillingStatus = {
+      hasAccess: false,
+      isAuthenticated: true,
+      trialEndsAt: Date.now() - ONE_DAY_MS,
+      trialDaysRemaining: 0,
+      subscriptionStatus: "incomplete",
+      currentPeriodEnd: null,
+    };
+
+    const { default: SubscribePage } = await import(
+      "@/app/(app)/subscribe/page"
+    );
+    const html = renderToString(<SubscribePage />);
+
+    expect(html).toContain("Continue Your Journey");
+    expect(html).not.toContain("Salve, Discipule!");
+    expect(html).not.toContain("Welcome back");
+  });
+
   it("does not show returning-user copy for active trial user", async () => {
     // Active trial users have hasAccess=true, which triggers a redirect
     // and renders null. Verify they never see "Welcome back" copy.
+    // Note: renderToString doesn't execute useEffect, so the redirect
+    // doesn't fire — but the component returns null before effects run.
     mockBillingStatus = {
       hasAccess: true,
       isAuthenticated: true,
