@@ -33,6 +33,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'Caesar in a Year',
   description: 'Learn to read De Bello Gallico with daily guided sessions.',
   openGraph: {
