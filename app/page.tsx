@@ -146,8 +146,8 @@ export default async function HomePage() {
         </section>
 
         {/* Social Proof */}
-        <section className="py-16 border-t border-border" aria-labelledby="social-proof-heading">
-          <p className="label mb-8" id="social-proof-heading">Early Readers</p>
+        <section className="py-16 border-t border-border">
+          <p className="label mb-8">Early Readers</p>
 
           <blockquote className="max-w-xl">
             <p className="font-serif text-lg md:text-xl text-text-primary leading-relaxed mb-4">
@@ -166,9 +166,11 @@ export default async function HomePage() {
         </section>
 
         {/* Credibility */}
-        <p className="py-6 text-sm text-text-muted border-t border-border">
-          Built by a classics enthusiast who believes the best way to learn Latin is to read it.
-        </p>
+        <section className="py-12 border-t border-border">
+          <p className="text-sm text-text-muted">
+            Built by a classics enthusiast who believes the best way to learn Latin is to read it.
+          </p>
+        </section>
 
         {/* Final CTA */}
         <section className="py-20 md:py-28 border-t border-border">
