@@ -1,6 +1,6 @@
 import { Type } from "@google/genai";
 import { GradeStatus } from "@/lib/data/types";
-import { gradeWithAI, type SimpleGradingResult } from "./grading-utils";
+import { gradeWithAI, AI_UNAVAILABLE_FEEDBACK, type SimpleGradingResult } from "./grading-utils";
 
 // Lightweight schema for fast phrase grading
 const phraseGradingSchema = {
@@ -46,7 +46,7 @@ export async function gradePhrase(input: {
   return gradeWithAI<SimpleGradingResult>({
     prompt,
     schema: phraseGradingSchema,
-    fallbackMessage: "Couldn't check your translation. Compare with the expected answer.",
+    fallbackMessage: AI_UNAVAILABLE_FEEDBACK,
   });
 }
 

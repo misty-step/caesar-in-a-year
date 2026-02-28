@@ -20,7 +20,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
     const text = body?.text;
-    console.log('TTS request text:', JSON.stringify(text));
 
     if (typeof text !== 'string' || !text.trim()) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });

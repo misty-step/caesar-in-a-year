@@ -33,13 +33,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'Caesar in a Year',
-  description: 'Learn to read De Bello Gallico with daily guided sessions.',
+  description: 'Daily guided Latin sessions to read De Bello Gallico in one year',
   openGraph: {
+    title: 'Caesar in a Year',
+    description: 'Daily guided Latin sessions to read De Bello Gallico in one year',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'https://caesarinayear.com',
+    type: 'website',
     images: ['/og.png'],
   },
   twitter: {
     card: 'summary_large_image',
+    title: 'Caesar in a Year',
   },
 };
 
