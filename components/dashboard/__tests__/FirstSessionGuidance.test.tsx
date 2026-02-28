@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 
-const DISMISSED_KEY = 'caesar-first-session-dismissed';
+const TEST_USER_ID = 'user-1';
+const DISMISSED_KEY = `caesar-first-session-dismissed:${TEST_USER_ID}`;
 
 describe('FirstSessionGuidance', () => {
   beforeEach(() => {
@@ -17,7 +18,7 @@ describe('FirstSessionGuidance', () => {
   });
 
   it('renders the guidance card for new users', () => {
-    render(<FirstSessionGuidance />);
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     expect(screen.getByText(/what to expect today/i)).toBeTruthy();
     expect(screen.getByText(/each/i)).toBeTruthy();
@@ -27,13 +28,13 @@ describe('FirstSessionGuidance', () => {
   it('does not render when previously dismissed', () => {
     localStorage.setItem(DISMISSED_KEY, 'true');
 
-    const { container } = render(<FirstSessionGuidance />);
+    const { container } = render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     expect(container.innerHTML).toBe('');
   });
 
   it('dismisses when "Got it" button is clicked', () => {
-    render(<FirstSessionGuidance />);
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     const gotItButton = screen.getByText(/got it/i);
     fireEvent.click(gotItButton);
@@ -43,7 +44,7 @@ describe('FirstSessionGuidance', () => {
   });
 
   it('dismisses when X button is clicked', () => {
-    render(<FirstSessionGuidance />);
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     const dismissButton = screen.getByLabelText('Dismiss guidance');
     fireEvent.click(dismissButton);
@@ -53,13 +54,23 @@ describe('FirstSessionGuidance', () => {
   });
 
   it('persists dismissal across re-renders', () => {
-    const { unmount } = render(<FirstSessionGuidance />);
+    const { unmount } = render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     fireEvent.click(screen.getByText(/got it/i));
     unmount();
 
-    const { container } = render(<FirstSessionGuidance />);
+    const { container } = render(<FirstSessionGuidance userId={TEST_USER_ID} />);
     expect(container.innerHTML).toBe('');
+  });
+
+  it('scopes dismissal per user', () => {
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
+    fireEvent.click(screen.getByText(/got it/i));
+    cleanup();
+
+    // Different user should still see the card
+    render(<FirstSessionGuidance userId="user-2" />);
+    expect(screen.getByText(/what to expect today/i)).toBeTruthy();
   });
 
   it('renders card when localStorage is unavailable', () => {
@@ -67,7 +78,7 @@ describe('FirstSessionGuidance', () => {
       throw new Error('SecurityError');
     });
 
-    render(<FirstSessionGuidance />);
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     expect(screen.getByText(/what to expect today/i)).toBeTruthy();
 
@@ -79,7 +90,7 @@ describe('FirstSessionGuidance', () => {
       throw new Error('QuotaExceededError');
     });
 
-    render(<FirstSessionGuidance />);
+    render(<FirstSessionGuidance userId={TEST_USER_ID} />);
 
     fireEvent.click(screen.getByText(/got it/i));
 

@@ -206,7 +206,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
 
         <TrialBanner />
 
-        {isNewUser && <FirstSessionGuidance />}
+        {isNewUser && <FirstSessionGuidance userId={userId} />}
 
         <Stats progress={progress} iter={metrics.iter} reviewCount={summary.reviewCount} readingTitle={summary.readingTitle} justCompleted={justCompleted} />
 

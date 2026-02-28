@@ -7,31 +7,33 @@ import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
 import { cn } from '@/lib/design';
 
-const DISMISSED_KEY = 'caesar-first-session-dismissed';
+const DISMISSED_KEY_PREFIX = 'caesar-first-session-dismissed';
 
 /**
  * First-session guidance card for Day 1 users.
  *
  * Explains the core learning loop: sessions, FSRS scheduling, and what to expect.
  * Dismissable via "Got it" button with localStorage persistence.
+ * Dismissal is scoped per user so shared-device users each see the card.
  */
-export function FirstSessionGuidance() {
+export function FirstSessionGuidance({ userId }: { userId: string }) {
+  const dismissedKey = `${DISMISSED_KEY_PREFIX}:${userId}`;
   const [dismissed, setDismissed] = useState(true); // Start hidden to avoid flash
 
   useEffect(() => {
     try {
-      setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true');
+      setDismissed(localStorage.getItem(dismissedKey) === 'true');
     } catch {
       // localStorage unavailable (e.g. Safari private mode) — show the card
       setDismissed(false);
     }
-  }, []);
+  }, [dismissedKey]);
 
   if (dismissed) return null;
 
   function handleDismiss() {
     try {
-      localStorage.setItem(DISMISSED_KEY, 'true');
+      localStorage.setItem(dismissedKey, 'true');
     } catch {
       // localStorage unavailable — dismiss for this session only
     }

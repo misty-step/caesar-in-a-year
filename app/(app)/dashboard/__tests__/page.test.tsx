@@ -114,7 +114,8 @@ describe('DashboardPage', () => {
     const html = renderToString(tree as React.ReactElement);
 
     // FirstSessionGuidance should NOT appear for returning users
-    expect(html).not.toContain('first-session');
+    expect(html).not.toContain('What to expect today');
+    expect(html).not.toContain('Dismiss guidance');
   });
 
   it('uses tzOffsetMin cookie for progress metric timing', async () => {
