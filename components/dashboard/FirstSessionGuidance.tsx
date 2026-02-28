@@ -19,13 +19,22 @@ export function FirstSessionGuidance() {
   const [dismissed, setDismissed] = useState(true); // Start hidden to avoid flash
 
   useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true');
+    try {
+      setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true');
+    } catch {
+      // localStorage unavailable (e.g. Safari private mode) — show the card
+      setDismissed(false);
+    }
   }, []);
 
   if (dismissed) return null;
 
   function handleDismiss() {
-    localStorage.setItem(DISMISSED_KEY, 'true');
+    try {
+      localStorage.setItem(DISMISSED_KEY, 'true');
+    } catch {
+      // localStorage unavailable — dismiss for this session only
+    }
     setDismissed(true);
   }
 

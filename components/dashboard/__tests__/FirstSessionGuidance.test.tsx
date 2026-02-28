@@ -65,4 +65,29 @@ describe('FirstSessionGuidance', () => {
     const { container } = render(<FirstSessionGuidance />);
     expect(container.innerHTML).toBe('');
   });
+
+  it('renders card when localStorage is unavailable', () => {
+    const originalGetItem = localStorage.getItem;
+    localStorage.getItem = () => { throw new Error('SecurityError'); };
+
+    render(<FirstSessionGuidance />);
+
+    expect(screen.getByText(/what to expect today/i)).toBeTruthy();
+
+    localStorage.getItem = originalGetItem;
+  });
+
+  it('still dismisses when localStorage.setItem throws', () => {
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+
+    render(<FirstSessionGuidance />);
+
+    fireEvent.click(screen.getByText(/got it/i));
+
+    // Card dismissed for this session even though persistence failed
+    expect(screen.queryByText(/what to expect today/i)).toBeNull();
+
+    localStorage.setItem = originalSetItem;
+  });
 });
