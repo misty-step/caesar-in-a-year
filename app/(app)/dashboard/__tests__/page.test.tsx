@@ -19,6 +19,7 @@ const getUserProgress = vi.fn();
 const getContent = vi.fn();
 const getProgressMetrics = vi.fn();
 const getActiveSession = vi.fn();
+const getMasteredAtLevel = vi.fn();
 
 vi.mock('@/lib/data/adapter', () => ({
   createDataAdapter: () => ({
@@ -26,6 +27,7 @@ vi.mock('@/lib/data/adapter', () => ({
     getContent,
     getProgressMetrics,
     getActiveSession,
+    getMasteredAtLevel,
   }),
   ConvexAuthError: class ConvexAuthError extends Error {
     context: Record<string, unknown>;
@@ -62,7 +64,9 @@ describe('DashboardPage', () => {
     getContent.mockReset();
     getProgressMetrics.mockReset();
     getActiveSession.mockReset();
+    getMasteredAtLevel.mockReset();
     getActiveSession.mockResolvedValue(null);
+    getMasteredAtLevel.mockResolvedValue(0);
   });
 
   it('renders fallback progress when no data is stored', async () => {
