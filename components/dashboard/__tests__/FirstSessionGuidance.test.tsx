@@ -4,10 +4,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 
-vi.mock('@/components/UI/AudioButton', () => ({
-  AudioButton: () => <button type="button">Audio</button>,
-}));
-
 const DISMISSED_KEY = 'caesar-first-session-dismissed';
 
 describe('FirstSessionGuidance', () => {
@@ -67,19 +63,21 @@ describe('FirstSessionGuidance', () => {
   });
 
   it('renders card when localStorage is unavailable', () => {
-    const originalGetItem = localStorage.getItem;
-    localStorage.getItem = () => { throw new Error('SecurityError'); };
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError');
+    });
 
     render(<FirstSessionGuidance />);
 
     expect(screen.getByText(/what to expect today/i)).toBeTruthy();
 
-    localStorage.getItem = originalGetItem;
+    spy.mockRestore();
   });
 
   it('still dismisses when localStorage.setItem throws', () => {
-    const originalSetItem = localStorage.setItem;
-    localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
 
     render(<FirstSessionGuidance />);
 
@@ -88,6 +86,6 @@ describe('FirstSessionGuidance', () => {
     // Card dismissed for this session even though persistence failed
     expect(screen.queryByText(/what to expect today/i)).toBeNull();
 
-    localStorage.setItem = originalSetItem;
+    spy.mockRestore();
   });
 });

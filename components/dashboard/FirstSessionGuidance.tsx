@@ -43,7 +43,7 @@ export function FirstSessionGuidance() {
       as="section"
       elevation="raised"
       padding="md"
-      className={cn('animate-fade-in space-y-4')}
+      className="animate-fade-in space-y-4"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
