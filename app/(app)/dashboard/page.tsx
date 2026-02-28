@@ -16,6 +16,7 @@ import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
 import { XPDisplay } from '@/components/dashboard/XPDisplay';
 import { TrialBanner } from '@/components/dashboard/TrialBanner';
 import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
+import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 
 export const dynamic = 'force-dynamic';
 
@@ -210,6 +211,8 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
           <LegionStatus legion={metrics.legion} />
           <XPDisplay xp={metrics.xp} />
         </div>
+
+        <MasteryProgress masteredCount={metrics.legion.decuriones} readingLevel={progress.unlockedPhase} />
 
         <JourneyProgress iter={metrics.iter} />
 
