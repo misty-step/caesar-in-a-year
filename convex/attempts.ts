@@ -104,7 +104,7 @@ export const getSessionSummary = query({
       }
     }
 
-    return { correct, partial, incorrect, total: attempts.length };
+    return { correct, partial, incorrect, total: correct + partial + incorrect };
   },
 });
 
