@@ -56,13 +56,14 @@ export default async function HomePage() {
 
             {/* CTA */}
             <div className="flex flex-wrap items-center gap-4 animate-fade-in-delay-2">
-              <Link href="/sign-up">
-                <button className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-accent rounded-card transition-all duration-fast ease-ink hover:bg-accent-hover hover:shadow-glow-accent active:scale-[0.98]">
-                  Start reading
-                  <svg className="size-4 ml-2 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </button>
+              <Link
+                href="/sign-up"
+                className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-accent rounded-card transition-all duration-fast ease-ink hover:bg-accent-hover hover:shadow-glow-accent active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                Start reading
+                <svg className="size-4 ml-2 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
               </Link>
               <span className="text-sm text-text-muted">
                 Free to start
@@ -152,21 +153,17 @@ export default async function HomePage() {
           <blockquote className="max-w-xl">
             <p className="font-serif text-lg md:text-xl text-text-primary leading-relaxed mb-4">
               {"\u201C"}I tried three different Latin programs before this one. The AI grading
-              actually explains <em>why</em> my translation is off — it{"\u2019"}s like
+              actually explains <em>why</em> my translation is off{"\u2014"}it{"\u2019"}s like
               having a tutor who never gets tired.{"\u201D"}
             </p>
             <footer className="flex items-center gap-3">
               <div className="w-8 h-px bg-border" />
               <div>
-                <p className="text-sm text-text-muted mb-0.5">Sarah M.</p>
+                <cite className="text-sm text-text-muted mb-0.5 not-italic block">Sarah M.</cite>
                 <p className="text-xs text-text-faint">Beta tester, 90-day streak</p>
               </div>
             </footer>
           </blockquote>
-
-          <p className="text-sm text-text-muted mt-10">
-            Built by a classics enthusiast who believes the best way to learn Latin is to read it.
-          </p>
         </section>
 
         {/* Final CTA */}
@@ -177,13 +174,14 @@ export default async function HomePage() {
           <p className="text-text-muted text-sm mb-8 max-w-sm leading-relaxed text-pretty">
             Join those learning to read ancient texts in their original language.
           </p>
-          <Link href="/sign-up">
-            <button className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-text-primary rounded-card transition-all duration-fast ease-ink hover:bg-text-secondary active:scale-[0.98]">
-              Start for free
-              <svg className="size-4 ml-2 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </button>
+          <Link
+            href="/sign-up"
+            className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-text-primary rounded-card transition-all duration-fast ease-ink hover:bg-text-secondary active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            Start for free
+            <svg className="size-4 ml-2 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
           </Link>
         </section>
       </div>
@@ -191,7 +189,8 @@ export default async function HomePage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-border py-8">
         <div className="max-w-4xl mx-auto px-6 text-sm text-text-muted">
-          © 2025 Caesar in a Year
+          <p className="mb-2">Built by a classics enthusiast who believes the best way to learn Latin is to read it.</p>
+          <p>© 2025 Caesar in a Year</p>
         </div>
       </footer>
     </main>
