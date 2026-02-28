@@ -6,9 +6,12 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { advanceSession } from '@/lib/session/advance';
 import { normalizeSessionId } from '@/lib/session/id';
 import { scheduleReview, State, type Card } from '@/lib/srs/fsrs';
-import { type SessionItem, type PhraseCard } from '@/lib/data/types';
+import { GradeStatus, type SessionItem, type PhraseCard } from '@/lib/data/types';
 import { gradePhrase } from '@/lib/ai/gradePhrase';
 import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
+
+const ADR_0003_FALLBACK =
+  "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.";
 
 export const runtime = 'nodejs';
 
@@ -94,14 +97,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Input too long' }, { status: 400 });
     }
 
-    // Check rate limit before calling AI
+    // Check rate limit (never blocks — ADR 0003)
     const rateLimitDecision = consumeAiCall(userId, Date.now());
-    if (!rateLimitDecision.allowed) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded', resetAtMs: rateLimitDecision.resetAtMs },
-        { status: 429 }
-      );
-    }
 
     const normalizedSessionId = normalizeSessionId(sessionId);
     const token = await getToken({ template: 'convex' });
@@ -141,14 +138,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Phrase card not found' }, { status: 404 });
     }
 
-    // 4. Call AI grader
+    // 4. Grade: AI when allowed, graceful fallback when rate-limited (ADR 0003)
     const phrase = item.phrase as PhraseCard;
-    const gradingResult = await gradePhrase({
-      latin: phrase.latin,
-      english: phrase.english,
-      userAnswer: userInput,
-      context: phrase.context,
-    });
+    const gradingResult = rateLimitDecision.allowed
+      ? await gradePhrase({
+          latin: phrase.latin,
+          english: phrase.english,
+          userAnswer: userInput,
+          context: phrase.context,
+        })
+      : { status: GradeStatus.PARTIAL, feedback: ADR_0003_FALLBACK, hint: phrase.english };
 
     // 5. Update FSRS state
     const now = new Date();
@@ -200,6 +199,10 @@ export async function POST(req: Request) {
       nextIndex: advanced.nextIndex,
       status: advanced.status,
       grading: gradingResult,
+      rateLimit: {
+        remaining: rateLimitDecision.remaining,
+        resetAtMs: rateLimitDecision.resetAtMs,
+      },
     });
   } catch (error) {
     console.error('Error in POST /api/phrase-review', error);

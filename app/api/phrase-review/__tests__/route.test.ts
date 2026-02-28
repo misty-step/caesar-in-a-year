@@ -107,9 +107,13 @@ describe('POST /api/phrase-review', () => {
     expect(consumeAiCall).not.toHaveBeenCalled();
   });
 
-  it('returns 429 when rate limit exceeded', async () => {
+  it('returns PARTIAL fallback when rate limited (ADR 0003)', async () => {
     const resetAtMs = Date.now() + 3600000;
     consumeAiCall.mockReturnValueOnce({ allowed: false, remaining: 0, resetAtMs });
+
+    fetchQuery
+      .mockResolvedValueOnce({ session: mockSession })
+      .mockResolvedValueOnce(mockPhraseCard);
 
     const req = new Request('http://localhost/api/phrase-review', {
       method: 'POST',
@@ -117,15 +121,24 @@ describe('POST /api/phrase-review', () => {
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(429);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.error).toBe('Rate limit exceeded');
-    expect(json.resetAtMs).toBe(resetAtMs);
-    expect(fetchQuery).not.toHaveBeenCalled();
+
+    // Graceful fallback: PARTIAL grading, no AI call
     expect(gradePhrase).not.toHaveBeenCalled();
+    expect(json.grading.status).toBe('PARTIAL');
+    expect(json.grading.feedback).toContain("couldn't reach the AI tutor");
+    expect(json.grading.hint).toBe('All Gaul is divided');
+
+    // Session still advances
+    expect(json.nextIndex).toBe(1);
+    expect(json.status).toBe('active');
+
+    // Rate limit info surfaced
+    expect(json.rateLimit).toEqual({ remaining: 0, resetAtMs });
   });
 
-  it('calls consumeAiCall and proceeds when within quota', async () => {
+  it('calls AI grader and includes rateLimit when within quota', async () => {
     fetchQuery
       .mockResolvedValueOnce({ session: mockSession })
       .mockResolvedValueOnce(mockPhraseCard);
@@ -139,5 +152,9 @@ describe('POST /api/phrase-review', () => {
     expect(consumeAiCall).toHaveBeenCalledWith('user-1', expect.any(Number));
     expect(gradePhrase).toHaveBeenCalled();
     expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.rateLimit).toBeDefined();
+    expect(json.rateLimit.remaining).toBe(99);
   });
 });
