@@ -146,10 +146,10 @@ export default async function HomePage() {
         </section>
 
         {/* Social Proof */}
-        <section className="py-16 border-t border-border">
-          <p className="label mb-8">From Our Readers</p>
+        <section className="py-16 border-t border-border" aria-labelledby="social-proof-heading">
+          <p className="label mb-8" id="social-proof-heading">Early Readers</p>
 
-          <blockquote className="max-w-lg mb-8">
+          <blockquote className="max-w-xl">
             <p className="font-serif text-lg md:text-xl text-text-primary leading-relaxed mb-4">
               "I tried three different Latin programs before this one. The AI grading
               actually explains <em>why</em> my translation is off — it&apos;s like
@@ -158,16 +158,17 @@ export default async function HomePage() {
             <footer className="flex items-center gap-3">
               <div className="w-8 h-px bg-border" />
               <div>
-                <p className="text-sm text-text-secondary">Sarah M.</p>
+                <cite className="text-sm text-text-muted not-italic">Sarah M.</cite>
                 <p className="text-xs text-text-faint">Beta tester, 90-day streak</p>
               </div>
             </footer>
           </blockquote>
-
-          <p className="text-sm text-text-muted">
-            Built by a classics enthusiast who believes the best way to learn Latin is to read it.
-          </p>
         </section>
+
+        {/* Credibility */}
+        <p className="py-6 text-sm text-text-muted border-t border-border">
+          Built by a classics enthusiast who believes the best way to learn Latin is to read it.
+        </p>
 
         {/* Final CTA */}
         <section className="py-20 md:py-28 border-t border-border">
