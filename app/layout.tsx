@@ -34,12 +34,17 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Caesar in a Year',
-  description: 'Learn to read De Bello Gallico with daily guided sessions.',
+  description: 'Daily guided Latin sessions to read De Bello Gallico in one year',
   openGraph: {
+    title: 'Caesar in a Year',
+    description: 'Daily guided Latin sessions to read De Bello Gallico in one year',
+    url: 'https://caesarinayear.com',
+    type: 'website',
     images: ['/og.png'],
   },
   twitter: {
     card: 'summary_large_image',
+    title: 'Caesar in a Year',
   },
 };
 
