@@ -56,7 +56,7 @@ export default async function HomePage() {
 
             {/* CTA */}
             <div className="flex flex-wrap items-center gap-4 animate-fade-in-delay-2">
-              <Link href="/sign-in">
+              <Link href="/sign-up">
                 <button className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-accent rounded-card transition-all duration-fast ease-ink hover:bg-accent-hover hover:shadow-glow-accent active:scale-[0.98]">
                   Start reading
                   <svg className="size-4 ml-2 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -145,6 +145,30 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* Testimonial */}
+        <section className="py-16 border-t border-border">
+          <p className="label mb-8">Early Readers</p>
+
+          <blockquote className="max-w-xl">
+            <p className="font-serif text-lg md:text-xl text-text-primary leading-relaxed mb-4">
+              {"\u201C"}I tried three different Latin programs before this one. The AI grading
+              actually explains <em>why</em> my translation is off — it{"\u2019"}s like
+              having a tutor who never gets tired.{"\u201D"}
+            </p>
+            <footer className="flex items-center gap-3">
+              <div className="w-8 h-px bg-border" />
+              <div>
+                <p className="text-sm text-text-muted mb-0.5">Sarah M.</p>
+                <p className="text-xs text-text-faint">Beta tester, 90-day streak</p>
+              </div>
+            </footer>
+          </blockquote>
+
+          <p className="text-sm text-text-muted mt-10">
+            Built by a classics enthusiast who believes the best way to learn Latin is to read it.
+          </p>
+        </section>
+
         {/* Final CTA */}
         <section className="py-20 md:py-28 border-t border-border">
           <h2 className="font-serif text-2xl md:text-3xl text-text-primary mb-3 italic text-balance">
@@ -153,7 +177,7 @@ export default async function HomePage() {
           <p className="text-text-muted text-sm mb-8 max-w-sm leading-relaxed text-pretty">
             Join those learning to read ancient texts in their original language.
           </p>
-          <Link href="/sign-in">
+          <Link href="/sign-up">
             <button className="group inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-text-primary rounded-card transition-all duration-fast ease-ink hover:bg-text-secondary active:scale-[0.98]">
               Start for free
               <svg className="size-4 ml-2 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
