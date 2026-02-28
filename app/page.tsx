@@ -158,7 +158,7 @@ export default async function HomePage() {
             <footer className="flex items-center gap-3">
               <div className="w-8 h-px bg-border" />
               <div>
-                <span className="text-sm text-text-muted">Sarah M.</span>
+                <p className="text-sm text-text-muted mb-0.5">Sarah M.</p>
                 <p className="text-xs text-text-faint">Beta tester, 90-day streak</p>
               </div>
             </footer>
