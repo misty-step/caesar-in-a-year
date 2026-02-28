@@ -21,6 +21,7 @@ vi.mock("@/lib/billing/stripe", () => ({
 
 describe("SubscribePage isReturningUser copy", () => {
   beforeEach(() => {
+    vi.resetModules();
     mockBillingStatus = undefined;
   });
 
