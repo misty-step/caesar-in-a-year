@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderToString } from "react-dom/server";
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 let mockBillingStatus: Record<string, unknown> | undefined;
 
 vi.mock("convex/react", () => ({
@@ -29,7 +31,7 @@ describe("SubscribePage isReturningUser copy", () => {
     mockBillingStatus = {
       hasAccess: false,
       isAuthenticated: true,
-      trialEndsAt: Date.now() - 86400000,
+      trialEndsAt: Date.now() - ONE_DAY_MS,
       trialDaysRemaining: 0,
       subscriptionStatus: null,
       currentPeriodEnd: null,
@@ -52,7 +54,26 @@ describe("SubscribePage isReturningUser copy", () => {
       trialEndsAt: 0,
       trialDaysRemaining: 0,
       subscriptionStatus: "canceled",
-      currentPeriodEnd: Date.now() - 86400000,
+      currentPeriodEnd: Date.now() - ONE_DAY_MS,
+    };
+
+    const { default: SubscribePage } = await import(
+      "@/app/(app)/subscribe/page"
+    );
+    const html = renderToString(<SubscribePage />);
+
+    expect(html).toContain("Salve, Discipule!");
+    expect(html).toContain("Welcome back");
+  });
+
+  it('shows "Welcome back" copy for expired subscriber', async () => {
+    mockBillingStatus = {
+      hasAccess: false,
+      isAuthenticated: true,
+      trialEndsAt: 0,
+      trialDaysRemaining: 0,
+      subscriptionStatus: "expired",
+      currentPeriodEnd: Date.now() - ONE_DAY_MS,
     };
 
     const { default: SubscribePage } = await import(
@@ -70,7 +91,7 @@ describe("SubscribePage isReturningUser copy", () => {
     mockBillingStatus = {
       hasAccess: true,
       isAuthenticated: true,
-      trialEndsAt: Date.now() + 7 * 86400000,
+      trialEndsAt: Date.now() + 7 * ONE_DAY_MS,
       trialDaysRemaining: 7,
       subscriptionStatus: null,
       currentPeriodEnd: null,

@@ -34,3 +34,19 @@ Security fixes on "copy the guard" class are S. Add 0.5 size for each new test f
 New dashboard card components are S. Pattern is well-established (see JustCompletedBanner, TrialBanner). Client components with localStorage for persistence are straightforward. Check that data types in issue match actual codebase types — field names may have diverged since issue was written.
 
 ---
+
+## #86 — Fix isReturningUser copy inversion on subscribe page
+
+**Date**: 2026-02-28
+**Predicted effort**: S
+**Actual effort**: S (accurate)
+
+**Scope changes**:
+- Added: subscribe page test file (no prior test coverage for this page)
+
+**Blockers**: None
+
+**Pattern for future scoping**:
+UI copy logic bugs where the condition is wrong (not the copy itself) are XS-S. One-line conditional fix + new test file = S. Pre-existing test infra issues (bun runner compat with vitest APIs) are not blockers for targeted test files that avoid those APIs.
+
+---
