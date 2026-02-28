@@ -24,6 +24,11 @@ vi.mock('convex/nextjs', () => ({
   fetchMutation: (...args: unknown[]) => fetchMutation(...args),
 }));
 
+vi.mock('@/lib/ai/grading-utils', () => ({
+  AI_UNAVAILABLE_FEEDBACK:
+    "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.",
+}));
+
 const gradePhrase = vi.fn();
 vi.mock('@/lib/ai/gradePhrase', () => ({
   gradePhrase: (...args: unknown[]) => gradePhrase(...args),
@@ -136,6 +141,62 @@ describe('POST /api/phrase-review', () => {
 
     // Rate limit info surfaced
     expect(json.rateLimit).toEqual({ remaining: 0, resetAtMs });
+  });
+
+  it('records FSRS review as PARTIAL when rate limited', async () => {
+    consumeAiCall.mockReturnValueOnce({ allowed: false, remaining: 0, resetAtMs: Date.now() + 3600000 });
+
+    fetchQuery
+      .mockResolvedValueOnce({ session: mockSession })
+      .mockResolvedValueOnce(mockPhraseCard);
+
+    const req = new Request('http://localhost/api/phrase-review', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'sess-1', itemIndex: 0, phraseCardId: 'card-1', userInput: 'All Gaul' }),
+    });
+
+    await POST(req);
+
+    // FSRS mutation called with PARTIAL status (maps to Rating.Hard per ADR 0002)
+    expect(fetchMutation).toHaveBeenCalledWith(
+      'phrases:recordReview',
+      expect.objectContaining({
+        userId: 'user-1',
+        cardId: 'card-1',
+        gradingStatus: 'PARTIAL',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('does not consume rate limit token when session not found', async () => {
+    fetchQuery.mockResolvedValueOnce({ session: null, error: 'not found' });
+
+    const req = new Request('http://localhost/api/phrase-review', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'bad-sess', itemIndex: 0, phraseCardId: 'card-1', userInput: 'All Gaul' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(404);
+    expect(consumeAiCall).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when phrase card not found', async () => {
+    fetchQuery
+      .mockResolvedValueOnce({ session: mockSession })
+      .mockResolvedValueOnce(null);
+
+    const req = new Request('http://localhost/api/phrase-review', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'sess-1', itemIndex: 0, phraseCardId: 'missing', userInput: 'All Gaul' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toBe('Phrase card not found');
+    expect(consumeAiCall).not.toHaveBeenCalled();
   });
 
   it('calls AI grader and includes rateLimit when within quota', async () => {

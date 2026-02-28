@@ -150,6 +150,11 @@ export async function gradeWithAI<T extends GradingResult>(
   }
 }
 
+// === Fallback Messages ===
+// ADR 0003: standard message when AI grading is unavailable (rate limit, circuit breaker, etc.)
+export const AI_UNAVAILABLE_FEEDBACK =
+  "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.";
+
 // === Lightweight Result Types ===
 export interface SimpleGradingResult {
   status: GradeStatus;
