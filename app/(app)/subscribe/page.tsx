@@ -57,7 +57,9 @@ function SubscribeContent() {
     }
   };
 
-  const isReturningUser = billingStatus?.trialEndsAt && billingStatus.trialDaysRemaining === 0;
+  const isLapsedSubscriber =
+    billingStatus?.subscriptionStatus != null &&
+    billingStatus.subscriptionStatus !== "incomplete";
 
   return (
     <main className="min-h-dvh bg-background text-text-primary">
@@ -65,12 +67,12 @@ function SubscribeContent() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-display tracking-tight mb-4">
-            {isReturningUser ? "Continue Your Journey" : "Salve, Discipule!"}
+            {isLapsedSubscriber ? "Salve, Discipule!" : "Continue Your Journey"}
           </h1>
           <p className="text-text-secondary text-lg">
-            {isReturningUser
-              ? "Your trial has ended. Subscribe to keep learning Latin with Caesar."
-              : "Welcome back! Your progress is safe. Subscribe to continue reading Caesar."}
+            {isLapsedSubscriber
+              ? "Welcome back! Your progress is safe. Subscribe to continue reading Caesar."
+              : "Your trial has ended. Subscribe to keep learning Latin with Caesar."}
           </p>
         </div>
 
