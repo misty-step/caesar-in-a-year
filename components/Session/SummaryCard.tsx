@@ -86,27 +86,19 @@ export function SummaryCard({ session, attemptSummary, streak }: SummaryCardProp
       {/* Accuracy breakdown */}
       {attemptSummary.total > 0 && (
         <div className="flex justify-center gap-6 py-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-success text-lg" aria-hidden="true">&#10003;</span>
-            <span className="text-sm font-medium text-text-primary">{attemptSummary.correct}</span>
-            <span className="text-xs text-text-muted">
-              <LatinText latin="Recte" english="Correct" />
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-warning text-lg" aria-hidden="true">&#126;</span>
-            <span className="text-sm font-medium text-text-primary">{attemptSummary.partial}</span>
-            <span className="text-xs text-text-muted">
-              <LatinText latin="Partim" english="Partial" />
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-text-muted text-lg" aria-hidden="true">&#10007;</span>
-            <span className="text-sm font-medium text-text-primary">{attemptSummary.incorrect}</span>
-            <span className="text-xs text-text-muted">
-              <LatinText latin="Falsum" english="Incorrect" />
-            </span>
-          </div>
+          {[
+            { icon: '\u2713', count: attemptSummary.correct, color: 'text-success', latin: 'Recte', english: 'Correct' },
+            { icon: '~', count: attemptSummary.partial, color: 'text-warning', latin: 'Partim', english: 'Partial' },
+            { icon: '\u2717', count: attemptSummary.incorrect, color: 'text-text-muted', latin: 'Falsum', english: 'Incorrect' },
+          ].map(({ icon, count, color, latin, english }) => (
+            <div key={english} className="flex items-center gap-1.5">
+              <span className={`${color} text-lg`} aria-hidden="true">{icon}</span>
+              <span className="text-sm font-medium text-text-primary">{count}</span>
+              <span className="text-xs text-text-muted">
+                <LatinText latin={latin} english={english} />
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
