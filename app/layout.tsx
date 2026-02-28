@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Caesar in a Year',
     description: 'Daily guided Latin sessions to read De Bello Gallico in one year',
-    url: 'https://caesarinayear.com',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'https://caesarinayear.com',
     type: 'website',
     images: ['/og.png'],
   },

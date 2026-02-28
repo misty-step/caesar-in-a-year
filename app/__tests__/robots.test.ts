@@ -16,6 +16,7 @@ describe('robots()', () => {
     const result = robots();
     const disallow = (result.rules as { disallow: string[] }).disallow;
 
+    expect(disallow).toHaveLength(8);
     expect(disallow).toContain('/dashboard');
     expect(disallow).toContain('/session');
     expect(disallow).toContain('/summary');

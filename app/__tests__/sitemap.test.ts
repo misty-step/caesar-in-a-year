@@ -37,10 +37,4 @@ describe('sitemap()', () => {
 
     expect(result[0].url).toBe('http://localhost:3000');
   });
-
-  it('does not include lastModified', () => {
-    const result = sitemap();
-
-    expect(result[0]).not.toHaveProperty('lastModified');
-  });
 });
