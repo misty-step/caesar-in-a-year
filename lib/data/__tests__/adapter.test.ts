@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createDataAdapter, ConvexAuthError } from '@/lib/data/adapter';
 import { ConvexAdapter } from '@/lib/data/convexAdapter';
+import { GradeStatus } from '@/lib/data/types';
+import type { Attempt } from '@/lib/data/types';
 
 describe('createDataAdapter', () => {
   beforeEach(() => {
@@ -75,5 +77,55 @@ describe('createDataAdapter', () => {
 
     const adapter = createDataAdapter('token');
     expect(adapter).toBeInstanceOf(ConvexAdapter);
+  });
+});
+
+describe('memoryAdapter.getSessionAttemptSummary', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  function makeAttempt(sessionId: string, status: GradeStatus): Attempt {
+    return {
+      userId: 'user-1',
+      sessionId,
+      itemId: `sentence-${Math.random()}`,
+      type: 'REVIEW',
+      userInput: 'test',
+      gradingResult: { status, feedback: 'ok' },
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  it('returns zeroes for session with no attempts', async () => {
+    const adapter = createDataAdapter();
+    const summary = await adapter.getSessionAttemptSummary('no-such-session', 'user-1');
+    expect(summary).toEqual({ correct: 0, partial: 0, incorrect: 0, total: 0 });
+  });
+
+  it('counts CORRECT, PARTIAL, and INCORRECT attempts', async () => {
+    const adapter = createDataAdapter();
+    const sessionId = 'test-session-summary';
+
+    // Create a session first so the adapter tracks the user
+    const session = await adapter.createSession('user-1', [
+      { type: 'REVIEW', sentence: { id: 's1', latin: 'test', referenceTranslation: 'test' } },
+    ]);
+
+    // Record attempts with varying statuses
+    await adapter.recordAttempt(makeAttempt(session.id, GradeStatus.CORRECT));
+    await adapter.recordAttempt(makeAttempt(session.id, GradeStatus.CORRECT));
+    await adapter.recordAttempt(makeAttempt(session.id, GradeStatus.PARTIAL));
+    await adapter.recordAttempt(makeAttempt(session.id, GradeStatus.INCORRECT));
+
+    const summary = await adapter.getSessionAttemptSummary(session.id, 'user-1');
+    expect(summary).toEqual({ correct: 2, partial: 1, incorrect: 1, total: 4 });
   });
 });

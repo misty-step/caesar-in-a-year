@@ -180,6 +180,13 @@ export interface ProgressMetrics {
   streak: number;
 }
 
+export interface AttemptSummary {
+  correct: number;
+  partial: number;
+  incorrect: number;
+  total: number;
+}
+
 export interface DataAdapter {
   getUserProgress(userId: string): Promise<UserProgress | null>;
   upsertUserProgress(progress: UserProgress): Promise<void>;
@@ -201,4 +208,5 @@ export interface DataAdapter {
   getMasteredAtLevel(userId: string, maxDifficulty: number): Promise<number>;
   incrementDifficulty(userId: string, increment?: number): Promise<{ maxDifficulty: number }>;
   getProgressMetrics(userId: string, tzOffsetMin?: number): Promise<ProgressMetrics>;
+  getSessionAttemptSummary(sessionId: string, userId: string): Promise<AttemptSummary>;
 }

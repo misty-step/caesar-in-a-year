@@ -50,3 +50,20 @@ New dashboard card components are S. Pattern is well-established (see JustComple
 UI copy logic bugs where the condition is wrong (not the copy itself) are XS-S. One-line conditional fix + new test file = S. Pre-existing test infra issues (bun runner compat with vitest APIs) are not blockers for targeted test files that avoid those APIs.
 
 ---
+
+## #85 — Add session recap to summary screen
+
+**Date**: 2026-02-28
+**Predicted effort**: S
+**Actual effort**: S (accurate)
+
+**Scope changes**:
+- Removed duplicate "To Dashboard" button from SummaryCard (page.tsx already renders CTAs)
+- Eliminated duplicate `getUserProgress` call by reusing the one fetched for recap in the mastery check
+
+**Blockers**: None
+
+**Pattern for future scoping**:
+Features adding new data to existing screens are reliably S when the data layer already stores what's needed (attempts table existed). The Convex index addition (`by_user_session`) is a schema migration that needs deploy coordination. When extending component props, check all callers (tests, page.tsx) — mock updates are easy to miss.
+
+---

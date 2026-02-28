@@ -2,6 +2,7 @@ import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import type {
   Attempt,
   AttemptHistoryEntry,
+  AttemptSummary,
   ContentSeed,
   DataAdapter,
   ProgressMetrics,
@@ -295,6 +296,23 @@ const memoryAdapter: DataAdapter = {
       progressStore.set(userId, { ...existing, maxDifficulty: newDifficulty });
     }
     return { maxDifficulty: newDifficulty };
+  },
+
+  async getSessionAttemptSummary(sessionId: string, userId: string): Promise<AttemptSummary> {
+    setMemoryUser(userId);
+    const attempts = attemptStore.get(sessionId) ?? [];
+    const userAttempts = attempts.filter(a => a.userId === userId);
+    let correct = 0;
+    let partial = 0;
+    let incorrect = 0;
+    for (const a of userAttempts) {
+      switch (a.gradingResult.status) {
+        case 'CORRECT': correct++; break;
+        case 'PARTIAL': partial++; break;
+        case 'INCORRECT': incorrect++; break;
+      }
+    }
+    return { correct, partial, incorrect, total: correct + partial + incorrect };
   },
 
   async getProgressMetrics(userId: string, _tzOffsetMin?: number): Promise<ProgressMetrics> {

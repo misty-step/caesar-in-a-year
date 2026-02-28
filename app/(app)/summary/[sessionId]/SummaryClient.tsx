@@ -3,14 +3,16 @@
 import { useEffect } from 'react';
 import { SummaryCard } from '@/components/Session/SummaryCard';
 import { showToast } from '@/components/UI/Toast';
-import type { Session } from '@/lib/data/types';
+import type { AttemptSummary, Session } from '@/lib/data/types';
 
 interface SummaryClientProps {
   session: Session;
   levelUpParam?: string;
+  attemptSummary: AttemptSummary;
+  streak: number;
 }
 
-export function SummaryClient({ session, levelUpParam }: SummaryClientProps) {
+export function SummaryClient({ session, levelUpParam, attemptSummary, streak }: SummaryClientProps) {
   useEffect(() => {
     if (levelUpParam) {
       const [oldLevelStr, newLevelStr] = levelUpParam.split('-');
@@ -22,5 +24,5 @@ export function SummaryClient({ session, levelUpParam }: SummaryClientProps) {
     }
   }, [levelUpParam]);
 
-  return <SummaryCard session={session} />;
+  return <SummaryCard session={session} attemptSummary={attemptSummary} streak={streak} />;
 }
