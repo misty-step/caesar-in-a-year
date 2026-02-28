@@ -80,9 +80,6 @@ jobs:
           # Skip runtime validation during build
           CI: true
 
-      - name: Upload coverage to Codecov
-        run: bun run codecov
-
   # Convex validation (only if convex files changed)
   convex:
     name: Convex Validation
