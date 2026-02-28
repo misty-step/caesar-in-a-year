@@ -78,7 +78,7 @@ describe('POST /api/phrase-review', () => {
     consumeAiCall.mockReset().mockReturnValue({ allowed: true, remaining: 99, resetAtMs: Date.now() + 3600000 });
     fetchQuery.mockReset();
     fetchMutation.mockReset().mockResolvedValue(undefined);
-    gradePhrase.mockReset().mockResolvedValue({ status: 'CORRECT', feedback: 'Good.', correction: undefined });
+    gradePhrase.mockReset().mockResolvedValue({ status: 'CORRECT', feedback: 'Good.' });
   });
 
   it('returns 400 for malformed JSON body', async () => {
@@ -238,6 +238,24 @@ describe('POST /api/phrase-review', () => {
       expect.objectContaining({ gradingStatus: 'PARTIAL' }),
       expect.anything()
     );
+  });
+
+  it('returns 500 when grader throws an unexpected error', async () => {
+    gradePhrase.mockRejectedValueOnce(new Error('unexpected SDK failure'));
+
+    fetchQuery
+      .mockResolvedValueOnce({ session: mockSession })
+      .mockResolvedValueOnce(mockPhraseCard);
+
+    const req = new Request('http://localhost/api/phrase-review', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'sess-1', itemIndex: 0, phraseCardId: 'card-1', userInput: 'All Gaul' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe('Internal Server Error');
   });
 
   it('calls AI grader and includes rateLimit when within quota', async () => {
