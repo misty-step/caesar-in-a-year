@@ -1,13 +1,13 @@
-import Link from 'next/link';
 import { LatinText } from '@/components/UI/LatinText';
 import { Label } from '@/components/UI/Label';
-import { Button } from '@/components/UI/Button';
 import { Card } from '@/components/UI/Card';
-import type { Session } from '@/lib/data/types';
+import type { AttemptSummary, Session } from '@/lib/data/types';
 import { XP_PER_ITEM } from '@/lib/progress/xp';
 
 interface SummaryCardProps {
   session: Session;
+  attemptSummary: AttemptSummary;
+  streak: number;
 }
 
 /**
@@ -40,9 +40,9 @@ function LaurelIcon() {
  * - text-celebration for success highlights
  * - text-text-primary/muted for hierarchy
  */
-export function SummaryCard({ session }: SummaryCardProps) {
+export function SummaryCard({ session, attemptSummary, streak }: SummaryCardProps) {
   const totalItems = session.items.length;
-  const estimatedXP = totalItems * XP_PER_ITEM;
+  const xpEarned = totalItems * XP_PER_ITEM;
 
   return (
     <Card as="section" elevation="flat" padding="lg" className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -68,10 +68,47 @@ export function SummaryCard({ session }: SummaryCardProps) {
           </p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-celebration">+{estimatedXP}</p>
+          <p className="text-2xl font-bold text-celebration">+{xpEarned}</p>
           <p className="text-xs text-text-muted">XP</p>
         </div>
+        {streak > 0 && (
+          <div className="text-center">
+            <p className="text-2xl font-bold text-achievement">
+              {streak}
+            </p>
+            <p className="text-xs text-text-muted">
+              <LatinText latin="Dies" english="Day streak" />
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* Accuracy breakdown */}
+      {attemptSummary.total > 0 && (
+        <div className="flex justify-center gap-6 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-success text-lg" aria-hidden="true">&#10003;</span>
+            <span className="text-sm font-medium text-text-primary">{attemptSummary.correct}</span>
+            <span className="text-xs text-text-muted">
+              <LatinText latin="Recte" english="Correct" />
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-warning text-lg" aria-hidden="true">&#126;</span>
+            <span className="text-sm font-medium text-text-primary">{attemptSummary.partial}</span>
+            <span className="text-xs text-text-muted">
+              <LatinText latin="Partim" english="Partial" />
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-text-muted text-lg" aria-hidden="true">&#10007;</span>
+            <span className="text-sm font-medium text-text-primary">{attemptSummary.incorrect}</span>
+            <span className="text-xs text-text-muted">
+              <LatinText latin="Falsum" english="Incorrect" />
+            </span>
+          </div>
+        </div>
+      )}
 
       <p className="text-sm text-text-secondary text-center text-pretty">
         <LatinText
@@ -79,12 +116,6 @@ export function SummaryCard({ session }: SummaryCardProps) {
           english="Tomorrow brings another small step toward reading Caesar in the original."
         />
       </p>
-
-      <div className="flex justify-center">
-        <Link href="/dashboard">
-          <Button labelLatin="Ad Tabulam" labelEnglish="To Dashboard" />
-        </Link>
-      </div>
     </Card>
   );
 }

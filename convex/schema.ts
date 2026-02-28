@@ -68,6 +68,7 @@ export default defineSchema({
     createdAt: v.number(), // Unix ms
   })
     .index("by_user_sentence", ["userId", "sentenceId"])
+    .index("by_user_session", ["userId", "sessionId"])
     .index("by_sentence_created", ["sentenceId", "createdAt"]),
 
   // Per-sentence SRS state (FSRS algorithm)

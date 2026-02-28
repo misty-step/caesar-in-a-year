@@ -35,9 +35,14 @@ export default async function SummaryPage(props: SummaryPageProps) {
     notFound();
   }
 
+  // Fetch attempt summary and user progress for the recap display
+  const [attemptSummary, userProgress] = await Promise.all([
+    data.getSessionAttemptSummary(sessionId, userId),
+    data.getUserProgress(userId),
+  ]);
+
   // Skip mastery check if already processed (levelUp param present)
   if (!searchParams.levelUp && session.status === 'complete') {
-    const userProgress = await data.getUserProgress(userId);
     const maxDifficulty = userProgress?.maxDifficulty ?? 10;
 
     if (maxDifficulty < MAX_LEVEL) {
@@ -54,7 +59,12 @@ export default async function SummaryPage(props: SummaryPageProps) {
   return (
     <main className="min-h-dvh bg-background text-text-primary">
       <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
-        <SummaryClient session={session} levelUpParam={searchParams.levelUp} />
+        <SummaryClient
+          session={session}
+          levelUpParam={searchParams.levelUp}
+          attemptSummary={attemptSummary}
+          streak={userProgress?.streak ?? 0}
+        />
 
         <div className="flex justify-between pt-4">
           <Link href="/dashboard">

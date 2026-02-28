@@ -69,6 +69,46 @@ export const getHistory = query({
 });
 
 /**
+ * Get grading status counts for a session (for summary screen).
+ */
+export const getSessionSummary = query({
+  args: {
+    userId: v.string(),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, { userId, sessionId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Authentication required");
+    }
+
+    if (identity.subject !== userId) {
+      throw new ConvexError("Cannot access another user's attempts");
+    }
+
+    const attempts = await ctx.db
+      .query("attempts")
+      .withIndex("by_user_session", (q) =>
+        q.eq("userId", userId).eq("sessionId", sessionId)
+      )
+      .collect();
+
+    let correct = 0;
+    let partial = 0;
+    let incorrect = 0;
+    for (const a of attempts) {
+      switch (a.gradingStatus) {
+        case "CORRECT": correct++; break;
+        case "PARTIAL": partial++; break;
+        case "INCORRECT": incorrect++; break;
+      }
+    }
+
+    return { correct, partial, incorrect, total: attempts.length };
+  },
+});
+
+/**
  * Get total attempt count for a sentence (for "Attempt X" display).
  */
 export const getCount = query({

@@ -10,6 +10,7 @@ import {
 import {
   Attempt,
   AttemptHistoryEntry,
+  AttemptSummary,
   ContentSeed,
   DataAdapter,
   GradingResult,
@@ -494,6 +495,14 @@ export class ConvexAdapter implements DataAdapter {
 
   async incrementDifficulty(userId: string, increment: number = 5): Promise<{ maxDifficulty: number }> {
     return fetchMutation(api.userProgress.incrementDifficulty, { userId, increment }, this.options);
+  }
+
+  async getSessionAttemptSummary(sessionId: string, userId: string): Promise<AttemptSummary> {
+    return fetchQuery(
+      api.attempts.getSessionSummary,
+      { userId, sessionId },
+      this.options
+    ) as Promise<AttemptSummary>;
   }
 
   async getProgressMetrics(userId: string, tzOffsetMin?: number): Promise<ProgressMetrics> {
