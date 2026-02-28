@@ -57,7 +57,7 @@ function SubscribeContent() {
     }
   };
 
-  const isReturningUser = billingStatus?.trialEndsAt && billingStatus.trialDaysRemaining === 0;
+  const isReturningUser = billingStatus?.subscriptionStatus === "canceled";
 
   return (
     <main className="min-h-dvh bg-background text-text-primary">
