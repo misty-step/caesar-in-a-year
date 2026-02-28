@@ -18,23 +18,13 @@ import { TrialBanner } from '@/components/dashboard/TrialBanner';
 import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
 import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
-import { TZ_OFFSET_COOKIE_NAME, MIN_TZ_OFFSET_MIN, MAX_TZ_OFFSET_MIN } from '@/lib/timezone';
+import { TZ_OFFSET_COOKIE_NAME, parseTzOffset } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
 async function parseTimezoneOffsetFromCookie(): Promise<number> {
   const cookieStore = await cookies();
-  const rawOffset = cookieStore.get(TZ_OFFSET_COOKIE_NAME)?.value;
-  if (!rawOffset) {
-    return 0;
-  }
-
-  const parsedOffset = Number.parseInt(rawOffset, 10);
-  if (Number.isNaN(parsedOffset)) {
-    return 0;
-  }
-
-  return Math.max(MIN_TZ_OFFSET_MIN, Math.min(MAX_TZ_OFFSET_MIN, parsedOffset));
+  return parseTzOffset(cookieStore.get(TZ_OFFSET_COOKIE_NAME)?.value);
 }
 
 /**

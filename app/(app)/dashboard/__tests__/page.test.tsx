@@ -163,6 +163,7 @@ describe('DashboardPage', () => {
   });
 
   it.each([
+    { description: 'defaults to 0 when cookie value is empty string', cookieValue: '', expectedOffset: 0 },
     { description: 'defaults to 0 when cookie value is NaN', cookieValue: 'not-a-number', expectedOffset: 0 },
     { description: 'clamps out-of-range positive cookie value to 720', cookieValue: '999', expectedOffset: 720 },
     { description: 'clamps out-of-range negative cookie value to -720', cookieValue: '-999', expectedOffset: -720 },
