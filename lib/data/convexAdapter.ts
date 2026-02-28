@@ -3,6 +3,11 @@ import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import { provisionCardsForSentences } from './provisionCards';
 import {
+  loadEnrichedCorpus,
+  getVocabForSentences,
+  isEnrichedCorpusLoaded,
+} from './enrichedCorpus';
+import {
   Attempt,
   AttemptHistoryEntry,
   ContentSeed,
@@ -104,15 +109,26 @@ function mapSentence(doc: SentenceDoc): Sentence {
   };
 }
 
+function buildGlossaryFromCorpus(sentenceIds: string[]): Record<string, string> {
+  if (!isEnrichedCorpusLoaded()) return {};
+  const vocab = getVocabForSentences(sentenceIds);
+  const glossary: Record<string, string> = {};
+  for (const v of vocab) {
+    glossary[v.latinWord] = v.meaning;
+  }
+  return glossary;
+}
+
 function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
   const first = sentences[0];
   const parts = first.sentenceId.split('.');
+  const sentenceIds = sentences.map((s) => s.sentenceId);
   return {
     id: `reading-${first.sentenceId}`,
     title: `De Bello Gallico ${parts.slice(1, 3).join('.')}`,
     latinText: sentences.map((s) => s.latin),
-    sentenceIds: sentences.map((s) => s.sentenceId),
-    glossary: {},
+    sentenceIds,
+    glossary: buildGlossaryFromCorpus(sentenceIds),
     gistQuestion: 'Translate this passage into natural English.',
     referenceGist: sentences.map((s) => s.referenceTranslation).join(' '),
   };
@@ -178,6 +194,9 @@ export class ConvexAdapter implements DataAdapter {
   }
 
   async getContent(userId: string, daysActive?: number): Promise<ContentSeed> {
+    // Ensure enriched corpus is loaded for glossary population
+    await loadEnrichedCorpus();
+
     // Import config to determine fetch limits based on user progress
     const { getSessionConfig } = await import('@/lib/session/config');
     const config = getSessionConfig(daysActive ?? 1);
