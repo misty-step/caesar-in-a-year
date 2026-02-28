@@ -65,12 +65,12 @@ function SubscribeContent() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl font-display tracking-tight mb-4">
-            {isReturningUser ? "Salve, Discipule!" : "Continue Your Journey"}
+            {isReturningUser ? "Continue Your Journey" : "Salve, Discipule!"}
           </h1>
           <p className="text-text-secondary text-lg">
             {isReturningUser
-              ? "Welcome back! Your progress is safe. Subscribe to continue reading Caesar."
-              : "Your trial has ended. Subscribe to keep learning Latin with Caesar."}
+              ? "Your trial has ended. Subscribe to keep learning Latin with Caesar."
+              : "Welcome back! Your progress is safe. Subscribe to continue reading Caesar."}
           </p>
         </div>
 
