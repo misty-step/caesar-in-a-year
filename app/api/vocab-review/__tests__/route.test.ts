@@ -81,6 +81,19 @@ describe('POST /api/vocab-review', () => {
     gradeVocab.mockReset().mockResolvedValue({ status: 'CORRECT', feedback: 'Good.', correction: undefined });
   });
 
+  it('returns 400 for malformed JSON body', async () => {
+    const req = new Request('http://localhost/api/vocab-review', {
+      method: 'POST',
+      body: 'not json',
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe('Invalid payload');
+    expect(consumeAiCall).not.toHaveBeenCalled();
+  });
+
   it('returns 400 for invalid payload', async () => {
     const req = new Request('http://localhost/api/vocab-review', {
       method: 'POST',
@@ -197,6 +210,34 @@ describe('POST /api/vocab-review', () => {
     const json = await res.json();
     expect(json.error).toBe('Vocab card not found');
     expect(consumeAiCall).not.toHaveBeenCalled();
+  });
+
+  it('handles AI-layer fallback when rate limit allows but grader returns PARTIAL', async () => {
+    gradeVocab.mockResolvedValueOnce({ status: 'PARTIAL', feedback: "We couldn't reach the AI tutor right now. Please compare your answer with the reference manually.", hint: undefined });
+
+    fetchQuery
+      .mockResolvedValueOnce({ session: mockSession })
+      .mockResolvedValueOnce(mockVocabCard);
+
+    const req = new Request('http://localhost/api/vocab-review', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'sess-1', itemIndex: 0, vocabCardId: 'card-1', userInput: 'war' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    // AI was called but returned PARTIAL (e.g. circuit breaker)
+    expect(gradeVocab).toHaveBeenCalled();
+    expect(json.grading.status).toBe('PARTIAL');
+
+    // FSRS still records the PARTIAL status
+    expect(fetchMutation).toHaveBeenCalledWith(
+      'vocab:recordReview',
+      expect.objectContaining({ gradingStatus: 'PARTIAL' }),
+      expect.anything()
+    );
   });
 
   it('calls AI grader and includes rateLimit when within quota', async () => {
