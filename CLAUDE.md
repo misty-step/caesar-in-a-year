@@ -35,6 +35,7 @@ bun stripe:check    # Validate Stripe configuration
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client |
 | `STRIPE_PRICE_ID` | Subscription price |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `CONVEX_DEPLOY_KEY` | Convex schema sync during Vercel builds |
 | `CONVEX_WEBHOOK_SECRET` | Server-to-server auth for billing |
 | `NEXT_PUBLIC_SENTRY_DSN` | Sentry error tracking |
 | `SENTRY_AUTH_TOKEN` | Source map uploads (CI only) |
@@ -51,6 +52,7 @@ bun stripe:check    # Validate Stripe configuration
 | `CLERK_JWT_ISSUER_DOMAIN` | - | - | ✓ |
 | `STRIPE_*` | ✓ | ✓ | - |
 | `GEMINI_API_KEY` | ✓ | ✓ | - |
+| `CONVEX_DEPLOY_KEY` | - | ✓ | - |
 | `CONVEX_WEBHOOK_SECRET` | ✓ | ✓ | ✓ |
 | `SENTRY_*` | ✓ | ✓ | - |
 | `POSTHOG_*` | ✓ | ✓ | - |
@@ -60,6 +62,7 @@ bun stripe:check    # Validate Stripe configuration
 - Dev: `https://YOUR-INSTANCE.clerk.accounts.dev`
 - Prod: `https://clerk.yourdomain.com` (custom domain)
 - `CONVEX_WEBHOOK_SECRET` must be identical across Vercel and Convex
+- `CONVEX_DEPLOY_KEY` on Vercel enables automatic Convex schema sync during builds (without it, build runs plain `next build`)
 
 ## Architecture
 
