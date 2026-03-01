@@ -67,3 +67,15 @@ UI copy logic bugs where the condition is wrong (not the copy itself) are XS-S. 
 Features adding new data to existing screens are reliably S when the data layer already stores what's needed (attempts table existed). The Convex index addition (`by_user_session`) is a schema migration that needs deploy coordination. When extending component props, check all callers (tests, page.tsx) — mock updates are easy to miss.
 
 ---
+
+## #123 — P0: Fix dashboard crash (corpus static import)
+
+| Field | Value |
+|-------|-------|
+| Issue | #123 |
+| PR | #130 |
+| Predicted effort | — |
+| Actual effort | S (< 1 hour) |
+| Scope changes | None — issue spec was accurate and complete |
+| Blockers | Could not do authenticated dogfood QA (no test credentials); verified via build + 310 tests instead |
+| Pattern | Dynamic `fs.readFile(process.cwd() + path)` in serverless = silent ENOENT. Static `import` from `@/` path is the fix. Documented in CLAUDE.md global memory. |
