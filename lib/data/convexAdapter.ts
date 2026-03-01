@@ -119,6 +119,9 @@ function buildGlossaryFromCorpus(sentenceIds: string[]): Record<string, string> 
 
 /** @internal exported for testing */
 export function mapToReading(sentences: SentenceDoc[]): ReadingPassage {
+  if (sentences.length === 0) {
+    throw new Error('mapToReading requires at least one sentence');
+  }
   const first = sentences[0];
   const parts = first.sentenceId.split('.');
   const sentenceIds = sentences.map((s) => s.sentenceId);

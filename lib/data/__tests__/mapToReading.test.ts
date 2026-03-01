@@ -64,6 +64,10 @@ describe('mapToReading', () => {
     expect(result.glossary).toEqual({ gallia: 'Gaul' });
   });
 
+  it('throws on empty input', () => {
+    expect(() => mapToReading([])).toThrow('mapToReading requires at least one sentence');
+  });
+
   it('preserves other ReadingPassage fields correctly', () => {
     mockedGetVocab.mockReturnValue([]);
 
