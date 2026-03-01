@@ -38,7 +38,7 @@ interface RawCorpus {
   phrases: EnrichedPhrase[];
 }
 
-const corpus = corpusJson as unknown as RawCorpus;
+const corpus = corpusJson as RawCorpus;
 
 // Build sentence ID indexes at module load time for O(1) lookup
 const vocabBySentence = new Map<string, EnrichedVocab[]>();
