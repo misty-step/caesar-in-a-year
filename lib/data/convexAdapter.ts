@@ -3,7 +3,6 @@ import { api } from '@/convex/_generated/api';
 import { DAILY_READING, REVIEW_SENTENCES } from '@/constants';
 import { provisionCardsForSentences } from './provisionCards';
 import {
-  loadEnrichedCorpus,
   getVocabForSentences,
   isEnrichedCorpusLoaded,
 } from './enrichedCorpus';
@@ -195,9 +194,6 @@ export class ConvexAdapter implements DataAdapter {
   }
 
   async getContent(userId: string, daysActive?: number): Promise<ContentSeed> {
-    // Ensure enriched corpus is loaded for glossary population
-    await loadEnrichedCorpus();
-
     // Import config to determine fetch limits based on user progress
     const { getSessionConfig } = await import('@/lib/session/config');
     const config = getSessionConfig(daysActive ?? 1);

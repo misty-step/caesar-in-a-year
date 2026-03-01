@@ -8,7 +8,6 @@
 import { fetchMutation } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
 import {
-  loadEnrichedCorpus,
   getVocabForSentences,
   getPhrasesForSentences,
   isEnrichedCorpusLoaded,
@@ -38,9 +37,6 @@ export async function provisionCardsForSentences(
   sentenceIds: string[],
   options?: ProvisionOptions
 ): Promise<ProvisionResult> {
-  // Ensure enriched corpus is loaded
-  await loadEnrichedCorpus();
-
   if (!isEnrichedCorpusLoaded()) {
     return { vocabCreated: 0, phrasesCreated: 0, vocabSkipped: 0, phrasesSkipped: 0 };
   }
