@@ -14,10 +14,10 @@ import { LegionStatus } from '@/components/dashboard/LegionStatus';
 import { ActivityHeatmap } from '@/components/dashboard/ActivityHeatmap';
 import { JourneyProgress } from '@/components/dashboard/JourneyProgress';
 import { XPDisplay } from '@/components/dashboard/XPDisplay';
+import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 import { TrialBanner } from '@/components/dashboard/TrialBanner';
 import { FirstSessionGuidance } from '@/components/dashboard/FirstSessionGuidance';
 import { TimezoneSync } from '@/components/dashboard/TimezoneSync';
-import { MasteryProgress } from '@/components/dashboard/MasteryProgress';
 import { TZ_OFFSET_COOKIE_NAME, parseTzOffset } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +78,10 @@ async function getDashboardData(userId: string, token: string | undefined, tzOff
     reviewCount: number;
     readingTitle: string;
   };
+  mastery: {
+    masteredCount: number;
+    readingLevel: number;
+  };
 }> {
   const data = createDataAdapter(token ?? undefined);
 
@@ -88,10 +92,14 @@ async function getDashboardData(userId: string, token: string | undefined, tzOff
     data.getActiveSession(),
   ]);
 
+  // Sequential: depends on rawProgress.maxDifficulty from the parallel batch above
+  const maxDifficulty = rawProgress?.maxDifficulty ?? 1;
+  const masteredCount = await data.getMasteredAtLevel(userId, maxDifficulty);
+
   const progress = mapProgress(rawProgress, tzOffsetMin);
   const summary = mapContentToSummary(content);
 
-  return { progress, metrics, activeSession, isNewUser: rawProgress === null, summary };
+  return { progress, metrics, activeSession, isNewUser: rawProgress === null, summary, mastery: { masteredCount, readingLevel: maxDifficulty } };
 }
 
 function mapProgress(progress: DataUserProgress | null, tzOffsetMin: number): UserProgressVM {
@@ -149,6 +157,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
   let summary: { reviewCount: number; readingTitle: string };
   let activeSession: Session | null;
   let isNewUser: boolean;
+  let mastery: { masteredCount: number; readingLevel: number };
   const tzOffsetMin = await parseTimezoneOffsetFromCookie();
 
   try {
@@ -158,6 +167,7 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
     summary = data.summary;
     activeSession = data.activeSession;
     isNewUser = data.isNewUser;
+    mastery = data.mastery;
   } catch (error) {
     // Report to Sentry with full context
     Sentry.setContext('dashboard', {
@@ -200,12 +210,12 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
         <SessionCard justCompleted={justCompleted} activeSession={activeSession} />
 
         {/* Progress Visualization */}
+        <MasteryProgress masteredCount={mastery.masteredCount} readingLevel={mastery.readingLevel} />
+
         <div className="grid gap-6 md:grid-cols-2">
           <LegionStatus legion={metrics.legion} />
           <XPDisplay xp={metrics.xp} />
         </div>
-
-        <MasteryProgress masteredCount={metrics.legion.decuriones} readingLevel={progress.unlockedPhase} />
 
         <JourneyProgress iter={metrics.iter} />
 
