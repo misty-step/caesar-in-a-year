@@ -100,6 +100,46 @@ describe('DashboardPage', () => {
     expect(getProgressMetrics).toHaveBeenCalledWith('user-1', 0);
   });
 
+  it('renders MasteryProgress with data from getMasteredAtLevel', async () => {
+    getUserProgress.mockResolvedValueOnce({
+      userId: 'user-1',
+      streak: 3,
+      totalXp: 150,
+      maxDifficulty: 2,
+      lastSessionAt: Date.now() - 86400000,
+    });
+    getContent.mockResolvedValueOnce({
+      review: [{ id: 's1', latin: 'Gallia est omnis divisa', english: 'All Gaul is divided', reference: 'BG 1.1', difficulty: 1, sentenceIndex: 0, passageId: 'p1' }],
+      reading: {
+        id: 'r1',
+        title: 'Sample Reading',
+        latinText: [],
+        glossary: {},
+        gistQuestion: '',
+        referenceGist: '',
+      },
+    });
+    getProgressMetrics.mockResolvedValueOnce({
+      legion: { tirones: 0, milites: 0, veterani: 0, decuriones: 0 },
+      iter: { sentencesEncountered: 5, totalSentences: 365, percentComplete: 1, contentDay: 5, daysActive: 5, scheduleDelta: 0 },
+      activity: [],
+      xp: { total: 150, level: 2, currentLevelXp: 50, toNextLevel: 100 },
+      streak: 3,
+    });
+    getMasteredAtLevel.mockResolvedValueOnce(12);
+
+    const { default: DashboardPage } = await import('@/app/(app)/dashboard/page');
+    const tree = await DashboardPage();
+    const html = renderToString(tree as React.ReactElement);
+
+    // MasteryProgress renders reading level and mastery count
+    // React SSR inserts <!-- --> between expressions, so match the label text instead
+    expect(html).toContain('Gradus Lectionis');
+    expect(html).toContain('Perfectae: 12/20');
+    expect(html).toContain('Mastered: 12/20');
+    expect(getMasteredAtLevel).toHaveBeenCalledWith('user-1', 2);
+  });
+
   it('does not render FirstSessionGuidance for returning users', async () => {
     getUserProgress.mockResolvedValueOnce({
       userId: 'user-1',

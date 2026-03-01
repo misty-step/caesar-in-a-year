@@ -92,6 +92,7 @@ async function getDashboardData(userId: string, token: string | undefined, tzOff
     data.getActiveSession(),
   ]);
 
+  // Sequential: depends on rawProgress.maxDifficulty from the parallel batch above
   const maxDifficulty = rawProgress?.maxDifficulty ?? 1;
   const masteredCount = await data.getMasteredAtLevel(userId, maxDifficulty);
 
