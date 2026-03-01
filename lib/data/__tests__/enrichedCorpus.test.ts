@@ -47,4 +47,9 @@ describe('enrichedCorpus (static import)', () => {
   it('getPhrasesForSentences returns empty array for unknown sentence', () => {
     expect(getPhrasesForSentences(['nonexistent.0.0.0'])).toEqual([]);
   });
+
+  it('returns empty arrays when called with no sentence IDs', () => {
+    expect(getVocabForSentences([])).toEqual([]);
+    expect(getPhrasesForSentences([])).toEqual([]);
+  });
 });
