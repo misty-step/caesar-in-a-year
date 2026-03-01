@@ -1,18 +1,14 @@
 /**
- * Enriched Corpus Loader
+ * Enriched Corpus Access
  *
  * Provides access to pre-generated vocabulary and phrase cards
- * from the enriched corpus. Cards are static curriculum content,
- * created once during corpus enrichment.
+ * from the enriched corpus. Uses a build-time static import so
+ * Vercel's file tracing bundles the JSON automatically.
  *
- * Usage:
- * 1. Load corpus: await loadEnrichedCorpus()
- * 2. Get cards for sentences: getVocabForSentences(ids), getPhrasesForSentences(ids)
- * 3. Create user cards when they encounter new sentences
+ * Maps are indexed at module load time for O(1) lookup.
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
+import corpusJson from '@/content/corpus-enriched.json';
 
 export interface EnrichedVocab {
   latinWord: string;
@@ -29,7 +25,7 @@ export interface EnrichedPhrase {
   sourceSentenceId: string;
 }
 
-interface EnrichedCorpus {
+interface RawCorpus {
   metadata: {
     version: string;
     generated_at: string;
@@ -42,63 +38,32 @@ interface EnrichedCorpus {
   phrases: EnrichedPhrase[];
 }
 
-// Indexed lookups for efficient access
-let vocabBySentence: Map<string, EnrichedVocab[]> | null = null;
-let phrasesBySentence: Map<string, EnrichedPhrase[]> | null = null;
-let loaded = false;
+const corpus = corpusJson as RawCorpus;
 
-const ENRICHED_CORPUS_PATH = path.join(process.cwd(), 'content', 'corpus-enriched.json');
+// Build sentence ID indexes at module load time for O(1) lookup
+const vocabBySentence = new Map<string, EnrichedVocab[]>();
+const phrasesBySentence = new Map<string, EnrichedPhrase[]>();
 
-/**
- * Load and index the enriched corpus.
- * Safe to call multiple times - only loads once.
- */
-export async function loadEnrichedCorpus(): Promise<void> {
-  if (loaded) return;
+for (const v of corpus.vocab) {
+  // Skip legacy grammar questions — only meaning-focused cards
+  if (v.questionType !== 'latin_to_english') continue;
 
-  try {
-    const raw = await fs.readFile(ENRICHED_CORPUS_PATH, 'utf-8');
-    const corpus: EnrichedCorpus = JSON.parse(raw);
+  const existing = vocabBySentence.get(v.sourceSentenceId) ?? [];
+  existing.push(v);
+  vocabBySentence.set(v.sourceSentenceId, existing);
+}
 
-    // Build sentence ID indexes for O(1) lookup
-    vocabBySentence = new Map();
-    phrasesBySentence = new Map();
-
-    for (const v of corpus.vocab) {
-      // Skip legacy grammar questions - only meaning-focused cards
-      if (v.questionType !== 'latin_to_english') continue;
-
-      const existing = vocabBySentence.get(v.sourceSentenceId) ?? [];
-      existing.push(v);
-      vocabBySentence.set(v.sourceSentenceId, existing);
-    }
-
-    for (const p of corpus.phrases) {
-      const existing = phrasesBySentence.get(p.sourceSentenceId) ?? [];
-      existing.push(p);
-      phrasesBySentence.set(p.sourceSentenceId, existing);
-    }
-
-    loaded = true;
-    console.log(
-      `[EnrichedCorpus] Loaded ${corpus.vocab.length} vocab, ${corpus.phrases.length} phrases`
-    );
-  } catch (error) {
-    // Not an error - corpus may not be enriched yet
-    console.warn(`[EnrichedCorpus] Could not load enriched corpus: ${error}`);
-    vocabBySentence = new Map();
-    phrasesBySentence = new Map();
-    loaded = true;
-  }
+for (const p of corpus.phrases) {
+  const existing = phrasesBySentence.get(p.sourceSentenceId) ?? [];
+  existing.push(p);
+  phrasesBySentence.set(p.sourceSentenceId, existing);
 }
 
 /**
  * Get vocabulary items for specific sentence IDs.
- * Returns empty array if corpus not loaded or no vocab for those sentences.
+ * Returns empty array if no vocab exists for those sentences.
  */
 export function getVocabForSentences(sentenceIds: string[]): EnrichedVocab[] {
-  if (!vocabBySentence) return [];
-
   const results: EnrichedVocab[] = [];
   const seen = new Set<string>(); // Dedupe by latinWord
 
@@ -117,11 +82,9 @@ export function getVocabForSentences(sentenceIds: string[]): EnrichedVocab[] {
 
 /**
  * Get phrase items for specific sentence IDs.
- * Returns empty array if corpus not loaded or no phrases for those sentences.
+ * Returns empty array if no phrases exist for those sentences.
  */
 export function getPhrasesForSentences(sentenceIds: string[]): EnrichedPhrase[] {
-  if (!phrasesBySentence) return [];
-
   const results: EnrichedPhrase[] = [];
   const seen = new Set<string>(); // Dedupe by latin text
 
@@ -139,8 +102,8 @@ export function getPhrasesForSentences(sentenceIds: string[]): EnrichedPhrase[] 
 }
 
 /**
- * Check if enriched corpus is available.
+ * Check if enriched corpus data is available.
  */
 export function isEnrichedCorpusLoaded(): boolean {
-  return loaded && vocabBySentence !== null && vocabBySentence.size > 0;
+  return vocabBySentence.size > 0;
 }
