@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getAllChapters, getAllVocabWords, getAllPhrases, getCorpusStats, slugify } from '@/lib/data/corpusPages';
+import { getAllChapters, getAllVocabWords, getAllPhrases, getCorpusStats, BOOK_NAMES } from '@/lib/data/corpusPages';
 
 export const metadata: Metadata = {
   title: 'Learn Latin with Caesar\'s De Bello Gallico | Caesar in a Year',
@@ -10,17 +10,6 @@ export const metadata: Metadata = {
     title: 'Learn Latin with Caesar\'s De Bello Gallico',
     description: 'Free Latin vocabulary, phrases, and parallel text from all 8 books of De Bello Gallico.',
   },
-};
-
-const BOOK_NAMES: Record<string, string> = {
-  '1': 'The Helvetian Campaign',
-  '2': 'The Belgian Campaign',
-  '3': 'Alpine and Atlantic Campaigns',
-  '4': 'Germanic and British Campaigns',
-  '5': 'Second British Campaign & Revolts',
-  '6': 'Germanic Campaigns & Customs',
-  '7': 'The Great Gallic Revolt',
-  '8': 'Final Campaigns (Hirtius)',
 };
 
 export default function LatinIndexPage() {

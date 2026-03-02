@@ -268,6 +268,55 @@ export function getRelatedPhrases(slug: string): CorpusPhrase[] {
   return related;
 }
 
+/** Human-readable book names for DBG. */
+export const BOOK_NAMES: Record<string, string> = {
+  '1': 'The Helvetian Campaign',
+  '2': 'The Belgian Campaign',
+  '3': 'Alpine and Atlantic Campaigns',
+  '4': 'Germanic and British Campaigns',
+  '5': 'Second British Campaign & Revolts',
+  '6': 'Germanic Campaigns & Customs',
+  '7': 'The Great Gallic Revolt',
+  '8': 'Final Campaigns (Hirtius)',
+};
+
+/** Vocab from same chapter as a given sentence ID. */
+export function getVocabForSentenceChapter(sourceSentenceId: string): CorpusVocab[] {
+  const [prefix, book, chapter] = sourceSentenceId.split('.');
+  const key = `${prefix}.${book}.${chapter}`;
+  const sentences = chapterSentences.get(key) ?? [];
+  const seen = new Set<string>();
+  const result: CorpusVocab[] = [];
+  for (const s of sentences) {
+    for (const v of vocabBySentence.get(s.id) ?? []) {
+      if (!seen.has(v.latinWord)) {
+        seen.add(v.latinWord);
+        result.push(v);
+      }
+    }
+  }
+  return result;
+}
+
+/** Phrases from same chapter as a given sentence ID. */
+export function getPhrasesForSentenceChapter(sourceSentenceId: string): (CorpusPhrase & { slug: string })[] {
+  const [prefix, book, chapter] = sourceSentenceId.split('.');
+  const key = `${prefix}.${book}.${chapter}`;
+  const sentences = chapterSentences.get(key) ?? [];
+  const seen = new Set<string>();
+  const result: (CorpusPhrase & { slug: string })[] = [];
+  for (const s of sentences) {
+    for (const p of phrasesBySentence.get(s.id) ?? []) {
+      const sl = slugify(p.latin);
+      if (!seen.has(sl)) {
+        seen.add(sl);
+        result.push({ ...p, slug: sl });
+      }
+    }
+  }
+  return result;
+}
+
 /** Total counts for sitemap/index page. */
 export function getCorpusStats() {
   return {

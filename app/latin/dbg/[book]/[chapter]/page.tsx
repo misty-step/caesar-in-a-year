@@ -1,18 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllChapters, getChapter, slugify } from '@/lib/data/corpusPages';
-
-const BOOK_NAMES: Record<string, string> = {
-  '1': 'The Helvetian Campaign',
-  '2': 'The Belgian Campaign',
-  '3': 'Alpine and Atlantic Campaigns',
-  '4': 'Germanic and British Campaigns',
-  '5': 'Second British Campaign & Revolts',
-  '6': 'Germanic Campaigns & Customs',
-  '7': 'The Great Gallic Revolt',
-  '8': 'Final Campaigns (Hirtius)',
-};
+import { getAllChapters, getChapter, slugify, BOOK_NAMES } from '@/lib/data/corpusPages';
 
 interface PageProps {
   params: Promise<{ book: string; chapter: string }>;

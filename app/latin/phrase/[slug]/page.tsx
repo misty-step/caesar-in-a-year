@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   getAllPhrases,
-  getAllVocabWords,
   getPhraseBySlug,
   getRelatedPhrases,
+  getVocabForSentenceChapter,
   slugify,
 } from '@/lib/data/corpusPages';
 
@@ -40,12 +40,8 @@ export default async function PhrasePage({ params }: PageProps) {
   // Chapter info from source sentence
   const [, book, chapter] = phrase.sourceSentenceId.split('.');
 
-  // Vocab from the same sentences
-  const allVocab = getAllVocabWords();
-  const sentenceIds = new Set(sentences.map((s) => s.id));
-  const relatedVocab = allVocab
-    .filter((v) => sentenceIds.has(v.sourceSentenceId))
-    .slice(0, 6);
+  // Vocab from the same chapter (indexed, not full scan)
+  const relatedVocab = getVocabForSentenceChapter(phrase.sourceSentenceId).slice(0, 6);
 
   return (
     <div>

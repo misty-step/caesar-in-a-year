@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllVocabWords, getVocabByWord, getRelatedVocab, getAllPhrases } from '@/lib/data/corpusPages';
+import { getAllVocabWords, getVocabByWord, getRelatedVocab, getPhrasesForSentenceChapter } from '@/lib/data/corpusPages';
 
 interface PageProps {
   params: Promise<{ word: string }>;
@@ -36,12 +36,8 @@ export default async function VocabPage({ params }: PageProps) {
   // Parse chapter from source sentence ID
   const [, book, chapter] = vocab.sourceSentenceId.split('.');
 
-  // Phrases from the same sentences
-  const allPhrases = getAllPhrases();
-  const sentenceIds = new Set(sentences.map((s) => s.id));
-  const relatedPhrases = allPhrases
-    .filter((p) => sentenceIds.has(p.sourceSentenceId))
-    .slice(0, 6);
+  // Phrases from the same chapter (indexed, not full scan)
+  const relatedPhrases = getPhrasesForSentenceChapter(vocab.sourceSentenceId).slice(0, 6);
 
   return (
     <div>
