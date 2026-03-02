@@ -12,13 +12,19 @@ describe('sitemap()', () => {
     process.env = originalEnv;
   });
 
-  it('includes the landing page with correct metadata', () => {
+  it('includes the landing page and pSEO pages', () => {
     const result = sitemap();
 
-    expect(result).toHaveLength(1);
+    // Landing + /latin index + chapters + vocab + phrases
+    expect(result.length).toBeGreaterThan(100);
     expect(result[0]).toMatchObject({
       changeFrequency: 'monthly',
       priority: 1,
+    });
+    // /latin index page
+    expect(result[1]).toMatchObject({
+      changeFrequency: 'weekly',
+      priority: 0.9,
     });
   });
 
