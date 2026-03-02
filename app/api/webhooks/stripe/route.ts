@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { getStripe } from "@/lib/billing/stripe";
 import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import { getPostHogServer } from "@/lib/posthog/server";
 import type Stripe from "stripe";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
@@ -165,6 +166,11 @@ export async function POST(req: Request) {
             eventTimestamp,
             eventId,
           });
+          getPostHogServer()?.capture({
+            distinctId: userId || stripeCustomerId,
+            event: 'subscription_started',
+            properties: { plan: 'monthly', stripeCustomerId },
+          });
           console.log(`[Stripe Webhook] Checkout completed for customer ${stripeCustomerId}`);
         }
         break;
@@ -228,11 +234,17 @@ export async function POST(req: Request) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
+        const userId = subscription.metadata?.userId;
 
-        await updateWithFallback(stripeCustomerId, undefined, {
+        await updateWithFallback(stripeCustomerId, userId, {
           subscriptionStatus: "expired",
           eventTimestamp,
           eventId,
+        });
+        getPostHogServer()?.capture({
+          distinctId: userId || stripeCustomerId,
+          event: 'subscription_churned',
+          properties: { stripeCustomerId },
         });
         console.log(`[Stripe Webhook] Subscription deleted for customer ${stripeCustomerId}`);
         break;

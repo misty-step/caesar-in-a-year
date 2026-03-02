@@ -11,6 +11,7 @@ import { shouldGenerateVocabDrills, generateVocabDrills } from '@/lib/ai/generat
 import { advanceSession } from '@/lib/session/advance';
 import { computeStreak } from '@/lib/progress/streak';
 import { XP_PER_ITEM } from '@/lib/progress/xp';
+import { getPostHogServer } from '@/lib/posthog/server';
 import { GradeStatus, type GradingResult, type SessionStatus, type AttemptHistoryEntry } from '@/lib/data/types';
 
 export type SubmitReviewInput = {
@@ -228,6 +229,14 @@ export async function submitReviewForUser(params: SubmitReviewInput & {
         maxDifficulty: progress?.maxDifficulty ?? 1,
         lastSessionAt: streakResult.nextLastSessionAtMs,
       });
+
+      if (streakResult.isMilestone) {
+        getPostHogServer()?.capture({
+          distinctId: userId,
+          event: 'streak_milestone',
+          properties: { streak: streakResult.nextStreak },
+        });
+      }
     } catch (e) {
       console.error('Failed to update user progress (continuing):', e);
     }

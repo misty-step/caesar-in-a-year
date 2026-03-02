@@ -13,6 +13,7 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(1);
     expect(result.didIncrement).toBe(true);
+    expect(result.isMilestone).toBe(false);
   });
 
   it('increments on next day', () => {
