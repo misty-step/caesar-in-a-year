@@ -234,14 +234,15 @@ export async function POST(req: Request) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
+        const userId = subscription.metadata?.userId;
 
-        await updateWithFallback(stripeCustomerId, undefined, {
+        await updateWithFallback(stripeCustomerId, userId, {
           subscriptionStatus: "expired",
           eventTimestamp,
           eventId,
         });
         getPostHogServer()?.capture({
-          distinctId: stripeCustomerId,
+          distinctId: userId || stripeCustomerId,
           event: 'subscription_churned',
           properties: { stripeCustomerId },
         });
