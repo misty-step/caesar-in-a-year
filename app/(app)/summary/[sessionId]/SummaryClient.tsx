@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { SummaryCard } from '@/components/Session/SummaryCard';
 import { showToast } from '@/components/UI/Toast';
+import { posthog, isPostHogReady } from '@/lib/posthog/client';
+import { XP_PER_ITEM } from '@/lib/progress/xp';
 import type { AttemptSummary, Session } from '@/lib/data/types';
 
 interface SummaryClientProps {
@@ -23,6 +25,20 @@ export function SummaryClient({ session, levelUpParam, attemptSummary, streak }:
       }
     }
   }, [levelUpParam]);
+
+  useEffect(() => {
+    if (isPostHogReady()) {
+      const totalItems = attemptSummary.total;
+      posthog.capture('session_completed', {
+        sessionId: session.id,
+        accuracy: totalItems > 0 ? attemptSummary.correct / totalItems : 0,
+        xpEarned: totalItems * XP_PER_ITEM,
+        itemCount: totalItems,
+        streak,
+      });
+    }
+   
+  }, []);
 
   return <SummaryCard session={session} attemptSummary={attemptSummary} streak={streak} />;
 }

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { getStripe } from "@/lib/billing/stripe";
 import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import { getPostHogServer } from "@/lib/posthog/server";
 import type Stripe from "stripe";
 
 const CONVEX_WEBHOOK_SECRET = process.env.CONVEX_WEBHOOK_SECRET?.trim();
@@ -165,6 +166,11 @@ export async function POST(req: Request) {
             eventTimestamp,
             eventId,
           });
+          getPostHogServer()?.capture({
+            distinctId: userId || stripeCustomerId,
+            event: 'subscription_started',
+            properties: { plan: 'monthly', stripeCustomerId },
+          });
           console.log(`[Stripe Webhook] Checkout completed for customer ${stripeCustomerId}`);
         }
         break;
@@ -233,6 +239,11 @@ export async function POST(req: Request) {
           subscriptionStatus: "expired",
           eventTimestamp,
           eventId,
+        });
+        getPostHogServer()?.capture({
+          distinctId: stripeCustomerId,
+          event: 'subscription_churned',
+          properties: { stripeCustomerId },
         });
         console.log(`[Stripe Webhook] Subscription deleted for customer ${stripeCustomerId}`);
         break;

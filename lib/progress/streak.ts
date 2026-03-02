@@ -20,6 +20,7 @@ export interface StreakResult {
   nextStreak: number;
   nextLastSessionAtMs: number;
   didIncrement: boolean;
+  isMilestone: boolean;
 }
 
 /**
@@ -52,6 +53,7 @@ export function computeStreak(params: StreakInput): StreakResult {
       nextStreak: 1,
       nextLastSessionAtMs: nowMs,
       didIncrement: true,
+      isMilestone: false,
     };
   }
 
@@ -65,15 +67,18 @@ export function computeStreak(params: StreakInput): StreakResult {
       nextStreak: prevStreak,
       nextLastSessionAtMs: nowMs,
       didIncrement: false,
+      isMilestone: false,
     };
   }
 
   if (dayDiff === 1) {
     // Next local day → increment
+    const nextStreak = prevStreak + 1;
     return {
-      nextStreak: prevStreak + 1,
+      nextStreak,
       nextLastSessionAtMs: nowMs,
       didIncrement: true,
+      isMilestone: nextStreak > 0 && nextStreak % 7 === 0,
     };
   }
 
@@ -82,6 +87,7 @@ export function computeStreak(params: StreakInput): StreakResult {
     nextStreak: 1,
     nextLastSessionAtMs: nowMs,
     didIncrement: true,
+    isMilestone: false,
   };
 }
 

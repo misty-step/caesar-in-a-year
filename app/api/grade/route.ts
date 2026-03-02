@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { submitReviewForUser } from '@/app/(app)/session/[sessionId]/actions';
 import { consumeAiCall } from '@/lib/rateLimit/inMemoryRateLimit';
+import { getPostHogServer } from '@/lib/posthog/server';
 
 export const runtime = 'nodejs';
 const MAX_USER_INPUT_LENGTH = 1000;
@@ -41,6 +42,16 @@ export async function POST(req: Request) {
       token: token ?? undefined,
       tzOffsetMin,
       aiAllowed: rateLimitDecision.allowed,
+    });
+
+    getPostHogServer()?.capture({
+      distinctId: userId,
+      event: 'grading_submitted',
+      properties: {
+        itemIndex,
+        status: result.result?.status,
+        sessionId,
+      },
     });
 
     return NextResponse.json(

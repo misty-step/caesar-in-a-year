@@ -23,6 +23,7 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(1);
     expect(result.didIncrement).toBe(true);
+    expect(result.isMilestone).toBe(false);
     expect(result.nextLastSessionAtMs).toBe(nowMs);
   });
 
@@ -39,6 +40,7 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(5);
     expect(result.didIncrement).toBe(false);
+    expect(result.isMilestone).toBe(false);
   });
 
   it('increments streak for next local day', () => {
@@ -55,6 +57,7 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(6);
     expect(result.didIncrement).toBe(true);
+    expect(result.isMilestone).toBe(false);
   });
 
   it('resets streak to 1 when missing a day', () => {
@@ -71,6 +74,7 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(1);
     expect(result.didIncrement).toBe(true);
+    expect(result.isMilestone).toBe(false);
   });
 
   it('resets streak to 1 when missing multiple days', () => {
@@ -118,5 +122,61 @@ describe('computeStreak', () => {
     });
     expect(result.nextStreak).toBe(8);
     expect(result.didIncrement).toBe(true);
+  });
+
+  it('sets isMilestone true at 7-day streak', () => {
+    const day100Start = localDayStart(100);
+    const day101Start = localDayStart(101);
+
+    const result = computeStreak({
+      prevStreak: 6,
+      prevLastSessionAtMs: day100Start + 3600_000,
+      nowMs: day101Start + 3600_000,
+      tzOffsetMin,
+    });
+    expect(result.nextStreak).toBe(7);
+    expect(result.isMilestone).toBe(true);
+  });
+
+  it('sets isMilestone true at 14-day streak', () => {
+    const day100Start = localDayStart(100);
+    const day101Start = localDayStart(101);
+
+    const result = computeStreak({
+      prevStreak: 13,
+      prevLastSessionAtMs: day100Start + 3600_000,
+      nowMs: day101Start + 3600_000,
+      tzOffsetMin,
+    });
+    expect(result.nextStreak).toBe(14);
+    expect(result.isMilestone).toBe(true);
+  });
+
+  it('sets isMilestone false for non-multiple-of-7 streaks', () => {
+    const day100Start = localDayStart(100);
+    const day101Start = localDayStart(101);
+
+    const result = computeStreak({
+      prevStreak: 7,
+      prevLastSessionAtMs: day100Start + 3600_000,
+      nowMs: day101Start + 3600_000,
+      tzOffsetMin,
+    });
+    expect(result.nextStreak).toBe(8);
+    expect(result.isMilestone).toBe(false);
+  });
+
+  it('sets isMilestone false when streak resets after gap', () => {
+    const day100Start = localDayStart(100);
+    const day110Start = localDayStart(110);
+
+    const result = computeStreak({
+      prevStreak: 6,
+      prevLastSessionAtMs: day100Start + 3600_000,
+      nowMs: day110Start + 3600_000,
+      tzOffsetMin,
+    });
+    expect(result.nextStreak).toBe(1);
+    expect(result.isMilestone).toBe(false);
   });
 });
