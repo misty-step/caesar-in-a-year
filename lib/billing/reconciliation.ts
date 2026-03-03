@@ -20,11 +20,13 @@ export type StripeSubscriptionSnapshot = {
   status: string;
   created: number;
   currentPeriodEnd?: number;
+  cancelAtPeriodEnd?: boolean;
 };
 
 export type ReconciliationMismatchType =
   | "missing_in_stripe"
   | "missing_in_db"
+  | "unsupported_stripe_status"
   | "status_mismatch"
   | "subscription_mismatch"
   | "period_end_mismatch";
@@ -53,35 +55,81 @@ export type ReconciliationResult = {
 };
 
 export function normalizeStripeSubscriptionStatus(
-  status: string
-): BillingSubscriptionStatus {
+  status: string,
+  cancelAtPeriodEnd = false
+): BillingSubscriptionStatus | null {
+  if (status === "canceled" || cancelAtPeriodEnd) {
+    return "canceled";
+  }
+
   switch (status) {
     case "trialing":
+    case "paused":
       return "active";
     case "incomplete_expired":
-      return "expired";
+      return "incomplete";
     case "active":
     case "past_due":
-    case "canceled":
     case "unpaid":
     case "incomplete":
       return status;
     default:
-      return "expired";
+      return null;
   }
 }
 
-function getLatestSubscriptionByCustomer(
+function getStatusPriority(status: BillingSubscriptionStatus | null): number {
+  switch (status) {
+    case "active":
+      return 5;
+    case "past_due":
+      return 4;
+    case "canceled":
+      return 3;
+    case "incomplete":
+      return 2;
+    case "unpaid":
+      return 1;
+    case "expired":
+      return 0;
+    default:
+      return -1;
+  }
+}
+
+function getBestSubscriptionByCustomer(
   subscriptions: StripeSubscriptionSnapshot[]
 ): Map<string, StripeSubscriptionSnapshot> {
-  const latestByCustomer = new Map<string, StripeSubscriptionSnapshot>();
+  const bestByCustomer = new Map<string, StripeSubscriptionSnapshot>();
   for (const subscription of subscriptions) {
-    const existing = latestByCustomer.get(subscription.customerId);
-    if (!existing || subscription.created > existing.created) {
-      latestByCustomer.set(subscription.customerId, subscription);
+    const existing = bestByCustomer.get(subscription.customerId);
+    if (!existing) {
+      bestByCustomer.set(subscription.customerId, subscription);
+      continue;
+    }
+
+    const currentPriority = getStatusPriority(
+      normalizeStripeSubscriptionStatus(
+        subscription.status,
+        subscription.cancelAtPeriodEnd ?? false
+      )
+    );
+    const existingPriority = getStatusPriority(
+      normalizeStripeSubscriptionStatus(
+        existing.status,
+        existing.cancelAtPeriodEnd ?? false
+      )
+    );
+
+    if (
+      currentPriority > existingPriority ||
+      (currentPriority === existingPriority &&
+        subscription.created > existing.created)
+    ) {
+      bestByCustomer.set(subscription.customerId, subscription);
     }
   }
-  return latestByCustomer;
+  return bestByCustomer;
 }
 
 export function reconcileSubscriptionState(input: {
@@ -90,7 +138,7 @@ export function reconcileSubscriptionState(input: {
 }): ReconciliationResult {
   const mismatches: ReconciliationMismatch[] = [];
   const proposedUpdates: ReconciliationUpdate[] = [];
-  const latestStripeByCustomer = getLatestSubscriptionByCustomer(
+  const bestStripeByCustomer = getBestSubscriptionByCustomer(
     input.stripeSubscriptions
   );
   const billingByCustomer = new Map(
@@ -98,7 +146,7 @@ export function reconcileSubscriptionState(input: {
   );
 
   for (const [stripeCustomerId, billingRecord] of billingByCustomer.entries()) {
-    const stripeSubscription = latestStripeByCustomer.get(stripeCustomerId);
+    const stripeSubscription = bestStripeByCustomer.get(stripeCustomerId);
     if (!stripeSubscription) {
       mismatches.push({
         type: "missing_in_stripe",
@@ -110,8 +158,23 @@ export function reconcileSubscriptionState(input: {
     }
 
     const normalizedStatus = normalizeStripeSubscriptionStatus(
-      stripeSubscription.status
+      stripeSubscription.status,
+      stripeSubscription.cancelAtPeriodEnd ?? false
     );
+    if (!normalizedStatus) {
+      mismatches.push({
+        type: "unsupported_stripe_status",
+        stripeCustomerId,
+        userId: billingRecord.userId,
+        stripeSubscriptionId: stripeSubscription.id,
+        diff: {
+          expected: "known_stripe_status",
+          actual: stripeSubscription.status,
+        },
+      });
+      continue;
+    }
+
     const stripePeriodEndMs =
       stripeSubscription.currentPeriodEnd === undefined
         ? undefined
@@ -170,16 +233,20 @@ export function reconcileSubscriptionState(input: {
     }
   }
 
-  for (const stripeSubscription of latestStripeByCustomer.values()) {
+  for (const stripeSubscription of bestStripeByCustomer.values()) {
     if (billingByCustomer.has(stripeSubscription.customerId)) {
       continue;
     }
+    const normalizedStatus = normalizeStripeSubscriptionStatus(
+      stripeSubscription.status,
+      stripeSubscription.cancelAtPeriodEnd ?? false
+    );
     mismatches.push({
-      type: "missing_in_db",
+      type: normalizedStatus ? "missing_in_db" : "unsupported_stripe_status",
       stripeCustomerId: stripeSubscription.customerId,
       stripeSubscriptionId: stripeSubscription.id,
       diff: {
-        expected: normalizeStripeSubscriptionStatus(stripeSubscription.status),
+        expected: normalizedStatus ?? "known_stripe_status",
         actual: null,
       },
     });

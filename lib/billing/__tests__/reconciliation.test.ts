@@ -37,10 +37,18 @@ describe("normalizeStripeSubscriptionStatus", () => {
     expect(normalizeStripeSubscriptionStatus("trialing")).toBe("active");
   });
 
-  it("maps incomplete_expired to expired", () => {
+  it("maps incomplete_expired to incomplete", () => {
     expect(normalizeStripeSubscriptionStatus("incomplete_expired")).toBe(
-      "expired"
+      "incomplete"
     );
+  });
+
+  it("maps paused to active", () => {
+    expect(normalizeStripeSubscriptionStatus("paused")).toBe("active");
+  });
+
+  it("maps cancel_at_period_end to canceled", () => {
+    expect(normalizeStripeSubscriptionStatus("active", true)).toBe("canceled");
   });
 
   it("passes through known statuses", () => {
@@ -48,6 +56,10 @@ describe("normalizeStripeSubscriptionStatus", () => {
     expect(normalizeStripeSubscriptionStatus("canceled")).toBe("canceled");
     expect(normalizeStripeSubscriptionStatus("unpaid")).toBe("unpaid");
     expect(normalizeStripeSubscriptionStatus("incomplete")).toBe("incomplete");
+  });
+
+  it("returns null for unknown statuses", () => {
+    expect(normalizeStripeSubscriptionStatus("mystery_status")).toBeNull();
   });
 });
 
@@ -73,6 +85,28 @@ describe("reconcileSubscriptionState", () => {
     expect(result.proposedUpdates[0]?.subscriptionStatus).toBe("past_due");
   });
 
+  it("detects subscription mismatch and proposes update", () => {
+    const result = reconcileSubscriptionState({
+      stripeSubscriptions: [createStripeSubscription({ id: "sub_latest" })],
+      billingRecords: [createBillingRecord({ stripeSubscriptionId: "sub_old" })],
+    });
+
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0]?.type).toBe("subscription_mismatch");
+    expect(result.proposedUpdates[0]?.stripeSubscriptionId).toBe("sub_latest");
+  });
+
+  it("detects period-end mismatch and proposes update", () => {
+    const result = reconcileSubscriptionState({
+      stripeSubscriptions: [createStripeSubscription({ currentPeriodEnd: 1700004600 })],
+      billingRecords: [createBillingRecord({ currentPeriodEnd: 1700003600 * 1000 })],
+    });
+
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0]?.type).toBe("period_end_mismatch");
+    expect(result.proposedUpdates[0]?.currentPeriodEnd).toBe(1700004600 * 1000);
+  });
+
   it("detects billing records missing in stripe", () => {
     const result = reconcileSubscriptionState({
       stripeSubscriptions: [],
@@ -93,7 +127,7 @@ describe("reconcileSubscriptionState", () => {
     expect(result.mismatches[0]?.type).toBe("missing_in_db");
   });
 
-  it("uses newest stripe subscription when customer has multiple", () => {
+  it("prefers highest-priority subscription status over newest creation time", () => {
     const oldSub = createStripeSubscription({
       id: "sub_old",
       status: "active",
@@ -109,14 +143,25 @@ describe("reconcileSubscriptionState", () => {
       stripeSubscriptions: [oldSub, newSub],
       billingRecords: [
         createBillingRecord({
-          stripeSubscriptionId: "sub_old",
-          subscriptionStatus: "active",
+          stripeSubscriptionId: "sub_new",
+          subscriptionStatus: "canceled",
         }),
       ],
     });
 
     expect(result.mismatches).toHaveLength(2);
-    expect(result.proposedUpdates[0]?.stripeSubscriptionId).toBe("sub_new");
-    expect(result.proposedUpdates[0]?.subscriptionStatus).toBe("past_due");
+    expect(result.proposedUpdates[0]?.stripeSubscriptionId).toBe("sub_old");
+    expect(result.proposedUpdates[0]?.subscriptionStatus).toBe("active");
+  });
+
+  it("surfaces unsupported stripe statuses and skips proposed updates", () => {
+    const result = reconcileSubscriptionState({
+      stripeSubscriptions: [createStripeSubscription({ status: "new_status_from_stripe" })],
+      billingRecords: [createBillingRecord()],
+    });
+
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0]?.type).toBe("unsupported_stripe_status");
+    expect(result.proposedUpdates).toHaveLength(0);
   });
 });

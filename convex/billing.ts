@@ -8,6 +8,7 @@ import {
   type BillingRecordSnapshot,
   type StripeSubscriptionSnapshot,
 } from "../lib/billing/reconciliation";
+import { collectStripeSubscriptions } from "../lib/billing/collectStripeSubscriptions";
 
 const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -414,7 +415,7 @@ export const clearStripeCustomer: ReturnType<typeof action> = action({
 export const listStripeBillingRecordsInternal = internalQuery({
   args: {},
   handler: async (ctx): Promise<BillingRecordSnapshot[]> => {
-    const users = await ctx.db.query("userProgress").collect();
+    const users = await ctx.db.query("userProgress").withIndex("by_stripe_customer").collect();
     return users
       .filter((user) => user.stripeCustomerId)
       .map((user) => ({
@@ -445,36 +446,42 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
     autoCorrect: boolean;
   }> => {
     const stripe = getStripe();
-    const stripeSubscriptions: StripeSubscriptionSnapshot[] = [];
-    let startingAfter: string | undefined;
-    let hasMore = true;
-
-    while (hasMore) {
-      // eslint-disable-next-line no-await-in-loop -- Stripe pagination is cursor-based and must be sequential.
-      const page = await stripe.subscriptions.list({
-        status: "all",
-        limit: 100,
-        ...(startingAfter ? { starting_after: startingAfter } : {}),
-      });
-
-      for (const subscription of page.data) {
-        const customerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id;
-        if (!customerId) continue;
-        stripeSubscriptions.push({
-          id: subscription.id,
-          customerId,
-          status: subscription.status,
-          created: subscription.created,
-          currentPeriodEnd: subscription.items.data[0]?.current_period_end,
+    const stripeSubscriptions: StripeSubscriptionSnapshot[] =
+      await collectStripeSubscriptions(async (startingAfter) => {
+        const page = await stripe.subscriptions.list({
+          status: "all",
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
         });
-      }
 
-      hasMore = page.has_more;
-      startingAfter = page.data.at(-1)?.id;
-    }
+        const data = page.data.flatMap((subscription) => {
+          const customerId =
+            typeof subscription.customer === "string"
+              ? subscription.customer
+              : subscription.customer?.id;
+          if (!customerId) return [];
+
+          const currentPeriodEnd =
+            (subscription as unknown as { current_period_end?: number }).current_period_end ??
+            subscription.items.data[0]?.current_period_end;
+
+          return [
+            {
+              id: subscription.id,
+              customerId,
+              status: subscription.status,
+              created: subscription.created,
+              currentPeriodEnd,
+              cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            },
+          ];
+        });
+
+        return {
+          data,
+          hasMore: page.has_more,
+        };
+      });
 
     const billingRecords: BillingRecordSnapshot[] = await ctx.runQuery(
       internal.billing.listStripeBillingRecordsInternal,

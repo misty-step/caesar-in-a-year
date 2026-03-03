@@ -67,7 +67,7 @@ User submits translation
 ```
 
 **Billing reconciliation flow:**
-```
+```text
 Daily Convex cron (04:15 UTC)
   → internal.billing.reconcileStripeSubscriptionsInternal
   → Stripe subscription snapshot (source of truth)
