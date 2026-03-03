@@ -1,0 +1,18 @@
+{
+  "issueId": null,
+  "branch": null,
+  "currentPhase": "HUMAN_INTERVENTION",
+  "loopCounts": {
+    "reviewRejections": 0,
+    "ciFailures": 0
+  },
+  "snapshots": {},
+  "history": [
+    {
+      "ts": 1772495219878,
+      "from": "INTAKE",
+      "to": "HUMAN_INTERVENTION",
+      "reason": "Git checkout failed: Command failed: git checkout -b master"
+    }
+  ]
+}
