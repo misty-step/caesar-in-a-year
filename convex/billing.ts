@@ -443,6 +443,7 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
     mismatchCount: number;
     proposedUpdateCount: number;
     correctedCount: number;
+    failedCorrections: number;
     autoCorrect: boolean;
   }> => {
     const stripe = getStripe();
@@ -505,21 +506,35 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
     const shouldAutoCorrect = args.autoCorrect ?? false;
     const runTimestamp = Date.now();
     let correctedCount = 0;
+    let failedCorrections = 0;
     if (shouldAutoCorrect) {
       for (const update of reconciliation.proposedUpdates) {
-        // eslint-disable-next-line no-await-in-loop -- applies idempotent updates in a stable sequence.
-        const result = await ctx.runMutation(
-          internal.billing.updateFromStripeInternal,
-          {
+        try {
+          // eslint-disable-next-line no-await-in-loop -- applies idempotent updates in a stable sequence.
+          const result = await ctx.runMutation(
+            internal.billing.updateFromStripeInternal,
+            {
+              stripeCustomerId: update.stripeCustomerId,
+              stripeSubscriptionId: update.stripeSubscriptionId,
+              subscriptionStatus: update.subscriptionStatus,
+              currentPeriodEnd: update.currentPeriodEnd,
+              eventTimestamp: runTimestamp,
+              eventId: `reconcile:${runTimestamp}:${update.stripeCustomerId}`,
+            }
+          );
+          if (result.success) {
+            correctedCount += 1;
+          } else {
+            failedCorrections += 1;
+          }
+        } catch (error) {
+          failedCorrections += 1;
+          console.error("[Billing Reconcile] auto-correct failed", {
             stripeCustomerId: update.stripeCustomerId,
             stripeSubscriptionId: update.stripeSubscriptionId,
-            subscriptionStatus: update.subscriptionStatus,
-            currentPeriodEnd: update.currentPeriodEnd,
-            eventTimestamp: runTimestamp,
-            eventId: `reconcile:${runTimestamp}:${update.stripeCustomerId}`,
-          }
-        );
-        if (result.success) correctedCount += 1;
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 
@@ -529,6 +544,7 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
       mismatchCount: reconciliation.mismatches.length,
       proposedUpdateCount: reconciliation.proposedUpdates.length,
       correctedCount,
+      failedCorrections,
       autoCorrect: shouldAutoCorrect,
     };
   },
