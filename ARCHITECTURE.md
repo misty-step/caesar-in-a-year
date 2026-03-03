@@ -66,6 +66,15 @@ User submits translation
   → Response with GradingResult
 ```
 
+**Billing reconciliation flow:**
+```
+Daily Convex cron (04:15 UTC)
+  → internal.billing.reconcileStripeSubscriptionsInternal
+  → Stripe subscription snapshot (source of truth)
+  → compare against userProgress billing fields
+  → log mismatches (+ optional auto-correction mutation path)
+```
+
 ## Key Types
 
 ```typescript

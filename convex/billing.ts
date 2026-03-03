@@ -1,7 +1,13 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { query, action, internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
+import { getStripe } from "../lib/billing/stripe";
+import {
+  reconcileSubscriptionState,
+  type BillingRecordSnapshot,
+  type StripeSubscriptionSnapshot,
+} from "../lib/billing/reconciliation";
 
 const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -402,5 +408,121 @@ export const clearStripeCustomer: ReturnType<typeof action> = action({
     return await ctx.runMutation(internal.billing.clearStripeCustomerInternal, {
       userId: args.userId,
     });
+  },
+});
+
+export const listStripeBillingRecordsInternal = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<BillingRecordSnapshot[]> => {
+    const users = await ctx.db.query("userProgress").collect();
+    return users
+      .filter((user) => user.stripeCustomerId)
+      .map((user) => ({
+        userId: user.userId,
+        stripeCustomerId: user.stripeCustomerId as string,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        subscriptionStatus: user.subscriptionStatus,
+        currentPeriodEnd: user.currentPeriodEnd,
+      }));
+  },
+});
+
+export const reconcileStripeSubscriptionsInternal: ReturnType<
+  typeof internalAction
+> = internalAction({
+  args: {
+    autoCorrect: v.optional(v.boolean()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    scannedStripeSubscriptions: number;
+    scannedBillingRecords: number;
+    mismatchCount: number;
+    proposedUpdateCount: number;
+    correctedCount: number;
+    autoCorrect: boolean;
+  }> => {
+    const stripe = getStripe();
+    const stripeSubscriptions: StripeSubscriptionSnapshot[] = [];
+    let startingAfter: string | undefined;
+    let hasMore = true;
+
+    while (hasMore) {
+      // eslint-disable-next-line no-await-in-loop -- Stripe pagination is cursor-based and must be sequential.
+      const page = await stripe.subscriptions.list({
+        status: "all",
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+
+      for (const subscription of page.data) {
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id;
+        if (!customerId) continue;
+        stripeSubscriptions.push({
+          id: subscription.id,
+          customerId,
+          status: subscription.status,
+          created: subscription.created,
+          currentPeriodEnd: subscription.items.data[0]?.current_period_end,
+        });
+      }
+
+      hasMore = page.has_more;
+      startingAfter = page.data.at(-1)?.id;
+    }
+
+    const billingRecords: BillingRecordSnapshot[] = await ctx.runQuery(
+      internal.billing.listStripeBillingRecordsInternal,
+      {}
+    );
+    const reconciliation = reconcileSubscriptionState({
+      stripeSubscriptions,
+      billingRecords,
+    });
+
+    for (const mismatch of reconciliation.mismatches) {
+      console.warn("[Billing Reconcile] mismatch", {
+        type: mismatch.type,
+        stripeCustomerId: mismatch.stripeCustomerId,
+        userId: mismatch.userId ?? null,
+        stripeSubscriptionId: mismatch.stripeSubscriptionId ?? null,
+        diff: mismatch.diff ?? null,
+      });
+    }
+
+    const shouldAutoCorrect = args.autoCorrect ?? false;
+    const runTimestamp = Date.now();
+    let correctedCount = 0;
+    if (shouldAutoCorrect) {
+      for (const update of reconciliation.proposedUpdates) {
+        // eslint-disable-next-line no-await-in-loop -- applies idempotent updates in a stable sequence.
+        const result = await ctx.runMutation(
+          internal.billing.updateFromStripeInternal,
+          {
+            stripeCustomerId: update.stripeCustomerId,
+            stripeSubscriptionId: update.stripeSubscriptionId,
+            subscriptionStatus: update.subscriptionStatus,
+            currentPeriodEnd: update.currentPeriodEnd,
+            eventTimestamp: runTimestamp,
+            eventId: `reconcile:${runTimestamp}:${update.stripeCustomerId}`,
+          }
+        );
+        if (result.success) correctedCount += 1;
+      }
+    }
+
+    return {
+      scannedStripeSubscriptions: stripeSubscriptions.length,
+      scannedBillingRecords: billingRecords.length,
+      mismatchCount: reconciliation.mismatches.length,
+      proposedUpdateCount: reconciliation.proposedUpdates.length,
+      correctedCount,
+      autoCorrect: shouldAutoCorrect,
+    };
   },
 });
