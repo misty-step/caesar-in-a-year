@@ -182,4 +182,16 @@ describe("reconcileSubscriptionState", () => {
     expect(result.mismatches[0]?.diff?.actual).toBe("future_status");
     expect(result.proposedUpdates).toHaveLength(0);
   });
+
+  it("throws when duplicate billing records share a stripe customer id", () => {
+    expect(() =>
+      reconcileSubscriptionState({
+        stripeSubscriptions: [],
+        billingRecords: [
+          createBillingRecord({ userId: "user_one", stripeCustomerId: "cus_dup" }),
+          createBillingRecord({ userId: "user_two", stripeCustomerId: "cus_dup" }),
+        ],
+      })
+    ).toThrow("Duplicate billing record for stripeCustomerId: cus_dup");
+  });
 });

@@ -144,9 +144,15 @@ export function reconcileSubscriptionState(input: {
   const bestStripeByCustomer = getBestSubscriptionByCustomer(
     input.stripeSubscriptions
   );
-  const billingByCustomer = new Map(
-    input.billingRecords.map((record) => [record.stripeCustomerId, record])
-  );
+  const billingByCustomer = new Map<string, BillingRecordSnapshot>();
+  for (const record of input.billingRecords) {
+    if (billingByCustomer.has(record.stripeCustomerId)) {
+      throw new Error(
+        `Duplicate billing record for stripeCustomerId: ${record.stripeCustomerId}`
+      );
+    }
+    billingByCustomer.set(record.stripeCustomerId, record);
+  }
 
   for (const [stripeCustomerId, billingRecord] of billingByCustomer.entries()) {
     const stripeSubscription = bestStripeByCustomer.get(stripeCustomerId);
