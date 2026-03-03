@@ -31,6 +31,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.36.7",
     "@google/genai": "^1.42.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@sentry/nextjs": "^10.36.0",
     "@stripe/stripe-js": "^8.6.1",
     "@vercel/blob": "^2.0.1",
