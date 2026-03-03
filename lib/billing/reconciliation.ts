@@ -188,6 +188,7 @@ export function reconcileSubscriptionState(input: {
       stripeSubscription.currentPeriodEnd === undefined
         ? undefined
         : stripeSubscription.currentPeriodEnd * 1000;
+    const hasStripePeriodEnd = stripePeriodEndMs !== undefined;
 
     let needsUpdate = false;
     if (billingRecord.subscriptionStatus !== normalizedStatus) {
@@ -219,7 +220,9 @@ export function reconcileSubscriptionState(input: {
     }
 
     if (billingRecord.currentPeriodEnd !== stripePeriodEndMs) {
-      needsUpdate = true;
+      if (hasStripePeriodEnd) {
+        needsUpdate = true;
+      }
       mismatches.push({
         type: "period_end_mismatch",
         stripeCustomerId,
@@ -233,12 +236,15 @@ export function reconcileSubscriptionState(input: {
     }
 
     if (needsUpdate) {
-      proposedUpdates.push({
+      const proposedUpdate: ReconciliationUpdate = {
         stripeCustomerId,
         stripeSubscriptionId: stripeSubscription.id,
         subscriptionStatus: normalizedStatus,
-        currentPeriodEnd: stripePeriodEndMs,
-      });
+      };
+      if (hasStripePeriodEnd) {
+        proposedUpdate.currentPeriodEnd = stripePeriodEndMs;
+      }
+      proposedUpdates.push(proposedUpdate);
     }
   }
 

@@ -113,6 +113,17 @@ describe("reconcileSubscriptionState", () => {
     expect(result.proposedUpdates[0]?.currentPeriodEnd).toBe(1700004600 * 1000);
   });
 
+  it("reports period-end mismatch but avoids futile update when Stripe period end is missing", () => {
+    const result = reconcileSubscriptionState({
+      stripeSubscriptions: [createStripeSubscription({ currentPeriodEnd: undefined })],
+      billingRecords: [createBillingRecord({ currentPeriodEnd: 1700003600 * 1000 })],
+    });
+
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0]?.type).toBe("period_end_mismatch");
+    expect(result.proposedUpdates).toHaveLength(0);
+  });
+
   it("detects billing records missing in stripe", () => {
     const result = reconcileSubscriptionState({
       stripeSubscriptions: [],
