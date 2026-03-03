@@ -58,24 +58,27 @@ export function normalizeStripeSubscriptionStatus(
   status: string,
   cancelAtPeriodEnd = false
 ): BillingSubscriptionStatus | null {
-  if (status === "canceled" || cancelAtPeriodEnd) {
-    return "canceled";
-  }
-
+  let normalized: BillingSubscriptionStatus | null;
   switch (status) {
     case "trialing":
     case "paused":
-      return "active";
+      normalized = "active";
+      break;
     case "incomplete_expired":
-      return "incomplete";
+      normalized = "incomplete";
+      break;
     case "active":
     case "past_due":
+    case "canceled":
     case "unpaid":
     case "incomplete":
-      return status;
+      normalized = status;
+      break;
     default:
       return null;
   }
+
+  return cancelAtPeriodEnd ? "canceled" : normalized;
 }
 
 function getStatusPriority(status: BillingSubscriptionStatus | null): number {

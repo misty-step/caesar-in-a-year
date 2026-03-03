@@ -51,6 +51,12 @@ describe("normalizeStripeSubscriptionStatus", () => {
     expect(normalizeStripeSubscriptionStatus("active", true)).toBe("canceled");
   });
 
+  it("keeps unknown statuses unsupported even with cancel_at_period_end", () => {
+    expect(
+      normalizeStripeSubscriptionStatus("future_unrecognized_status", true)
+    ).toBeNull();
+  });
+
   it("passes through known statuses", () => {
     expect(normalizeStripeSubscriptionStatus("past_due")).toBe("past_due");
     expect(normalizeStripeSubscriptionStatus("canceled")).toBe("canceled");
