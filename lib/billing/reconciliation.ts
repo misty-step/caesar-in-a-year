@@ -241,13 +241,26 @@ export function reconcileSubscriptionState(input: {
       stripeSubscription.status,
       stripeSubscription.cancelAtPeriodEnd ?? false
     );
+    if (normalizedStatus) {
+      mismatches.push({
+        type: "missing_in_db",
+        stripeCustomerId: stripeSubscription.customerId,
+        stripeSubscriptionId: stripeSubscription.id,
+        diff: {
+          expected: normalizedStatus,
+          actual: null,
+        },
+      });
+      continue;
+    }
+
     mismatches.push({
-      type: normalizedStatus ? "missing_in_db" : "unsupported_stripe_status",
+      type: "unsupported_stripe_status",
       stripeCustomerId: stripeSubscription.customerId,
       stripeSubscriptionId: stripeSubscription.id,
       diff: {
-        expected: normalizedStatus ?? "known_stripe_status",
-        actual: null,
+        expected: "known_stripe_status",
+        actual: stripeSubscription.status,
       },
     });
   }

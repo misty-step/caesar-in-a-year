@@ -164,4 +164,16 @@ describe("reconcileSubscriptionState", () => {
     expect(result.mismatches[0]?.type).toBe("unsupported_stripe_status");
     expect(result.proposedUpdates).toHaveLength(0);
   });
+
+  it("includes raw status in unsupported mismatch when record is missing in db", () => {
+    const result = reconcileSubscriptionState({
+      stripeSubscriptions: [createStripeSubscription({ status: "future_status" })],
+      billingRecords: [],
+    });
+
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0]?.type).toBe("unsupported_stripe_status");
+    expect(result.mismatches[0]?.diff?.actual).toBe("future_status");
+    expect(result.proposedUpdates).toHaveLength(0);
+  });
 });
