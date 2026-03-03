@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/UI/Button';
 
 export default function DashboardError({
@@ -11,7 +12,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Dashboard error:', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
