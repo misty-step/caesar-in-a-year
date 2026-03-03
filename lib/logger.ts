@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogFields = Record<string, unknown>;
 
@@ -63,5 +65,13 @@ function normalizeError(error: unknown): { message: string; fields: LogFields } 
 
 export function logError(error: unknown, fields: LogFields = {}): void {
   const normalized = normalizeError(error);
-  logger.error(normalized.message, { ...fields, ...normalized.fields });
+  const extra = { ...fields, ...normalized.fields };
+  logger.error(normalized.message, extra);
+
+  if (error instanceof Error) {
+    Sentry.captureException(error, { extra });
+    return;
+  }
+
+  Sentry.captureException(new Error(normalized.message), { extra });
 }
