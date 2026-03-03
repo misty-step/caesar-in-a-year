@@ -63,3 +63,4 @@ thinktank.log
 coverage/
 
 .flywheel/
+.pi/
