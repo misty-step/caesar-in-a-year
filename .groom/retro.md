@@ -91,5 +91,5 @@ Features adding new data to existing screens are reliably S when the data layer 
 | Predicted effort | M |
 | Actual effort | M (~3 hours incl. pre-push gates) |
 | Scope changes | Added pure reconciliation module + unit tests + Convex cron + architecture note |
-| Blockers | `bd` and `/dogfood` CLIs unavailable in this environment; used GitHub issue flow + backend-focused verification |
+| Blockers | `/dogfood` CLI unavailable in this environment; used backend-focused verification |
 | Pattern | Reconciliation logic is safer as a pure module with deterministic tests; keep cron default log-only and gate mutation with explicit flag |
