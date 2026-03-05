@@ -2,7 +2,7 @@ import { query, action, internalMutation, internalQuery, internalAction } from "
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { getStripe } from "../lib/billing/stripe";
+import { getStripe, getSubscriptionPeriodEnd } from "../lib/billing/stripe";
 import {
   reconcileSubscriptionState,
   type BillingRecordSnapshot,
@@ -462,9 +462,7 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
               : subscription.customer?.id;
           if (!customerId) return [];
 
-          const currentPeriodEnd =
-            (subscription as unknown as { current_period_end?: number }).current_period_end ??
-            subscription.items.data[0]?.current_period_end;
+          const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
 
           return [
             {
