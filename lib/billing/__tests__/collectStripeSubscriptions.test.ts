@@ -29,14 +29,36 @@ describe("collectStripeSubscriptions", () => {
     expect(result.map((item) => item.id)).toEqual(["sub_1", "sub_2", "sub_3"]);
   });
 
-  it("throws when Stripe reports hasMore=true but returns an empty page", async () => {
+  it("throws when hasMore=true but no cursor is available", async () => {
     const fetchPage = vi.fn().mockResolvedValue({
       data: [],
       hasMore: true,
     });
 
     await expect(collectStripeSubscriptions(fetchPage)).rejects.toThrow(
-      "pagination invariant violated"
+      "no cursor"
     );
+  });
+
+  it("continues pagination using lastRawId when filtered data is empty", async () => {
+    const fetchPage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [],
+        hasMore: true,
+        lastRawId: "sub_filtered_out",
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: "sub_1", customerId: "cus_1", status: "active", created: 1 },
+        ],
+        hasMore: false,
+      });
+
+    const result = await collectStripeSubscriptions(fetchPage);
+
+    expect(fetchPage).toHaveBeenNthCalledWith(1, undefined);
+    expect(fetchPage).toHaveBeenNthCalledWith(2, "sub_filtered_out");
+    expect(result).toHaveLength(1);
   });
 });

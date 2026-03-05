@@ -3,6 +3,8 @@ import type { StripeSubscriptionSnapshot } from "./reconciliation";
 export type StripeSubscriptionsPage = {
   data: StripeSubscriptionSnapshot[];
   hasMore: boolean;
+  /** Raw cursor from the unfiltered Stripe page (last item ID before filtering). */
+  lastRawId?: string;
 };
 
 export type FetchStripeSubscriptionsPage = (
@@ -22,10 +24,11 @@ export async function collectStripeSubscriptions(
     subscriptions.push(...page.data);
     hasMore = page.hasMore;
 
-    const lastId = page.data.at(-1)?.id;
+    // Use raw cursor (pre-filter) when available; fall back to last mapped item
+    const lastId = page.lastRawId ?? page.data.at(-1)?.id;
     if (hasMore && !lastId) {
       throw new Error(
-        "[Billing Reconcile] Stripe pagination invariant violated: hasMore=true with empty page"
+        "[Billing Reconcile] Stripe pagination invariant violated: hasMore=true with no cursor"
       );
     }
     startingAfter = lastId;

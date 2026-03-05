@@ -479,6 +479,7 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
         return {
           data,
           hasMore: page.has_more,
+          lastRawId: page.data.at(-1)?.id,
         };
       });
 
