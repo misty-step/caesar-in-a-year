@@ -452,5 +452,55 @@ describe("billing", () => {
         autoCorrect: true,
       });
     });
+
+    it("reconcileStripeSubscriptionsInternal counts stale_event as success, not failure", async () => {
+      const stripe = getStripe();
+      vi.spyOn(stripe.subscriptions, "list").mockResolvedValue({
+        object: "list",
+        url: "/v1/subscriptions",
+        has_more: false,
+        data: [
+          {
+            id: "sub_1",
+            customer: { id: "cus_1" },
+            status: "active",
+            created: 1700000000,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700003600 }],
+            },
+          },
+        ],
+      } as never);
+
+      const runQuery = vi.fn().mockResolvedValue([
+        {
+          userId: "user_1",
+          stripeCustomerId: "cus_1",
+          stripeSubscriptionId: "sub_old",
+          subscriptionStatus: "past_due",
+          currentPeriodEnd: 1700000000000,
+        },
+      ]);
+      const runMutation = vi.fn().mockResolvedValue({
+        success: false,
+        reason: "stale_event",
+      });
+      const ctx = { runQuery, runMutation };
+
+      const result = await (
+        reconcileStripeSubscriptionsInternal as unknown as {
+          _handler: (
+            ctx: unknown,
+            args: { autoCorrect?: boolean }
+          ) => Promise<unknown>;
+        }
+      )._handler(ctx, { autoCorrect: true });
+
+      expect(result).toMatchObject({
+        correctedCount: 1,
+        failedCorrections: 0,
+      });
+    });
   });
 });

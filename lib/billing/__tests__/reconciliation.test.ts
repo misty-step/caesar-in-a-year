@@ -37,9 +37,9 @@ describe("normalizeStripeSubscriptionStatus", () => {
     expect(normalizeStripeSubscriptionStatus("trialing")).toBe("active");
   });
 
-  it("maps incomplete_expired to incomplete", () => {
+  it("maps incomplete_expired to expired (terminal state)", () => {
     expect(normalizeStripeSubscriptionStatus("incomplete_expired")).toBe(
-      "incomplete"
+      "expired"
     );
   });
 

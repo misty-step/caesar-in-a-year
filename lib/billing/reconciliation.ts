@@ -65,7 +65,7 @@ export function normalizeStripeSubscriptionStatus(
       normalized = "active";
       break;
     case "incomplete_expired":
-      normalized = "incomplete";
+      normalized = "expired";
       break;
     case "active":
     case "past_due":

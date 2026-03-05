@@ -522,6 +522,9 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
           );
           if (result.success) {
             correctedCount += 1;
+          } else if (result.reason === "stale_event" || result.reason === "duplicate_event") {
+            // Data already up-to-date from a more recent webhook — not a failure
+            correctedCount += 1;
           } else {
             failedCorrections += 1;
           }
