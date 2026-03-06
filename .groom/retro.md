@@ -79,3 +79,17 @@ Features adding new data to existing screens are reliably S when the data layer 
 | Scope changes | None — issue spec was accurate and complete |
 | Blockers | Could not do authenticated dogfood QA (no test credentials); verified via build + 310 tests instead |
 | Pattern | Dynamic `fs.readFile(process.cwd() + path)` in serverless = silent ENOENT. Static `import` from `@/` path is the fix. Documented in CLAUDE.md global memory. |
+
+---
+
+## #38 — Add Stripe subscription reconciliation job
+
+| Field | Value |
+|-------|-------|
+| Issue | #38 |
+| PR | #135 |
+| Predicted effort | M |
+| Actual effort | M (~3 hours incl. pre-push gates) |
+| Scope changes | Added pure reconciliation module + unit tests + Convex cron + architecture note |
+| Blockers | `/dogfood` CLI unavailable in this environment; used backend-focused verification |
+| Pattern | Reconciliation logic is safer as a pure module with deterministic tests; keep cron default log-only and gate mutation with explicit flag |

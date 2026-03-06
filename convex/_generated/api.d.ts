@@ -10,6 +10,7 @@
 
 import type * as attempts from "../attempts.js";
 import type * as billing from "../billing.js";
+import type * as crons from "../crons.js";
 import type * as migrations_multiplyXpByTen from "../migrations/multiplyXpByTen.js";
 import type * as phrases from "../phrases.js";
 import type * as progress from "../progress.js";
@@ -29,6 +30,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   attempts: typeof attempts;
   billing: typeof billing;
+  crons: typeof crons;
   "migrations/multiplyXpByTen": typeof migrations_multiplyXpByTen;
   phrases: typeof phrases;
   progress: typeof progress;

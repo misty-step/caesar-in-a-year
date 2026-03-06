@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
-import { getStripe } from "@/lib/billing/stripe";
+import { getStripe, getSubscriptionPeriodEnd } from "@/lib/billing/stripe";
+import { normalizeStripeSubscriptionStatus } from "@/lib/billing/reconciliation";
 import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { getPostHogServer } from "@/lib/posthog/server";
@@ -42,20 +43,14 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 }
 
 /**
- * Map Stripe subscription status to our internal status.
- * Treats 'trialing' and 'active' as active access states.
+ * Normalize Stripe status with fail-open default: unknown statuses become "active"
+ * to avoid denying access on unrecognized Stripe status values.
  */
-function mapSubscriptionStatus(
+function normalizeStatusFailOpen(
   stripeStatus: Stripe.Subscription.Status,
   cancelAtPeriodEnd: boolean
-): "active" | "canceled" | "past_due" | "unpaid" | "incomplete" {
-  if (stripeStatus === "canceled") return "canceled";
-  if (cancelAtPeriodEnd) return "canceled";
-  if (stripeStatus === "past_due") return "past_due";
-  if (stripeStatus === "unpaid") return "unpaid";
-  if (stripeStatus === "incomplete" || stripeStatus === "incomplete_expired") return "incomplete";
-  // 'active' and 'trialing' both grant access
-  return "active";
+) {
+  return normalizeStripeSubscriptionStatus(stripeStatus, cancelAtPeriodEnd) ?? "active";
 }
 
 /**
@@ -180,10 +175,8 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
         const userId = subscription.metadata?.userId;
-        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
-        // Extract current_period_end with fallback (root level or item level)
-        const periodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
-          ?? subscription.items.data[0]?.current_period_end;
+        const status = normalizeStatusFailOpen(subscription.status, subscription.cancel_at_period_end);
+        const periodEnd = getSubscriptionPeriodEnd(subscription);
 
         await updateWithFallback(stripeCustomerId, userId, {
           stripeSubscriptionId: subscription.id,
@@ -253,10 +246,8 @@ export async function POST(req: Request) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
-        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
-        // Extract current_period_end with fallback (root level or item level)
-        const periodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
-          ?? subscription.items.data[0]?.current_period_end;
+        const status = normalizeStatusFailOpen(subscription.status, subscription.cancel_at_period_end);
+        const periodEnd = getSubscriptionPeriodEnd(subscription);
 
         await updateWithFallback(stripeCustomerId, undefined, {
           subscriptionStatus: status,

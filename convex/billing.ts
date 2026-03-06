@@ -1,7 +1,14 @@
-import { query, action, internalMutation } from "./_generated/server";
+import { query, action, internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
+import { getStripe, getSubscriptionPeriodEnd, getStripeCustomerId } from "../lib/billing/stripe";
+import {
+  reconcileSubscriptionState,
+  type BillingRecordSnapshot,
+  type StripeSubscriptionSnapshot,
+} from "../lib/billing/reconciliation";
+import { collectStripeSubscriptions } from "../lib/billing/collectStripeSubscriptions";
 
 const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -402,5 +409,139 @@ export const clearStripeCustomer: ReturnType<typeof action> = action({
     return await ctx.runMutation(internal.billing.clearStripeCustomerInternal, {
       userId: args.userId,
     });
+  },
+});
+
+export const listStripeBillingRecordsInternal = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<BillingRecordSnapshot[]> => {
+    const users = await ctx.db.query("userProgress").withIndex("by_stripe_customer").collect();
+    return users
+      .filter((user) => user.stripeCustomerId)
+      .map((user) => ({
+        userId: user.userId,
+        stripeCustomerId: user.stripeCustomerId as string,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        subscriptionStatus: user.subscriptionStatus,
+        currentPeriodEnd: user.currentPeriodEnd,
+      }));
+  },
+});
+
+export const reconcileStripeSubscriptionsInternal: ReturnType<
+  typeof internalAction
+> = internalAction({
+  args: {
+    autoCorrect: v.optional(v.boolean()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    scannedStripeSubscriptions: number;
+    scannedBillingRecords: number;
+    mismatchCount: number;
+    proposedUpdateCount: number;
+    correctedCount: number;
+    failedCorrections: number;
+    autoCorrect: boolean;
+  }> => {
+    const stripe = getStripe();
+    const [stripeSubscriptions, billingRecords] = await Promise.all([
+      collectStripeSubscriptions(async (startingAfter) => {
+        const page = await stripe.subscriptions.list({
+          status: "all",
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        });
+
+        const data = page.data.flatMap((subscription) => {
+          const customerId = getStripeCustomerId(subscription.customer);
+          if (!customerId) return [];
+
+          const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
+
+          return [
+            {
+              id: subscription.id,
+              customerId,
+              status: subscription.status,
+              created: subscription.created,
+              currentPeriodEnd,
+              cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            },
+          ];
+        });
+
+        return {
+          data,
+          hasMore: page.has_more,
+          lastRawId: page.data.at(-1)?.id,
+        };
+      }),
+      ctx.runQuery(internal.billing.listStripeBillingRecordsInternal, {}) as Promise<BillingRecordSnapshot[]>,
+    ]);
+    const reconciliation = reconcileSubscriptionState({
+      stripeSubscriptions,
+      billingRecords,
+    });
+
+    for (const mismatch of reconciliation.mismatches) {
+      console.warn("[Billing Reconcile] mismatch", {
+        type: mismatch.type,
+        stripeCustomerId: mismatch.stripeCustomerId,
+        userId: mismatch.userId ?? null,
+        stripeSubscriptionId: mismatch.stripeSubscriptionId ?? null,
+        diff: mismatch.diff ?? null,
+      });
+    }
+
+    const shouldAutoCorrect = args.autoCorrect ?? false;
+    const runTimestamp = Date.now();
+    let correctedCount = 0;
+    let failedCorrections = 0;
+    if (shouldAutoCorrect) {
+      for (const update of reconciliation.proposedUpdates) {
+        try {
+          // eslint-disable-next-line no-await-in-loop -- applies idempotent updates in a stable sequence.
+          const result = await ctx.runMutation(
+            internal.billing.updateFromStripeInternal,
+            {
+              stripeCustomerId: update.stripeCustomerId,
+              stripeSubscriptionId: update.stripeSubscriptionId,
+              subscriptionStatus: update.subscriptionStatus,
+              currentPeriodEnd: update.currentPeriodEnd,
+              eventTimestamp: runTimestamp,
+              eventId: `reconcile:${runTimestamp}:${update.stripeCustomerId}`,
+            }
+          );
+          if (result.success) {
+            correctedCount += 1;
+          } else if (result.reason === "stale_event" || result.reason === "duplicate_event") {
+            // Data already up-to-date from a more recent webhook — not a failure
+            correctedCount += 1;
+          } else {
+            failedCorrections += 1;
+          }
+        } catch (error) {
+          failedCorrections += 1;
+          console.error("[Billing Reconcile] auto-correct failed", {
+            stripeCustomerId: update.stripeCustomerId,
+            stripeSubscriptionId: update.stripeSubscriptionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
+
+    return {
+      scannedStripeSubscriptions: stripeSubscriptions.length,
+      scannedBillingRecords: billingRecords.length,
+      mismatchCount: reconciliation.mismatches.length,
+      proposedUpdateCount: reconciliation.proposedUpdates.length,
+      correctedCount,
+      failedCorrections,
+      autoCorrect: shouldAutoCorrect,
+    };
   },
 });

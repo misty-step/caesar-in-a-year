@@ -26,6 +26,28 @@ export function getStripe(): Stripe {
 export const PRICE_ID_MONTHLY = process.env.STRIPE_PRICE_ID?.trim();
 export const PRICE_ID_ANNUAL = process.env.STRIPE_PRICE_ID_ANNUAL?.trim();
 
+/**
+ * Extract current_period_end from a Stripe subscription.
+ * Stripe SDK v20 moved this field to items.data[0].current_period_end,
+ * but the API still sends it at the root level. Try root first, fall back to item.
+ */
+export function getSubscriptionPeriodEnd(
+  subscription: { items: { data: Array<{ current_period_end?: number }> } }
+): number | undefined {
+  const root = (subscription as unknown as { current_period_end?: number }).current_period_end;
+  return root ?? subscription.items.data[0]?.current_period_end;
+}
+
+/**
+ * Extract customer ID from Stripe object (handles string or expanded object).
+ */
+export function getStripeCustomerId(
+  customer: string | { id: string } | null | undefined
+): string | undefined {
+  if (!customer) return undefined;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
 export type PlanType = "monthly" | "annual";
 
 export function getPriceId(plan: PlanType): string | undefined {

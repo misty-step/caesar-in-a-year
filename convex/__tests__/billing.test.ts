@@ -1,14 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { hasAccess, getTrialDaysRemaining } from "../billing";
+import {
+  hasAccess,
+  getTrialDaysRemaining,
+  listStripeBillingRecordsInternal,
+  reconcileStripeSubscriptionsInternal,
+} from "../billing";
 import type { Doc } from "../_generated/dataModel";
+import { getStripe } from "../../lib/billing/stripe";
 
 // Mock Date.now for deterministic tests
 const MOCK_NOW = 1700000000000; // Fixed timestamp
 
 describe("billing", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(MOCK_NOW);
+    process.env.STRIPE_SECRET_KEY = "sk_test_billing_reconcile";
   });
 
   // Helper to create a minimal userProgress doc for testing
@@ -245,6 +253,254 @@ describe("billing", () => {
         trialEndsAt: undefined,
       });
       expect(getTrialDaysRemaining(user)).toBe(0);
+    });
+  });
+
+  describe("internal reconciliation handlers", () => {
+    it("listStripeBillingRecordsInternal returns only users with stripeCustomerId", async () => {
+      const collect = vi.fn().mockResolvedValue([
+        {
+          userId: "user_with_stripe",
+          stripeCustomerId: "cus_123",
+          stripeSubscriptionId: "sub_123",
+          subscriptionStatus: "active",
+          currentPeriodEnd: 1700005000000,
+        },
+        {
+          userId: "user_without_stripe",
+          stripeCustomerId: undefined,
+        },
+      ]);
+      const withIndex = vi.fn().mockReturnValue({ collect });
+      const query = vi.fn().mockReturnValue({ withIndex });
+      const ctx = {
+        db: {
+          query,
+        },
+      };
+
+      const result = await (
+        listStripeBillingRecordsInternal as unknown as {
+          _handler: (ctx: unknown, args: {}) => Promise<unknown>;
+        }
+      )._handler(ctx, {});
+
+      expect(query).toHaveBeenCalledWith("userProgress");
+      expect(withIndex).toHaveBeenCalledWith("by_stripe_customer");
+      expect(result).toEqual([
+        {
+          userId: "user_with_stripe",
+          stripeCustomerId: "cus_123",
+          stripeSubscriptionId: "sub_123",
+          subscriptionStatus: "active",
+          currentPeriodEnd: 1700005000000,
+        },
+      ]);
+    });
+
+    it("reconcileStripeSubscriptionsInternal maps Stripe page data and applies auto-corrections", async () => {
+      const stripe = getStripe();
+      const listSpy = vi.spyOn(stripe.subscriptions, "list").mockResolvedValue({
+        object: "list",
+        url: "/v1/subscriptions",
+        has_more: false,
+        data: [
+          {
+            id: "sub_latest",
+            customer: { id: "cus_123" },
+            status: "active",
+            created: 1700000000,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700003600 }],
+            },
+          },
+          {
+            id: "sub_missing_customer",
+            customer: null,
+            status: "active",
+            created: 1700000001,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700003601 }],
+            },
+          },
+        ],
+      } as never);
+
+      const runQuery = vi.fn().mockResolvedValue([
+        {
+          userId: "user_123",
+          stripeCustomerId: "cus_123",
+          stripeSubscriptionId: "sub_old",
+          subscriptionStatus: "past_due",
+          currentPeriodEnd: 1700000000000,
+        },
+      ]);
+      const runMutation = vi.fn().mockResolvedValue({ success: true });
+      const ctx = {
+        runQuery,
+        runMutation,
+      };
+
+      const result = await (
+        reconcileStripeSubscriptionsInternal as unknown as {
+          _handler: (
+            ctx: unknown,
+            args: { autoCorrect?: boolean }
+          ) => Promise<unknown>;
+        }
+      )._handler(ctx, { autoCorrect: true });
+
+      expect(listSpy).toHaveBeenCalledWith({
+        status: "all",
+        limit: 100,
+      });
+      expect(runQuery).toHaveBeenCalledTimes(1);
+      expect(runMutation).toHaveBeenCalledTimes(1);
+      expect(runMutation.mock.calls[0]?.[1]).toMatchObject({
+        stripeCustomerId: "cus_123",
+        stripeSubscriptionId: "sub_latest",
+        subscriptionStatus: "active",
+        currentPeriodEnd: 1700003600000,
+        eventTimestamp: MOCK_NOW,
+        eventId: `reconcile:${MOCK_NOW}:cus_123`,
+      });
+      expect(result).toEqual({
+        scannedStripeSubscriptions: 1,
+        scannedBillingRecords: 1,
+        mismatchCount: 3,
+        proposedUpdateCount: 1,
+        correctedCount: 1,
+        failedCorrections: 0,
+        autoCorrect: true,
+      });
+    });
+
+    it("reconcileStripeSubscriptionsInternal continues after per-record mutation failure", async () => {
+      const stripe = getStripe();
+      vi.spyOn(stripe.subscriptions, "list").mockResolvedValue({
+        object: "list",
+        url: "/v1/subscriptions",
+        has_more: false,
+        data: [
+          {
+            id: "sub_1",
+            customer: { id: "cus_1" },
+            status: "active",
+            created: 1700000000,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700003600 }],
+            },
+          },
+          {
+            id: "sub_2",
+            customer: { id: "cus_2" },
+            status: "active",
+            created: 1700000100,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700007200 }],
+            },
+          },
+        ],
+      } as never);
+
+      const runQuery = vi.fn().mockResolvedValue([
+        {
+          userId: "user_1",
+          stripeCustomerId: "cus_1",
+          stripeSubscriptionId: "sub_old_1",
+          subscriptionStatus: "past_due",
+          currentPeriodEnd: 1700000000000,
+        },
+        {
+          userId: "user_2",
+          stripeCustomerId: "cus_2",
+          stripeSubscriptionId: "sub_old_2",
+          subscriptionStatus: "past_due",
+          currentPeriodEnd: 1700000000000,
+        },
+      ]);
+      const runMutation = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("first mutation failed"))
+        .mockResolvedValueOnce({ success: true });
+      const ctx = {
+        runQuery,
+        runMutation,
+      };
+
+      const result = await (
+        reconcileStripeSubscriptionsInternal as unknown as {
+          _handler: (
+            ctx: unknown,
+            args: { autoCorrect?: boolean }
+          ) => Promise<unknown>;
+        }
+      )._handler(ctx, { autoCorrect: true });
+
+      expect(runMutation).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        scannedStripeSubscriptions: 2,
+        scannedBillingRecords: 2,
+        mismatchCount: 6,
+        proposedUpdateCount: 2,
+        correctedCount: 1,
+        failedCorrections: 1,
+        autoCorrect: true,
+      });
+    });
+
+    it("reconcileStripeSubscriptionsInternal counts stale_event as success, not failure", async () => {
+      const stripe = getStripe();
+      vi.spyOn(stripe.subscriptions, "list").mockResolvedValue({
+        object: "list",
+        url: "/v1/subscriptions",
+        has_more: false,
+        data: [
+          {
+            id: "sub_1",
+            customer: { id: "cus_1" },
+            status: "active",
+            created: 1700000000,
+            cancel_at_period_end: false,
+            items: {
+              data: [{ current_period_end: 1700003600 }],
+            },
+          },
+        ],
+      } as never);
+
+      const runQuery = vi.fn().mockResolvedValue([
+        {
+          userId: "user_1",
+          stripeCustomerId: "cus_1",
+          stripeSubscriptionId: "sub_old",
+          subscriptionStatus: "past_due",
+          currentPeriodEnd: 1700000000000,
+        },
+      ]);
+      const runMutation = vi.fn().mockResolvedValue({
+        success: false,
+        reason: "stale_event",
+      });
+      const ctx = { runQuery, runMutation };
+
+      const result = await (
+        reconcileStripeSubscriptionsInternal as unknown as {
+          _handler: (
+            ctx: unknown,
+            args: { autoCorrect?: boolean }
+          ) => Promise<unknown>;
+        }
+      )._handler(ctx, { autoCorrect: true });
+
+      expect(result).toMatchObject({
+        correctedCount: 1,
+        failedCorrections: 0,
+      });
     });
   });
 });
