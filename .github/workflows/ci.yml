@@ -108,3 +108,17 @@ jobs:
 
       - name: Type check Convex functions
         run: bun tsc --noEmit --project convex/tsconfig.json
+
+  merge-gate:
+    name: merge-gate
+    needs: [quality]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - run: |
+          if [[ "${{ needs.quality.result }}" == "success" ]]; then
+            echo "merge-gate green"
+          else
+            echo "merge-gate red (quality=${{ needs.quality.result }})"
+            exit 1
+          fi
