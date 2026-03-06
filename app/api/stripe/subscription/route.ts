@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getStripe } from "@/lib/billing/stripe";
+import { getStripe, getSubscriptionPeriodEnd } from "@/lib/billing/stripe";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
@@ -59,8 +59,7 @@ export async function GET() {
     const priceAmount = price?.unit_amount ? price.unit_amount / 100 : null;
     const priceInterval = price?.recurring?.interval ?? null;
 
-    // SDK v20: current_period_end is on items
-    const periodEnd = subscription.items.data[0]?.current_period_end;
+    const periodEnd = getSubscriptionPeriodEnd(subscription);
 
     return NextResponse.json({
       hasSubscription: true,

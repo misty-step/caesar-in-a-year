@@ -38,6 +38,16 @@ export function getSubscriptionPeriodEnd(
   return root ?? subscription.items.data[0]?.current_period_end;
 }
 
+/**
+ * Extract customer ID from Stripe object (handles string or expanded object).
+ */
+export function getStripeCustomerId(
+  customer: string | { id: string } | null | undefined
+): string | undefined {
+  if (!customer) return undefined;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
 export type PlanType = "monthly" | "annual";
 
 export function getPriceId(plan: PlanType): string | undefined {

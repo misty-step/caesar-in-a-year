@@ -43,14 +43,13 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 }
 
 /**
- * Map Stripe subscription status to our internal status.
- * Delegates to the canonical normalizer; unknown statuses default to "active"
+ * Normalize Stripe status with fail-open default: unknown statuses become "active"
  * to avoid denying access on unrecognized Stripe status values.
  */
-function mapSubscriptionStatus(
+function normalizeStatusFailOpen(
   stripeStatus: Stripe.Subscription.Status,
   cancelAtPeriodEnd: boolean
-): "active" | "canceled" | "past_due" | "unpaid" | "incomplete" | "expired" {
+) {
   return normalizeStripeSubscriptionStatus(stripeStatus, cancelAtPeriodEnd) ?? "active";
 }
 
@@ -176,7 +175,7 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
         const userId = subscription.metadata?.userId;
-        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
+        const status = normalizeStatusFailOpen(subscription.status, subscription.cancel_at_period_end);
         const periodEnd = getSubscriptionPeriodEnd(subscription);
 
         await updateWithFallback(stripeCustomerId, userId, {
@@ -247,7 +246,7 @@ export async function POST(req: Request) {
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeCustomerId = getCustomerId(subscription.customer);
-        const status = mapSubscriptionStatus(subscription.status, subscription.cancel_at_period_end);
+        const status = normalizeStatusFailOpen(subscription.status, subscription.cancel_at_period_end);
         const periodEnd = getSubscriptionPeriodEnd(subscription);
 
         await updateWithFallback(stripeCustomerId, undefined, {

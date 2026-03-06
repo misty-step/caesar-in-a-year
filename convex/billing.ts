@@ -2,7 +2,7 @@ import { query, action, internalMutation, internalQuery, internalAction } from "
 import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { getStripe, getSubscriptionPeriodEnd } from "../lib/billing/stripe";
+import { getStripe, getSubscriptionPeriodEnd, getStripeCustomerId } from "../lib/billing/stripe";
 import {
   reconcileSubscriptionState,
   type BillingRecordSnapshot,
@@ -447,8 +447,8 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
     autoCorrect: boolean;
   }> => {
     const stripe = getStripe();
-    const stripeSubscriptions: StripeSubscriptionSnapshot[] =
-      await collectStripeSubscriptions(async (startingAfter) => {
+    const [stripeSubscriptions, billingRecords] = await Promise.all([
+      collectStripeSubscriptions(async (startingAfter) => {
         const page = await stripe.subscriptions.list({
           status: "all",
           limit: 100,
@@ -456,10 +456,7 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
         });
 
         const data = page.data.flatMap((subscription) => {
-          const customerId =
-            typeof subscription.customer === "string"
-              ? subscription.customer
-              : subscription.customer?.id;
+          const customerId = getStripeCustomerId(subscription.customer);
           if (!customerId) return [];
 
           const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
@@ -481,12 +478,9 @@ export const reconcileStripeSubscriptionsInternal: ReturnType<
           hasMore: page.has_more,
           lastRawId: page.data.at(-1)?.id,
         };
-      });
-
-    const billingRecords: BillingRecordSnapshot[] = await ctx.runQuery(
-      internal.billing.listStripeBillingRecordsInternal,
-      {}
-    );
+      }),
+      ctx.runQuery(internal.billing.listStripeBillingRecordsInternal, {}) as Promise<BillingRecordSnapshot[]>,
+    ]);
     const reconciliation = reconcileSubscriptionState({
       stripeSubscriptions,
       billingRecords,
