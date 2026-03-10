@@ -111,14 +111,17 @@ jobs:
 
   merge-gate:
     name: merge-gate
-    needs: [quality]
+    needs: [quality, convex]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - run: |
-          if [[ "${{ needs.quality.result }}" == "success" ]]; then
-            echo "merge-gate green"
+      - env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          CONVEX_RESULT: ${{ needs.convex.result }}
+        run: |
+          if [[ "$QUALITY_RESULT" == "success" ]] && [[ "$CONVEX_RESULT" == "success" || "$CONVEX_RESULT" == "skipped" ]]; then
+            echo "merge-gate green (quality=$QUALITY_RESULT convex=$CONVEX_RESULT)"
           else
-            echo "merge-gate red (quality=${{ needs.quality.result }})"
+            echo "merge-gate red (quality=$QUALITY_RESULT convex=$CONVEX_RESULT)"
             exit 1
           fi
